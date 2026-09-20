@@ -1,5 +1,6 @@
 // Integration: PaperRuntime against an in-process fake exchange feed.
 
+#include "tradebot/live/journal.hpp"
 #include "tradebot/live/paper_runtime.hpp"
 
 #include "support/ws_test_server.hpp"
@@ -179,4 +180,135 @@ TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; re
         CHECK(runtime2.portfolio()->cash() < "10000"_ntl);
         CHECK(runtime2.result().fills.empty());
     }
+}
+
+TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, journal rebuild") {
+    TempDir tmp;
+    FakeRest rest;
+    test::TestWsServer ws;
+    strategy::StrategyRegistry registry;
+    strategies::register_baselines(registry);
+    auto cfg = Config::parse(config_text(tmp.path, rest, ws.port(), false) + "[collector]\nstale_timeout = 1s\n");
+    // stale_timeout must be re-set after the base config's [collector] section; Config keeps the last value.
+    REQUIRE(cfg.has_value());
+    auto spec = parse_paper_spec(*cfg);
+    REQUIRE(spec.has_value());
+    spec->collector.reconnect_backoff_min = Duration::millis(20);
+    spec->collector.reconnect_backoff_max = Duration::millis(50);
+    spec->feed_stale_after = Duration::seconds(30);  // do not trip on the short pauses below
+
+    auto sink = std::make_shared<MemorySink>();
+    WallClock wall;
+    Logger log = Logger::make("paper", sink, wall, LogLevel::debug);
+    PaperRuntime runtime(*spec, registry, nullptr, log);
+
+    std::thread server([&] {
+        const auto now_ms = [] {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::system_clock::now().time_since_epoch()).count();
+        };
+        // Connection 1: trades with a malformed message and a duplicate, then a hard TCP drop.
+        if (!ws.accept_and_handshake(Duration::seconds(10))) { CHECK(false); runtime.stop(); return; }
+        for (int i = 0; i < 12; ++i) {
+            ws.send_text(agg_trade(i + 1, "3000.00", now_ms()));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        ws.send_text(R"({"stream":"ethusdt@aggTrade","data":{"e":"aggTrade","broken":true}})");
+        ws.send_text(agg_trade(12, "3000.00", now_ms()));  // duplicate id
+        ws.send_text("this is not even json");
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ws.close_tcp();
+        // Connection 2 after reconnect: more trades, then stop.
+        if (!ws.accept_and_handshake(Duration::seconds(10))) { CHECK(false); runtime.stop(); return; }
+        for (int i = 20; i < 30; ++i) {
+            ws.send_text(agg_trade(i, "3000.50", now_ms()));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        runtime.stop();
+    });
+    auto r = runtime.run();
+    server.join();
+    REQUIRE_MESSAGE(r.has_value(), r.error().message);
+
+    REQUIRE(runtime.collector_stats() != nullptr);
+    CHECK(runtime.collector_stats()->reconnects == 1);
+    CHECK(runtime.collector_stats()->connects == 2);
+    CHECK(runtime.collector_stats()->depth_snapshots == 2);  // one per connect
+    CHECK(runtime.portfolio()->position(InstrumentId{1}) == "0.25"_qty);
+    CHECK(runtime.portfolio()->stats().fills == 1);
+    CHECK(runtime.journal().appended() >= 2);  // accepted + fill
+    CHECK(runtime.feed_health().state() != FeedState::waiting);
+    CHECK(fs::exists(tmp.path / "run" / "heartbeat"));
+    CHECK(fs::exists(tmp.path / "run" / "journal.jsonl"));
+    bool parse_error_logged = false;
+    for (const auto& e : sink->entries()) parse_error_logged |= e.message.find("parse error") != std::string::npos;
+    CHECK(parse_error_logged);
+
+    // Journal contents match the portfolio; rebuild from it after losing state.json.
+    std::vector<execution::ExecutionReport> reports;
+    auto skipped = Journal::replay(tmp.path / "run" / "journal.jsonl", [&](const execution::ExecutionReport& rep) { reports.push_back(rep); });
+    REQUIRE(skipped.has_value());
+    CHECK(*skipped == 0);
+    CHECK(reports.size() == runtime.journal().appended());
+    fs::remove(tmp.path / "run" / "state.json");
+    {
+        FakeRest rest2;
+        test::TestWsServer ws2;
+        auto cfg2 = Config::parse(config_text(tmp.path, rest2, ws2.port(), true));
+        auto spec2 = parse_paper_spec(*cfg2);
+        REQUIRE(spec2.has_value());
+        PaperRuntime runtime2(*spec2, registry, nullptr, Logger{});
+        std::thread server2([&] {
+            if (!ws2.accept_and_handshake(Duration::seconds(10))) { CHECK(false); }
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            runtime2.stop();
+        });
+        auto r2 = runtime2.run();
+        server2.join();
+        REQUIRE(r2.has_value());
+        CHECK(runtime2.portfolio()->position(InstrumentId{1}) == "0.25"_qty);
+        CHECK(runtime2.portfolio()->stats().fills == 1);
+        // The journal now holds both sessions' reports; a third start replays it idempotently.
+    }
+}
+
+TEST_CASE("PaperRuntime: stale feed trips the kill switch and re-arms on recovery") {
+    TempDir tmp;
+    FakeRest rest;
+    test::TestWsServer ws;
+    strategy::StrategyRegistry registry;
+    strategies::register_baselines(registry);
+    auto cfg = Config::parse(config_text(tmp.path, rest, ws.port(), false) + "[paper]\nfeed_stale_after = 1s\n");
+    auto spec = parse_paper_spec(*cfg);
+    REQUIRE(spec.has_value());
+    CHECK(spec->feed_stale_after == Duration::seconds(1));
+    spec->collector.stale_timeout = Duration::seconds(30);  // the collector itself stays connected
+    PaperRuntime runtime(*spec, registry, nullptr, Logger{});
+    std::atomic<bool> tripped_seen{false};
+    std::thread server([&] {
+        const auto now_ms = [] {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::system_clock::now().time_since_epoch()).count();
+        };
+        if (!ws.accept_and_handshake(Duration::seconds(10))) { CHECK(false); runtime.stop(); return; }
+        ws.send_text(agg_trade(1, "3000.00", now_ms()));
+        // Silence for > 1s (plus the 1s check cadence) => stale.
+        for (int i = 0; i < 40 && !runtime.risk()->tripped(); ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        tripped_seen.store(runtime.risk()->tripped());
+        // Resume: data flows again => healthy => re-armed.
+        for (int i = 2; i < 30 && runtime.risk()->tripped(); ++i) {
+            ws.send_text(agg_trade(i, "3000.00", now_ms()));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        runtime.stop();
+    });
+    auto r = runtime.run();
+    server.join();
+    REQUIRE(r.has_value());
+    CHECK(tripped_seen.load());
+    CHECK_FALSE(runtime.risk()->tripped());
+    CHECK(runtime.risk()->stats().kill_switch_trips == 1);
+    CHECK(runtime.feed_health().stale_episodes() == 1);
 }

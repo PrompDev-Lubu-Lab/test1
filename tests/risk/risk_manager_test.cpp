@@ -215,3 +215,36 @@ TEST_CASE("RiskManager: daily loss limit resets at UTC day boundary") {
     f.pf.set_mark(kEth, "2900"_px);  // -40 from the new day start
     CHECK_FALSE(f.risk->check_limits());
 }
+
+TEST_CASE("RiskManager: flatten_on_trip closes positions through the venue") {
+    RiskLimits l;
+    l.max_drawdown = "10"_ntl;
+    l.max_price_deviation = 0;
+    l.flatten_on_trip = true;
+    Fixture f(l);
+    struct Chain final : ExecutionListener {
+        portfolio::Portfolio& pf;
+        explicit Chain(portfolio::Portfolio& p) : pf(p) {}
+        void on_execution_report(const ExecutionReport& r) override { pf.on_execution_report(r); }
+    } chain(f.pf);
+    f.risk->set_listener(&chain);
+    REQUIRE(f.risk->submit(limit(1, Side::buy, "3000", "2")).has_value());
+    f.venue.fill(ClientOrderId{1}, "3000"_px);
+    REQUIRE(f.risk->submit(limit(2, Side::sell, "3100", "1")).has_value());  // resting
+    CHECK(f.pf.position(kEth) == "2"_qty);
+    f.pf.set_mark(kEth, "2900"_px);
+    CHECK(f.risk->check_limits());
+    CHECK(f.risk->tripped());
+    // Resting order cancelled, then a market sell of the full position sent straight to the venue.
+    REQUIRE(f.venue.cancelled.size() == 1);
+    REQUIRE(f.venue.submitted.size() == 3);
+    const auto& flat = f.venue.submitted.back();
+    CHECK(flat.side == Side::sell);
+    CHECK(flat.type == OrderType::market);
+    CHECK(flat.quantity == "2"_qty);
+    CHECK(flat.strategy == kS);
+    CHECK(flat.client_id != ClientOrderId{1});
+    CHECK(f.risk->stats().flatten_orders == 1);
+    f.venue.fill(flat.client_id, "2900"_px);
+    CHECK(f.pf.position(kEth).is_zero());
+}

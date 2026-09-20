@@ -14,6 +14,8 @@ const StrategyId kA{1};
 const StrategyId kB{2};
 const Timestamp kT0 = *Timestamp::parse_iso8601("2024-03-15T10:00:00Z");
 
+std::uint64_t g_exec_id = 1000;  // every fill gets a distinct execution id
+
 ExecutionReport fill_report(std::uint64_t cid, StrategyId strategy, Side side, const char* price,
                             const char* qty, const char* fee, Quantity remaining = Quantity{}) {
     ExecutionReport r;
@@ -26,7 +28,7 @@ ExecutionReport fill_report(std::uint64_t cid, StrategyId strategy, Side side, c
     r.time = kT0;
     r.status = remaining.is_zero() ? OrderStatus::filled : OrderStatus::partially_filled;
     r.remaining_quantity = remaining;
-    r.fill = Fill{*Price::parse(price), *Quantity::parse(qty), *Notional::parse(fee), Liquidity::taker, TradeId{cid}};
+    r.fill = Fill{*Price::parse(price), *Quantity::parse(qty), *Notional::parse(fee), Liquidity::taker, TradeId{g_exec_id++}};
     return r;
 }
 
@@ -206,4 +208,18 @@ TEST_CASE("Portfolio: equity curve samples and marks from tickers/candles") {
     CHECK(curve[2].equity == "1049.5"_ntl);
     CHECK(curve[2].time == kT0 + Duration::minutes(2));
     CHECK(pf.peak_equity() == "1049.5"_ntl);
+}
+
+TEST_CASE("Portfolio: redelivered fills are applied once") {
+    Portfolio pf("1000"_ntl);
+    auto r = fill_report(1, kA, Side::buy, "100", "1", "0.1");
+    pf.on_execution_report(r);
+    pf.on_execution_report(r);  // same client id + exec id
+    CHECK(pf.position(kEth) == "1"_qty);
+    CHECK(pf.stats().fills == 1);
+    CHECK(pf.stats().duplicate_fills == 1);
+    r.fill->exec_id = TradeId{555};  // a genuinely new execution
+    pf.on_execution_report(r);
+    CHECK(pf.position(kEth) == "2"_qty);
+    CHECK(pf.stats().fills == 2);
 }

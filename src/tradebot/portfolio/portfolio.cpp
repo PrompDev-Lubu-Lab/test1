@@ -83,6 +83,11 @@ void Portfolio::on_execution_report(const ExecutionReport& r) {
             break;
         }
         case ReportType::fill: {
+            if (r.fill && !seen_fills_.insert({r.client_id.value(), r.fill->exec_id.value()}).second) {
+                // A venue (or a replayed journal) redelivered this fill.
+                ++stats_.duplicate_fills;
+                break;
+            }
             if (r.fill) {
                 // Account-level realized P&L is attributed from the strategy
                 // ledger's cost basis, not the account's blended one.

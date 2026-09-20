@@ -1,4 +1,6 @@
 add_library(tradebot_live
+  feed_health.cpp
+  journal.cpp
   live_scheduler.cpp
   paper_runtime.cpp)
 

@@ -13,9 +13,14 @@ using execution::ReportType;
 
 class PaperRuntime::Recorder final : public execution::ExecutionListener {
 public:
-    Recorder(backtest::BacktestResult& result, execution::ExecutionListener& next, Logger log)
-        : result_(result), next_(next), log_(std::move(log)) {}
+    Recorder(backtest::BacktestResult& result, execution::ExecutionListener& next, Journal& journal, Logger log)
+        : result_(result), next_(next), journal_(journal), log_(std::move(log)) {}
     void on_execution_report(const ExecutionReport& r) override {
+        // Journal first: if the process dies after this line, replaying the
+        // journal reproduces exactly what the portfolio is about to apply.
+        if (auto j = journal_.append(r); !j) {
+            log_.error("journal append failed: {}", j.error().to_string());
+        }
         result_.orders.push_back(backtest::OrderRecord{r.time, r.strategy, r.client_id, r.type, r.side, r.order_type,
                                                        r.price, r.filled_quantity, r.remaining_quantity, r.reason});
         if (r.type == ReportType::fill && r.fill) {
@@ -32,6 +37,7 @@ public:
 private:
     backtest::BacktestResult& result_;
     execution::ExecutionListener& next_;
+    Journal& journal_;
     Logger log_;
 };
 
@@ -75,6 +81,17 @@ Result<PaperSpec> parse_paper_spec(const Config& cfg) {
     spec.flush_interval = *flush;
     spec.archive_raw = *archive;
     spec.resume = *resume;
+    auto stale = cfg.get_duration_or("paper.feed_stale_after", Duration::seconds(15));
+    auto rearm = cfg.get_bool_or("paper.auto_rearm", true);
+    auto hb = cfg.get_duration_or("paper.heartbeat_interval", Duration::seconds(5));
+    auto flatten = cfg.get_bool_or("risk.flatten_on_trip", false);
+    if (!stale || !rearm || !hb || !flatten) {
+        return tl::make_unexpected(!stale ? stale.error() : !rearm ? rearm.error() : !hb ? hb.error() : flatten.error());
+    }
+    spec.feed_stale_after = *stale;
+    spec.auto_rearm = *rearm;
+    spec.heartbeat_interval = *hb;
+    spec.limits.flatten_on_trip = *flatten;
 
     auto& cc = spec.collector;
     cc.symbol = base->store.symbol;
@@ -121,6 +138,53 @@ PaperRuntime::~PaperRuntime() {
     stop();
     if (feed_thread_.joinable()) {
         feed_thread_.join();
+    }
+}
+
+Result<void> PaperRuntime::restore_state() {
+    const fs::path state_file = spec_.run_dir / "state.json";
+    const fs::path journal_file = spec_.run_dir / "journal.jsonl";
+    std::ifstream in(state_file);
+    if (in) {
+        std::stringstream ss;
+        ss << in.rdbuf();
+        auto state = portfolio::Portfolio::state_from_json(ss.str());
+        if (state) {
+            portfolio_->restore(*state);
+            log_.info("restored state.json: cash {} equity {}", portfolio_->cash().to_string(),
+                      portfolio_->equity().to_string());
+            return {};
+        }
+        log_.error("state.json unreadable ({}); rebuilding from the journal", state.error().message);
+    }
+    if (fs::exists(journal_file)) {
+        std::uint64_t reports = 0;
+        auto skipped = Journal::replay(journal_file, [&](const execution::ExecutionReport& r) {
+            portfolio_->on_execution_report(r);
+            ++reports;
+        });
+        if (!skipped) {
+            return tl::make_unexpected(skipped.error());
+        }
+        log_.info("rebuilt state from journal: {} reports ({} corrupt lines skipped), cash {} equity {}", reports,
+                  *skipped, portfolio_->cash().to_string(), portfolio_->equity().to_string());
+    }
+    return {};
+}
+
+void PaperRuntime::check_feed(Timestamp now) {
+    const bool changed = health_.check(now);
+    if (!changed) {
+        return;
+    }
+    if (health_.state() == FeedState::stale) {
+        log_.error("feed stale for {}; going safe", health_.silence(now).to_string());
+        risk_->trip("market data stale for " + health_.silence(now).to_string());
+        tripped_by_feed_ = true;
+    } else if (health_.state() == FeedState::healthy && tripped_by_feed_ && risk_->tripped() && spec_.auto_rearm) {
+        log_.warn("feed recovered; re-arming the kill switch");
+        risk_->reset();
+        tripped_by_feed_ = false;
     }
 }
 
@@ -181,25 +245,21 @@ Result<void> PaperRuntime::run() {
     scheduler_.venue_bus().subscribe(*exchange_);
     portfolio_ = std::make_unique<portfolio::Portfolio>(spec_.initial_cash);
     scheduler_.bus().subscribe(*portfolio_);
+    scheduler_.bus().subscribe(health_);
+    health_ = FeedHealthMonitor(FeedHealthMonitor::Options{.stale_after = spec_.feed_stale_after});
     if (spec_.resume) {
-        std::ifstream in(spec_.run_dir / "state.json");
-        if (in) {
-            std::stringstream ss;
-            ss << in.rdbuf();
-            auto state = portfolio::Portfolio::state_from_json(ss.str());
-            if (!state) {
-                return make_error(ErrorCode::parse_error, "state.json: " + state.error().message);
-            }
-            portfolio_->restore(*state);
-            log_.info("restored state: cash {} equity {}", portfolio_->cash().to_string(),
-                      portfolio_->equity().to_string());
+        if (auto r = restore_state(); !r) {
+            return r;
         }
+    }
+    if (auto j = journal_.open(spec_.run_dir / "journal.jsonl"); !j) {
+        return j;
     }
     risk_ = std::make_unique<risk::RiskManager>(*exchange_, *portfolio_, clock_, spec_.limits, log_.child("risk"));
     runner_ = std::make_unique<strategy::StrategyRunner>(scheduler_, *risk_, *portfolio_, spec_.instrument,
                                                          log_.child("strategy"), spec_.seed);
     scheduler_.bus().subscribe(*runner_);
-    recorder_ = std::make_unique<Recorder>(result_, *runner_, log_.child("exec"));
+    recorder_ = std::make_unique<Recorder>(result_, *runner_, journal_, log_.child("exec"));
     risk_->set_listener(recorder_.get());
     for (const auto& st : spec_.strategies) {
         auto s = registry_.create(st.name);
@@ -239,6 +299,13 @@ Result<void> PaperRuntime::run() {
             log_.error("flush failed: {}", f.error().to_string());
         }
     });
+    scheduler_.schedule_every(Duration::seconds(1), [this](Timestamp t) { check_feed(t); });
+    scheduler_.schedule_every(spec_.heartbeat_interval, [this](Timestamp t) {
+        const std::string status = std::string(to_string(health_.state())) + (risk_->tripped() ? " tripped" : " armed");
+        if (auto h = write_heartbeat(spec_.run_dir / "heartbeat", t, status); !h) {
+            log_.error("heartbeat failed: {}", h.error().to_string());
+        }
+    });
     scheduler_.schedule_every(Duration::minutes(1), [this](Timestamp) {
         const auto& cs = collector_->stats();
         log_.info("status: equity {} position {} msgs {} reconnects {} gaps {} book {}", portfolio_->equity().to_string(),
@@ -248,6 +315,7 @@ Result<void> PaperRuntime::run() {
 
     runner_->start();
     portfolio_->sample(clock_.now());
+    static_cast<void>(write_heartbeat(spec_.run_dir / "heartbeat", clock_.now(), "starting armed"));
     log_.info("paper trading {} started; artifacts in {}", spec_.label, spec_.run_dir.string());
     scheduler_.run();
 
@@ -262,6 +330,8 @@ Result<void> PaperRuntime::run() {
     if (writer_) {
         static_cast<void>(writer_->close());
     }
+    static_cast<void>(journal_.close());
+    static_cast<void>(write_heartbeat(spec_.run_dir / "heartbeat", clock_.now(), "stopped"));
     log_.info("paper trading stopped: equity {} after {} fills", portfolio_->equity().to_string(), result_.fills.size());
     return f;
 }

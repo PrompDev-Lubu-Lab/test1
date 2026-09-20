@@ -175,6 +175,34 @@ void RiskManager::trip(std::string reason) {
     ++stats_.kill_switch_trips;
     log_.error("KILL SWITCH: {}", trip_reason_);
     cancel_all_open();
+    if (limits_.flatten_on_trip) {
+        flatten_positions();
+    }
+}
+
+void RiskManager::flatten_positions() {
+    // Per strategy so attribution stays right; straight to the venue since
+    // the gate is closed.
+    for (const auto& [strategy_id, ledger] : portfolio_.strategy_ledgers()) {
+        for (const auto& [instrument, pos] : ledger.positions) {
+            if (pos.quantity.is_zero()) continue;
+            execution::OrderRequest r;
+            r.client_id = flatten_ids_.next();
+            r.instrument = instrument;
+            r.strategy = strategy_id;
+            r.side = pos.quantity.is_positive() ? Side::sell : Side::buy;
+            r.type = OrderType::market;
+            r.time_in_force = TimeInForce::ioc;
+            r.quantity = pos.quantity.abs();
+            ++stats_.flatten_orders;
+            log_.warn("flattening {} {} for strategy {}", to_string(r.side), r.quantity.to_string(), strategy_id.value());
+            if (auto s = venue_.submit(r); !s) {
+                log_.error("flatten order failed: {}", s.error().to_string());
+            } else {
+                open_.insert(r.client_id);
+            }
+        }
+    }
 }
 
 void RiskManager::cancel_all_open() {

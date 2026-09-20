@@ -40,12 +40,16 @@ struct RiskLimits {
     Notional max_drawdown;  // from peak equity; zero = disabled
     Notional max_daily_loss;  // from equity at UTC day start; zero = disabled
     std::set<InstrumentId> allowed_instruments;  // empty = all
+    // On trip, after cancelling every working order, send market orders to
+    // close every position (per strategy) straight to the venue.
+    bool flatten_on_trip = false;
 };
 
 struct RiskStats {
     std::uint64_t checked = 0;
     std::uint64_t rejected = 0;
     std::uint64_t kill_switch_trips = 0;
+    std::uint64_t flatten_orders = 0;
     std::map<std::string, std::uint64_t> rejections_by_reason;
 };
 
@@ -81,6 +85,7 @@ public:
 private:
     void reject(const execution::OrderRequest& request, const std::string& reason);
     void cancel_all_open();
+    void flatten_positions();
     [[nodiscard]] Notional day_start_equity();
 
     execution::ExecutionVenue& venue_;
@@ -95,6 +100,7 @@ private:
     std::set<ClientOrderId> open_;  // orders accepted downstream and not yet done
     std::optional<Timestamp> day_;
     Notional day_start_equity_;
+    IdGenerator<ClientOrderId> flatten_ids_{0x7FFF'0000'0000'0000ULL};  // distinct from strategy ids
     RiskStats stats_;
 };
 

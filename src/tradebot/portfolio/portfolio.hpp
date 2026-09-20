@@ -18,6 +18,7 @@
 
 #include <map>
 #include <optional>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -92,6 +93,9 @@ public:
     // not).
     [[nodiscard]] const Ledger& account() const noexcept { return account_; }
     [[nodiscard]] const Ledger& ledger(StrategyId strategy) const;
+    [[nodiscard]] const std::unordered_map<StrategyId, Ledger>& strategy_ledgers() const noexcept {
+        return ledgers_;
+    }
     [[nodiscard]] Notional initial_cash() const noexcept { return initial_cash_; }
     [[nodiscard]] Notional cash() const noexcept { return account_.cash; }
     [[nodiscard]] Quantity position(InstrumentId id) const;
@@ -126,6 +130,7 @@ public:
 
     struct Stats {
         std::uint64_t fills = 0;
+        std::uint64_t duplicate_fills = 0;  // redelivered reports ignored
         Quantity volume;
         Notional turnover;
     };
@@ -151,6 +156,7 @@ private:
     std::unordered_map<StrategyId, OpenExposure> exposures_;
     std::unordered_map<ClientOrderId, OpenOrder> open_orders_;
     std::unordered_map<InstrumentId, Price> marks_;
+    std::set<std::pair<std::uint64_t, std::uint64_t>> seen_fills_;  // (client id, exec id)
     std::vector<EquitySample> curve_;
     Notional peak_equity_;
     Stats stats_;

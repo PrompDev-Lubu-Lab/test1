@@ -15,6 +15,8 @@
 #include "tradebot/core/clock.hpp"
 #include "tradebot/core/log.hpp"
 #include "tradebot/execution/simulated_exchange.hpp"
+#include "tradebot/live/feed_health.hpp"
+#include "tradebot/live/journal.hpp"
 #include "tradebot/live/live_scheduler.hpp"
 #include "tradebot/market_data/binance/collector.hpp"
 #include "tradebot/market_data/binance/raw_processor.hpp"
@@ -46,7 +48,10 @@ struct PaperSpec {
     Duration sample_interval = Duration::minutes(1);
     Duration flush_interval = Duration::minutes(1);
     bool archive_raw = true;
-    bool resume = true;  // restore portfolio state from run_dir/state.json
+    bool resume = true;  // restore portfolio state from run_dir/state.json (or the journal)
+    Duration feed_stale_after = Duration::seconds(15);  // trip the kill switch after this silence
+    bool auto_rearm = true;  // reset the kill switch when the feed recovers from staleness
+    Duration heartbeat_interval = Duration::seconds(5);
 };
 
 [[nodiscard]] Result<PaperSpec> parse_paper_spec(const Config& cfg);
@@ -70,10 +75,16 @@ public:
     [[nodiscard]] const portfolio::Portfolio* portfolio() const noexcept { return portfolio_.get(); }
     [[nodiscard]] const backtest::BacktestResult& result() const noexcept { return result_; }
     [[nodiscard]] const market_data::binance::CollectorStats* collector_stats() const noexcept;
+    [[nodiscard]] const risk::RiskManager* risk() const noexcept { return risk_.get(); }
+    [[nodiscard]] const FeedHealthMonitor& feed_health() const noexcept { return health_; }
+    [[nodiscard]] const Journal& journal() const noexcept { return journal_; }
+    [[nodiscard]] const strategy::StrategyRunner* runner() const noexcept { return runner_.get(); }
 
 private:
     class Recorder;
     void on_record(const market_data::RawRecord& record);
+    [[nodiscard]] Result<void> restore_state();
+    void check_feed(Timestamp now);
 
     PaperSpec spec_;
     const strategy::StrategyRegistry& registry_;
@@ -95,6 +106,9 @@ private:
     std::atomic<bool> stop_{false};
     backtest::BacktestResult result_;
     Timestamp started_;
+    FeedHealthMonitor health_{FeedHealthMonitor::Options{}};
+    Journal journal_;
+    bool tripped_by_feed_ = false;
 };
 
 }  // namespace tradebot::live

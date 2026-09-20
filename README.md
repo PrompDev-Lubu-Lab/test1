@@ -46,7 +46,7 @@ src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean r
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
-src/tradebot/live/     wall-clock scheduler and the paper-trading runtime
+src/tradebot/live/     wall-clock scheduler, paper-trading runtime, execution journal, feed health, heartbeat
 tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -145,6 +145,15 @@ the raw feed as it goes, and flushes artifacts in the backtest format plus
 portfolio from `state.json`. Because the artifacts match, `tradebot-analyze`
 and `tradebot-research judge` compare paper results with backtests directly.
 
+Reliability: every execution report is fsynced to `journal.jsonl` before
+the portfolio applies it, and a lost or corrupt `state.json` is rebuilt by
+replaying the journal (fills are idempotent by execution id). A feed that
+goes silent for `feed_stale_after` trips the kill switch, which cancels
+working orders and, with `risk.flatten_on_trip`, market-closes positions;
+the switch re-arms when data resumes. A `heartbeat` file is refreshed every
+few seconds for external watchdogs. The feed reconnects with backoff on
+any disconnect; malformed messages are logged and skipped.
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -164,4 +173,5 @@ and `tradebot-research judge` compare paper results with backtests directly.
 |    13 | Performance analytics      | done        |
 |    14 | Strategy research tooling  | done        |
 |    15 | Real-time paper trading    | done        |
-| 16-23 | Reliability through live ops | not started |
+|    16 | Reliability and error handling | done    |
+| 17-23 | Optimization through live ops | not started |

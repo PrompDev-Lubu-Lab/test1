@@ -46,7 +46,8 @@ src/tradebot/strategies/ baselines (buy-and-hold, MA crossover, mean reversion, 
                      advanced strategies (vol_trend, book_imbalance, market_maker, ensemble)
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
-src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
+src/tradebot/research/ experiment index, sweeps, walk-forward, kill criteria, Monte Carlo, cost and
+                     parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go
 src/tradebot/live/     wall-clock scheduler, paper-trading runtime, execution journal, feed health, heartbeat
 tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, bench)
 configs/             example configuration files
@@ -132,6 +133,19 @@ train window and reports only out-of-sample results, which are the numbers
 that count. `judge` applies pre-agreed kill criteria (minimum trades and
 Sharpe, maximum drawdown, minimum profit factor, must beat buy-and-hold).
 
+```sh
+./build/tools/tradebot-research validate --config configs/backtest.conf \
+    --train 60d --test 14d --paper-dir runs/paper-ma_1h
+```
+
+`validate` is the go/no-go gate before any real capital: it runs the
+strategy, bootstraps its round trips for confidence intervals on return and
+drawdown, reruns it under harsher fee, slippage and latency assumptions,
+scores the whole parameter grid (a lone good point is overfit), splits the
+run into high- and low-volatility regimes, runs walk-forward when asked,
+compares against a paper-trading run over the same window, and prints a
+GO or NO-GO checklist.
+
 ## Paper trading
 
 ```sh
@@ -196,4 +210,5 @@ optimizations (the backtest tests check determinism).
 |    16 | Reliability and error handling | done    |
 |    17 | Performance optimization   | done        |
 |    18 | Advanced strategies        | done        |
-| 19-23 | Validation through live ops | not started |
+|    19 | Robust strategy validation | done        |
+| 20-23 | Live trading through monitoring | not started |

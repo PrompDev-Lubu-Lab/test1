@@ -11,6 +11,7 @@
 #include "tradebot/core/config.hpp"
 #include "tradebot/core/log.hpp"
 #include "tradebot/research/research.hpp"
+#include "tradebot/research/validation.hpp"
 #include "tradebot/strategies/advanced.hpp"
 #include "tradebot/strategies/baselines.hpp"
 
@@ -156,6 +157,77 @@ int main(int argc, char** argv) {
         }
         std::fputs(format_comparison(rank(std::move(ranked), *metric), *metric).c_str(), stdout);
         return 0;
+    }
+
+    if (mode == "validate") {
+        // 1. The base run and its report.
+        auto run = backtest::run_backtest(*base, registry, log);
+        if (!run) {
+            log.error("{}", run.error().to_string());
+            return 1;
+        }
+        const auto report = analytics::analyze(*run);
+        std::fputs(analytics::format_report(report).c_str(), stdout);
+        GoNoGoInputs in;
+        in.report = report;
+        in.criteria.min_round_trips = std::stoul(get("--min-trades", "30"));
+        in.criteria.min_sharpe = std::stod(get("--min-sharpe", "0.5"));
+        in.criteria.max_drawdown = std::stod(get("--max-dd", "0.25"));
+        in.criteria.min_profit_factor = std::stod(get("--min-pf", "1.1"));
+        in.criteria.must_beat_benchmark = !opt.contains("--ignore-benchmark");
+        // 2. Monte Carlo.
+        in.monte_carlo = monte_carlo_round_trips(report.round_trips, base->initial_cash,
+                                                 std::stoul(get("--samples", "2000")), base->seed);
+        std::printf("\n%s", format_monte_carlo(*in.monte_carlo).c_str());
+        // 3. Costs.
+        auto costs = cost_sensitivity(*base, CostGrid{}, registry, log, threads);
+        if (!costs) {
+            log.error("{}", costs.error().to_string());
+            return 1;
+        }
+        in.costs = *costs;
+        std::printf("\n%s", format_grid(*costs, "Cost sensitivity").c_str());
+        // 4. Parameter stability (needs a [sweep]).
+        if (!sweep.keys().empty()) {
+            auto stab = parameter_stability(*base, sweep, registry, log, threads);
+            if (!stab) {
+                log.error("{}", stab.error().to_string());
+                return 1;
+            }
+            in.stability = *stab;
+            std::printf("\n%s", format_grid(*stab, "Parameter stability").c_str());
+        }
+        // 5. Regimes.
+        auto segment = parse_duration(get("--segment", "7d"));
+        if (segment) {
+            std::printf("\n%s", format_regimes(regime_split(*run, *segment)).c_str());
+        }
+        // 6. Walk-forward when asked.
+        auto train = parse_duration(get("--train", ""));
+        auto test = parse_duration(get("--test", ""));
+        if (train && test) {
+            const auto windows = walk_forward_windows(base->from, base->to, *train, *test, *test);
+            auto wf = run_walk_forward(*base, sweep, windows, *metric, registry, log, threads);
+            if (!wf) {
+                log.error("{}", wf.error().to_string());
+                return 1;
+            }
+            in.walk_forward = *wf;
+            std::printf("\n%s", format_walk_forward(*wf).c_str());
+        }
+        // 7. Paper consistency when a paper run exists.
+        if (const std::string paper_dir = get("--paper-dir", ""); !paper_dir.empty()) {
+            auto c = backtest_paper_consistency(*base, paper_dir, registry, log);
+            if (!c) {
+                log.error("{}", c.error().to_string());
+                return 1;
+            }
+            in.consistency = *c;
+            std::printf("\n%s", format_consistency(*c).c_str());
+        }
+        const GoNoGo verdict = go_no_go(in);
+        std::printf("\n%s", format_go_no_go(verdict).c_str());
+        return verdict.go ? 0 : 1;
     }
 
     if (mode == "walk-forward") {

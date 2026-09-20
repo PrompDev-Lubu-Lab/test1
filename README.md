@@ -36,7 +36,8 @@ src/tradebot/core/   core types: fixed-point money, time, clock, ids, config, lo
 src/tradebot/net/    TCP, TLS (OpenSSL), HTTP/1.1 client, WebSocket client
 src/tradebot/util/   SHA-256, streaming zip reader
 src/tradebot/market_data/  events, raw capture, Binance collector/fetcher/parsers, order book, candles, validation
-tools/               command-line programs (tradebot-collect, tradebot-fetch)
+src/tradebot/storage/  normalized event store (TBEV files), catalog, ingest pipelines
+tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -68,6 +69,20 @@ month is covered), verifies each against its published SHA-256, and keeps
 the zips as immutable ground truth under `data/bulk/binance/<SYMBOL>/`.
 Re-running is idempotent.
 
+## Building the event store
+
+```sh
+./build/tools/tradebot-ingest bulk --symbol ETHUSDT --from 2024-01-01 --to 2024-07-01
+./build/tools/tradebot-ingest raw  --symbol ETHUSDT --from 2024-07-01 --to 2024-07-08
+./build/tools/tradebot-ingest catalog --symbol ETHUSDT
+```
+
+Ingest converts raw sources into validated, normalized events stored as
+compressed binary files per instrument, UTC day and stream kind under
+`data/store/binance/<SYMBOL>/`. Each file header records counts, time
+range and quality flags (sequence gaps, book resyncs), which `catalog`
+prints.
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -76,7 +91,7 @@ Re-running is idempotent.
 |     2 | Market-data collection     | done        |
 |     3 | Market-data processing     | done        |
 |     4 | Order-book system          | done        |
-|     5 | Historical data storage    | not started |
+|     5 | Historical data storage    | done        |
 |     6 | Historical market replay   | not started |
 |     7 | Simulated exchange         | not started |
 |     8 | Portfolio management       | not started |

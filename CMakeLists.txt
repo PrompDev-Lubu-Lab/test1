@@ -52,6 +52,7 @@ target_link_libraries(doctest INTERFACE tradebot_third_party)
 # Project sources
 # ---------------------------------------------------------------------------
 add_subdirectory(src)
+add_subdirectory(tools)
 
 if(TRADEBOT_BUILD_TESTS)
   enable_testing()

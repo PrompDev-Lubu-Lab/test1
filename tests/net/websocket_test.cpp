@@ -1,6 +1,8 @@
 #include "tradebot/net/tcp.hpp"
 #include "tradebot/net/websocket.hpp"
 
+#include "support/ws_test_server.hpp"
+
 #include <doctest/doctest.h>
 
 #include <thread>
@@ -10,111 +12,7 @@ using namespace tradebot::net;
 
 namespace {
 
-// Minimal server-side WebSocket implementation for tests: performs the
-// upgrade handshake, sends unmasked frames, reads masked client frames.
-class TestWsServer {
-public:
-    TestWsServer() : listener_(*TcpListener::bind_loopback()) {}
-
-    [[nodiscard]] std::uint16_t port() const { return listener_.port(); }
-
-    void accept_and_handshake() {
-        conn_ = *listener_.accept(Duration::seconds(5));
-        std::string head;
-        std::byte buf[4096];
-        while (head.find("\r\n\r\n") == std::string::npos) {
-            auto n = conn_.read_some(buf);
-            REQUIRE(n.has_value());
-            head.append(reinterpret_cast<const char*>(buf), *n);
-        }
-        request_head = head;
-        const std::size_t k = head.find("Sec-WebSocket-Key: ");
-        REQUIRE(k != std::string::npos);
-        const std::string key = head.substr(k + 19, head.find("\r\n", k) - k - 19);
-        std::string resp = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
-                           "Connection: Upgrade\r\nSec-WebSocket-Accept: " +
-                           websocket_accept_key(key) + "\r\n\r\n";
-        REQUIRE(conn_.write_all(resp).has_value());
-    }
-
-    void send_raw(std::string bytes) { REQUIRE(conn_.write_all(bytes).has_value()); }
-
-    void send_frame(bool fin, WsOpcode op, std::string_view payload) {
-        std::string f;
-        f.push_back(static_cast<char>((fin ? 0x80 : 0) | static_cast<int>(op)));
-        if (payload.size() < 126) {
-            f.push_back(static_cast<char>(payload.size()));
-        } else if (payload.size() <= 0xFFFF) {
-            f.push_back(126);
-            f.push_back(static_cast<char>(payload.size() >> 8));
-            f.push_back(static_cast<char>(payload.size() & 0xFF));
-        } else {
-            f.push_back(127);
-            for (int s = 56; s >= 0; s -= 8) {
-                f.push_back(static_cast<char>((payload.size() >> s) & 0xFF));
-            }
-        }
-        f += payload;
-        send_raw(f);
-    }
-
-    struct Frame {
-        bool fin;
-        WsOpcode op;
-        std::string payload;
-    };
-
-    Frame read_frame() {
-        std::byte h[2];
-        read_exact(h);
-        Frame f{};
-        f.fin = (static_cast<std::uint8_t>(h[0]) & 0x80) != 0;
-        f.op = static_cast<WsOpcode>(static_cast<std::uint8_t>(h[0]) & 0x0F);
-        const bool masked = (static_cast<std::uint8_t>(h[1]) & 0x80) != 0;
-        REQUIRE(masked);  // clients must mask
-        std::uint64_t len = static_cast<std::uint8_t>(h[1]) & 0x7F;
-        if (len == 126) {
-            std::byte e[2];
-            read_exact(e);
-            len = (static_cast<std::uint64_t>(static_cast<std::uint8_t>(e[0])) << 8) |
-                  static_cast<std::uint8_t>(e[1]);
-        } else if (len == 127) {
-            std::byte e[8];
-            read_exact(e);
-            len = 0;
-            for (std::byte b : e) {
-                len = (len << 8) | static_cast<std::uint8_t>(b);
-            }
-        }
-        std::byte mask[4];
-        read_exact(mask);
-        f.payload.resize(static_cast<std::size_t>(len));
-        read_exact(std::as_writable_bytes(std::span(f.payload.data(), f.payload.size())));
-        for (std::size_t i = 0; i < f.payload.size(); ++i) {
-            f.payload[i] = static_cast<char>(static_cast<std::uint8_t>(f.payload[i]) ^
-                                             static_cast<std::uint8_t>(mask[i % 4]));
-        }
-        return f;
-    }
-
-    void close_tcp() { conn_.close(); }
-
-    std::string request_head;
-
-private:
-    void read_exact(std::span<std::byte> out) {
-        std::size_t off = 0;
-        while (off < out.size()) {
-            auto n = conn_.read_some(out.subspan(off));
-            REQUIRE(n.has_value());
-            REQUIRE(*n > 0);
-            off += *n;
-        }
-    }
-
-    TcpListener listener_;
-    TcpSocket conn_;
-};
+using tradebot::test::TestWsServer;
 
 WebSocketClient::Options test_opts() {
     WebSocketClient::Options o;
@@ -136,6 +34,7 @@ TEST_CASE("WebSocketClient: handshake, echo, fragmentation, ping, close") {
         server.accept_and_handshake();
         // Echo one client text message.
         auto f = server.read_frame();
+        CHECK(f.ok);
         CHECK(f.op == WsOpcode::text);
         CHECK(f.fin);
         server.send_frame(true, WsOpcode::text, "echo:" + f.payload);

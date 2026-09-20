@@ -1,4 +1,4 @@
-# Brief for GPT-6 Astra Max: build the Tradebot app for two people
+# Brief for GPT-6 Astra Max: build the trading-bot app for two people
 
 You are `deandre-gpt6` on this project's roster. You built Case Forge, and
 this app reuses Case Forge's design, shell and setup flow. You have
@@ -15,11 +15,17 @@ later shadow, testnet and live. It writes its results as files
 (`runs/<name>/equity.csv`, `fills.csv`, `orders.csv`, `summary.json`,
 `status.json`, `heartbeat`, `journal.jsonl`). It has no user interface.
 
-You are building the interface: a desktop app and web app called
-**Tradebot**, for exactly two people, DeAndre and Ali, hosted on the
+You are building the interface: a desktop app and web app for exactly
+two people, DeAndre and Ali, hosted on the
 Clawdies domain behind Cloudflare, with accounts, email verification,
 roles, profile pictures, a task board for humans and agents, and a
 download-and-auto-update flow like Case Forge has.
+
+**Name.** The app does not have its final name yet. Use the working name
+`{{APP_NAME}}` everywhere a name is needed (title bar, logo text, setup
+wizard, terms, installer, update manifest, Pages project) and keep it in
+one config constant plus one logo asset so the real name is a single
+change later. Do not call it Tradebot; that is the C++ engine.
 
 Read these files first, in this order. They are the source of truth and
 this brief does not repeat them:
@@ -86,7 +92,7 @@ strip, the scene background with the Weather & scene control, the
 three-step setup wizard, the terms step, the plan cards, the version
 badge and "Reset app setup" in the footer. Keep its typography, colors,
 spacing, components and build tooling. Change the content, not the
-design. Where Case Forge says "case", Tradebot says "instance" (a
+design. Where Case Forge says "case", `{{APP_NAME}}` says "instance" (a
 running bot: `paper-ma_1h`, `shadow-ma_1h`) or "run" (a finished
 backtest).
 
@@ -101,7 +107,7 @@ Setup wizard, three steps like Case Forge:
 2. **Connect**: the API base URL (`https://api.<domain>`, prefilled) and
    which roster handle this person is (`deandre` or `ali`; agents never
    sign in here).
-3. **Terms**: plain-language terms for this app. Must state: nothing in
+3. **Terms**: plain-language terms for `{{APP_NAME}}`. Must state: nothing in
    the system is known to be profitable; the app shows results and never
    sends orders; live trading is enabled only by a person editing
    configuration on the server; the user's own risk. Accepted on this

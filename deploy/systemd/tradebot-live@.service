@@ -1,0 +1,35 @@
+# One instance per deployment: `systemctl start tradebot-live@shadow-ma_1h`
+# runs /etc/tradebot/<instance>.conf (a layered config can be expressed as
+# one file, or the ExecStart line can list several --config arguments).
+[Unit]
+Description=tradebot trading runtime (%i)
+After=network-online.target tradebot-collect.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tradebot
+Group=tradebot
+WorkingDirectory=/var/lib/tradebot
+EnvironmentFile=-/etc/tradebot/secrets.env
+ExecStartPre=/usr/local/bin/tradebot-live --config /etc/tradebot/%i.conf --check
+ExecStart=/usr/local/bin/tradebot-live --config /etc/tradebot/%i.conf
+# SIGTERM: the runtime halts the risk gate, cancels working orders and
+# flushes state before exiting; give it time to do so.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/tradebot
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

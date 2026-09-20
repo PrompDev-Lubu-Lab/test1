@@ -1,0 +1,8 @@
+# Checks the heartbeat of tradebot-live@%i and restarts the unit if it is
+# stale. Driven by tradebot-watchdog@.timer.
+[Unit]
+Description=tradebot heartbeat watchdog (%i)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/local/bin/tradebot-healthcheck /var/lib/tradebot/runs/%i/heartbeat --max-age 45s || { echo "heartbeat stale; restarting tradebot-live@%i"; systemctl restart tradebot-live@%i.service; }'

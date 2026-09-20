@@ -1,0 +1,11 @@
+build/
+build-*/
+cmake-build-*/
+data/
+runs/
+*.log
+.git/
+.github/
+.vscode/
+.idea/
+.cache/

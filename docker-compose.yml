@@ -1,0 +1,57 @@
+# Three long-running services that share one data volume:
+#   collector  archives the raw market-data feed (start it first, keep it running)
+#   paper      the strategy with simulated fills
+#   shadow     the same strategy with simulated fills and read-only account checks
+# Promote to testnet/live by changing TRADEBOT_LIVE_MODE in the env file or
+# by adding a service with `--mode testnet`; nothing else changes.
+#
+#   cp deploy/env.example deploy/.env   # secrets, never committed
+#   docker compose up -d collector paper
+
+services:
+  collector:
+    build: .
+    image: tradebot
+    command: ["tradebot-collect", "--config", "/config/collect.conf", "--data-dir", "/data"]
+    volumes:
+      - ./configs:/config:ro
+      - tradebot-data:/data
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    logging: &logging
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+  paper:
+    image: tradebot
+    depends_on: [collector]
+    command: ["tradebot-live", "--config", "/config/layers/base.conf", "--config", "/config/layers/strategy-ma.conf",
+              "--config", "/config/layers/env-paper.conf"]
+    environment:
+      TRADEBOT_RUN: paper-ma_1h        # for the image's HEALTHCHECK: /runs/<mode>-<label>
+    volumes:
+      - ./configs:/config:ro
+      - tradebot-data:/data
+      - tradebot-runs:/runs
+    restart: unless-stopped
+    logging: *logging
+
+  shadow:
+    image: tradebot
+    depends_on: [collector]
+    command: ["tradebot-live", "--config", "/config/layers/base.conf", "--config", "/config/layers/strategy-ma.conf",
+              "--config", "/config/layers/env-shadow.conf"]
+    env_file: [deploy/.env]          # TRADEBOT_BINANCE_API_KEY / _SECRET
+    environment:
+      TRADEBOT_RUN: shadow-ma_1h
+    volumes:
+      - ./configs:/config:ro
+      - tradebot-data:/data
+      - tradebot-runs:/runs
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  tradebot-data:
+  tradebot-runs:

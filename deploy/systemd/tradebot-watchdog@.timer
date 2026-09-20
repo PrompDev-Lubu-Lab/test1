@@ -1,0 +1,10 @@
+[Unit]
+Description=run the tradebot heartbeat watchdog every minute (%i)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+Unit=tradebot-watchdog@%i.service
+
+[Install]
+WantedBy=timers.target

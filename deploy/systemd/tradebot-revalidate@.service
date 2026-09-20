@@ -1,0 +1,14 @@
+# Daily re-validation of a running instance against its research reference.
+# The instance name is the run directory (e.g. shadow-ma_1h); the reference
+# is the backtest run that passed go/no-go, symlinked or copied to
+# /var/lib/tradebot/reference/<instance>. Exit 0 keep, 1 watch, 2 retire:
+# a failed unit is the alarm; the decision to stop stays with a human.
+[Unit]
+Description=tradebot re-validation (%i)
+
+[Service]
+Type=oneshot
+User=tradebot
+Group=tradebot
+WorkingDirectory=/var/lib/tradebot
+ExecStart=/usr/local/bin/tradebot-monitor revalidate --run /var/lib/tradebot/runs/%i --reference /var/lib/tradebot/reference/%i

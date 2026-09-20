@@ -34,8 +34,9 @@ runtime.
 ```
 src/tradebot/core/   core types: fixed-point money, time, clock, ids, config, logging
 src/tradebot/net/    TCP, TLS (OpenSSL), HTTP/1.1 client, WebSocket client
-src/tradebot/market_data/  raw capture archives, Binance live collector
-tools/               command-line programs (tradebot-collect)
+src/tradebot/util/   SHA-256, streaming zip reader
+src/tradebot/market_data/  raw capture archives, Binance live collector and bulk fetcher
+tools/               command-line programs (tradebot-collect, tradebot-fetch)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -55,12 +56,24 @@ snapshots and the symbol's exchange filters, under
 `data/raw/binance/<SYMBOL>/<date>/<hour>.jsonl.gz`. Start it early: data
 accumulates while the rest of the system is built.
 
+## Fetching historical data
+
+```sh
+./build/tools/tradebot-fetch --symbol ETHUSDT --from 2024-01-01 --to 2024-07-01 \
+    --datasets aggTrades,klines --interval 1m
+```
+
+Downloads Binance's public daily/monthly archives (monthly where a whole
+month is covered), verifies each against its published SHA-256, and keeps
+the zips as immutable ground truth under `data/bulk/binance/<SYMBOL>/`.
+Re-running is idempotent.
+
 ## Status
 
 | Phase | Component                  | Status      |
 |------:|----------------------------|-------------|
 |     1 | Project setup, core types  | done        |
-|     2 | Market-data collection     | in progress (live collector done, bulk fetcher next) |
+|     2 | Market-data collection     | done        |
 |     3 | Market-data processing     | not started |
 |     4 | Order-book system          | not started |
 |     5 | Historical data storage    | not started |

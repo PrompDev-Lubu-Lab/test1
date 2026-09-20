@@ -59,4 +59,5 @@ jobs:
           docker run --rm -v "$PWD/configs:/config:ro" tradebot \
             tradebot-live --config /config/layers/base.conf --config /config/layers/strategy-ma.conf \
                           --config /config/layers/env-paper.conf --check
-          docker run --rm tradebot tradebot-healthcheck /runs/none/heartbeat; test $? -eq 2
+          rc=0; docker run --rm tradebot tradebot-healthcheck /runs/none/heartbeat || rc=$?
+          test "$rc" -eq 2   # a missing heartbeat is exit code 2

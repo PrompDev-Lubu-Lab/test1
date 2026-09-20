@@ -41,6 +41,7 @@ src/tradebot/replay/   event sources, k-way merge, latency models, replay engine
 src/tradebot/execution/  execution interface (orders, reports, fees) and the simulated exchange
 src/tradebot/portfolio/  positions, cash, P&L, exposure, per-strategy ledgers, equity curve
 src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps any venue)
+src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, multi-strategy runner
 tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -100,7 +101,7 @@ prints.
 |     7 | Simulated exchange         | done        |
 |     8 | Portfolio management       | done        |
 |     9 | Risk management            | done        |
-|    10 | Strategy framework         | not started |
+|    10 | Strategy framework         | done        |
 |    11 | Initial strategies         | not started |
 |    12 | Backtesting                | not started |
 |    13 | Performance analytics      | not started |

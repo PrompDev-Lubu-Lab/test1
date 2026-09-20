@@ -1,0 +1,10 @@
+[Unit]
+Description=daily tradebot re-validation (%i)
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 UTC
+Persistent=true
+Unit=tradebot-revalidate@%i.service
+
+[Install]
+WantedBy=timers.target

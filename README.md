@@ -47,15 +47,18 @@ src/tradebot/strategies/ baselines (buy-and-hold, MA crossover, mean reversion, 
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweeps, walk-forward, kill criteria, Monte Carlo, cost and
-                     parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go
-src/tradebot/live/     wall-clock scheduler, trading runtime (paper/shadow/testnet/live), journal, feed health
+                     parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go,
+                     drift detection and re-validation
+src/tradebot/live/     wall-clock scheduler, trading runtime (paper/shadow/testnet/live), journal, feed health,
+                     metrics export
 src/tradebot/gateway/  Binance spot gateway: request signing, private REST, user data stream, order state machine
-tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, live, healthcheck, bench)
+tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, live,
+                     healthcheck, monitor, bench)
 configs/             example configuration files and layered deployment configs
 deploy/              systemd units, install script, secrets template; Dockerfile and compose file at the root
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
-docs/                architecture, design notes, pre-live checklist, runbook
+docs/                architecture, pre-live checklist, runbook, strategy lifecycle
 cmake/               warning and sanitizer configuration
 ```
 
@@ -203,6 +206,25 @@ before exiting. The failure drills in `tests/live/live_modes_test.cpp` run
 every one of these paths against in-process fakes of the venue;
 `docs/PRE_LIVE_CHECKLIST.md` lists what remains to be done by hand.
 
+## Monitoring and re-validation
+
+```sh
+./build/tools/tradebot-monitor status runs/shadow-ma_1h                           # status.json + heartbeat age
+./build/tools/tradebot-monitor drift --run runs/shadow-ma_1h --reference runs/<run_id>
+./build/tools/tradebot-monitor revalidate --run runs/shadow-ma_1h --reference runs/<run_id> --config configs/live.conf
+```
+
+Every runtime writes `metrics.prom` (Prometheus text format, for
+node_exporter's textfile collector) and `status.json` on the heartbeat
+cadence: equity, drawdown, position, fills, rejections, kill-switch state,
+feed health, gateway and reconciliation counters. `drift` compares a
+running strategy with the research run that approved it (return z-score,
+drawdown ratio, fee drag, trade rate, win rate, rejections, kill-switch
+trips) and grades each ok, warn or alarm. `revalidate` adds the kill
+criteria and a fresh backtest over the observed window, and decides keep,
+watch or retire; the systemd timer runs it daily. `docs/LIFECYCLE.md`
+describes the whole loop from candidate to retirement.
+
 ## Deploying
 
 ```sh
@@ -286,4 +308,4 @@ optimizations (the backtest tests check determinism).
 |    20 | Live trading infrastructure | done       |
 |    21 | Final testing (shadow, testnet, live modes, drills) | done |
 |    22 | Deployment                 | done        |
-|    23 | Continuous monitoring      | not started |
+|    23 | Continuous monitoring and re-validation | done |

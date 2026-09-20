@@ -34,6 +34,7 @@
 #include "tradebot/live/feed_health.hpp"
 #include "tradebot/live/journal.hpp"
 #include "tradebot/live/live_scheduler.hpp"
+#include "tradebot/live/metrics.hpp"
 #include "tradebot/market_data/binance/collector.hpp"
 #include "tradebot/market_data/binance/raw_processor.hpp"
 #include "tradebot/market_data/raw_capture.hpp"
@@ -145,6 +146,9 @@ public:
         std::uint64_t shutdown_cancels = 0;
     };
     [[nodiscard]] const Stats& stats() const noexcept { return stats_; }
+    // Operational metrics (dispatch thread only); written to metrics.prom
+    // and status.json on the heartbeat cadence.
+    [[nodiscard]] MetricsSnapshot snapshot() const;
 
 private:
     class Recorder;

@@ -13,6 +13,7 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <thread>
 
 using namespace tradebot;
@@ -95,8 +96,16 @@ TEST_CASE("TradingRuntime: live feed -> simulated fills -> artifacts and state; 
     CHECK(runtime.collector_stats()->depth_snapshots == 1);
 
     const fs::path run = tmp.path / "run";
-    for (const char* f : {"config.txt", "equity.csv", "fills.csv", "orders.csv", "summary.json", "state.json", "report.txt"}) {
+    for (const char* f : {"config.txt", "equity.csv", "fills.csv", "orders.csv", "summary.json", "state.json", "report.txt",
+                          "metrics.prom", "status.json"}) {
         CHECK_MESSAGE(fs::exists(run / f), f);
+    }
+    {
+        std::ifstream prom(run / "metrics.prom");
+        std::stringstream ss;
+        ss << prom.rdbuf();
+        CHECK(ss.str().find("tradebot_fills_total{mode=\"paper\",label=\"test\"} 1\n") != std::string::npos);
+        CHECK(ss.str().find("tradebot_position{mode=\"paper\",label=\"test\"} 0.25\n") != std::string::npos);
     }
     // Raw archive was written too.
     CHECK(fs::exists(tmp.path / "raw" / "binance" / "ETHUSDT"));

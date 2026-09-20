@@ -29,3 +29,6 @@ target_link_libraries(tradebot-bench PRIVATE tradebot_options tradebot_backtest 
 
 add_executable(tradebot-healthcheck healthcheck.cpp)
 target_link_libraries(tradebot-healthcheck PRIVATE tradebot_options tradebot_live)
+
+add_executable(tradebot-monitor monitor.cpp)
+target_link_libraries(tradebot-monitor PRIVATE tradebot_options tradebot_research tradebot_live tradebot_strategies)

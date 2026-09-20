@@ -666,6 +666,9 @@ Result<void> TradingRuntime::run() {
         if (auto h = write_heartbeat(spec_.run_dir / "heartbeat", t, status); !h) {
             log_.error("heartbeat failed: {}", h.error().to_string());
         }
+        if (auto m = write_metrics(spec_.run_dir, snapshot()); !m) {
+            log_.error("metrics failed: {}", m.error().to_string());
+        }
     });
     scheduler_.schedule_every(Duration::minutes(1), [this](Timestamp) {
         const auto& cs = collector_->stats();
@@ -711,9 +714,66 @@ Result<void> TradingRuntime::run() {
     }
     static_cast<void>(journal_.close());
     static_cast<void>(write_heartbeat(spec_.run_dir / "heartbeat", clock_.now(), "stopped"));
+    static_cast<void>(write_metrics(spec_.run_dir, snapshot()));
     log_.info("{} trading stopped: equity {} after {} fills", to_string(spec_.mode), portfolio_->equity().to_string(),
               result_.fills.size());
     return f;
+}
+
+MetricsSnapshot TradingRuntime::snapshot() const {
+    MetricsSnapshot m;
+    m.time = clock_.now();
+    m.mode = std::string(to_string(spec_.mode));
+    m.label = spec_.label;
+    m.uptime = m.time - started_;
+    if (portfolio_) {
+        m.equity = portfolio_->equity();
+        m.cash = portfolio_->cash();
+        m.peak_equity = portfolio_->peak_equity();
+        m.drawdown = portfolio_->drawdown();
+        m.realized_pnl_net = portfolio_->realized_pnl_net();
+        m.fees = portfolio_->account().fees;
+        m.position = portfolio_->position(spec_.instrument.id);
+        m.mark = portfolio_->mark(spec_.instrument.id);
+        m.fills = portfolio_->stats().fills;
+    }
+    if (runner_) m.orders = runner_->stats().orders_submitted;
+    if (risk_) {
+        m.rejected = risk_->stats().rejected + (exchange_ ? exchange_->stats().rejected : 0);
+        m.open_orders = risk_->open_orders();
+        m.kill_switch_trips = risk_->stats().kill_switch_trips;
+        m.tripped = risk_->tripped();
+        m.halted = risk_->halted();
+    }
+    m.feed_state = std::string(to_string(health_.state()));
+    m.feed_silence = health_.silence(m.time);
+    m.feed_events = health_.events();
+    m.feed_stale_episodes = health_.stale_episodes();
+    if (collector_) {
+        const auto& cs = collector_->stats();
+        m.feed_messages = cs.messages;
+        m.feed_reconnects = cs.reconnects;
+        m.feed_depth_gaps = cs.depth_gaps;
+    }
+    m.dispatched_events = scheduler_.stats().events;
+    m.journal_appended = journal_.appended();
+    if (gateway_) {
+        const auto& g = gateway_->stats();
+        GatewayMetrics gm;
+        gm.sent = g.sent;
+        gm.send_failures = g.send_failures;
+        gm.cancels_sent = g.cancels_sent;
+        gm.stream_events = g.stream_events;
+        gm.duplicates = g.duplicates;
+        gm.late_fills = g.late_fills;
+        gm.queries = g.queries;
+        gm.open_orders = gateway_->open_order_ids().size();
+        gm.reconciliations = stats_.reconciliations;
+        gm.reconcile_mismatches = stats_.reconcile_mismatches;
+        gm.user_stream_connects = user_stream_ ? user_stream_->stats().connects : 0;
+        m.gateway = gm;
+    }
+    return m;
 }
 
 Result<void> TradingRuntime::flush() {

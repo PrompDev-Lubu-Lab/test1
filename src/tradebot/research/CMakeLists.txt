@@ -1,4 +1,5 @@
 add_library(tradebot_research
+  drift.cpp
   research.cpp
   validation.cpp)
 

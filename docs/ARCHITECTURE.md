@@ -501,3 +501,11 @@ the whole point of the architecture.
 7. Paper trading (forward phase), reliability hardening, optimization.
 8. Advanced strategies, rigorous validation.
 9. Live gateway, final testing, deployment, monitoring.
+
+## Implementation status
+
+All 23 phases are implemented; `README.md` maps each phase to its module and
+command-line tool. Three documents carry the operational side:
+`docs/PRE_LIVE_CHECKLIST.md` (what must be true before the first real
+order), `docs/RUNBOOK.md` (how to run it and what every alarm means) and
+`docs/LIFECYCLE.md` (how a strategy moves from candidate to retirement).

@@ -2,6 +2,9 @@
 
 #include <doctest/doctest.h>
 
+#include <filesystem>
+#include <fstream>
+
 #include <cstdlib>
 
 using namespace tradebot;
@@ -120,4 +123,25 @@ TEST_CASE("parse_duration") {
     CHECK_FALSE(parse_duration("ms").has_value());
     CHECK_FALSE(parse_duration("5 weeks").has_value());
     CHECK_FALSE(parse_duration("").has_value());
+}
+
+TEST_CASE("Config: layered files merge key by key, later layers win") {
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "tradebot-config-layers";
+    fs::create_directories(dir);
+    {
+        std::ofstream(dir / "base.conf") << "[risk]\nmax_position = 1\nmax_drawdown = 100\n[live]\nmode = paper\n";
+        std::ofstream(dir / "env.conf") << "[risk]\nmax_position = 0.05\n[live]\nmode = shadow\nrecv_window = 5s\n";
+    }
+    auto cfg = Config::load_files({(dir / "base.conf").string(), (dir / "env.conf").string()});
+    REQUIRE_MESSAGE(cfg.has_value(), cfg.error().message);
+    CHECK(*cfg->get_string("risk.max_position") == "0.05");  // overridden
+    CHECK(*cfg->get_string("risk.max_drawdown") == "100");  // kept from base
+    CHECK(*cfg->get_string("live.mode") == "shadow");
+    CHECK(*cfg->get_string("live.recv_window") == "5s");  // added by the layer
+    CHECK_FALSE(Config::load_files({}).has_value());
+    auto missing = Config::load_files({(dir / "base.conf").string(), (dir / "nope.conf").string()});
+    REQUIRE_FALSE(missing.has_value());
+    CHECK(missing.error().message.find("nope.conf") != std::string::npos);
+    fs::remove_all(dir);
 }

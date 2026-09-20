@@ -3,9 +3,11 @@
 // artifacts and state land in runs/<mode>-<label>/ and a restart resumes
 // from state.json. tradebot-paper is the same program pinned to paper mode.
 //
-//   tradebot-live --config FILE [--mode M] [--label NAME] [--log-level L] [--check]
+//   tradebot-live --config FILE [--config OVERLAY]... [--mode M] [--label NAME] [--log-level L] [--check]
 //
-// --check runs the pre-flight checklist and exits without connecting.
+// --config may repeat: later files override earlier ones key by key (base,
+// strategy, environment). --check runs the pre-flight checklist and exits
+// without connecting.
 
 #include "tradebot/core/config.hpp"
 #include "tradebot/core/log.hpp"
@@ -18,6 +20,7 @@
 #include <csignal>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -30,7 +33,9 @@ void on_signal(int) {
 }
 
 int usage(const char* argv0) {
-    std::fprintf(stderr, "usage: %s --config FILE [--mode paper|shadow|testnet|live] [--label NAME] [--log-level L] [--check]\n",
+    std::fprintf(stderr,
+                 "usage: %s --config FILE [--config OVERLAY]... [--mode paper|shadow|testnet|live] [--label NAME] "
+                 "[--log-level L] [--check]\n",
                  argv0);
     return 2;
 }
@@ -39,7 +44,8 @@ int usage(const char* argv0) {
 
 int main(int argc, char** argv) {
     using namespace tradebot;
-    std::string config_path, label_override, mode_override, log_level_text = "info";
+    std::vector<std::string> config_paths;
+    std::string label_override, mode_override, log_level_text = "info";
     bool check_only = false;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -49,18 +55,18 @@ int main(int argc, char** argv) {
         }
         if (i + 1 >= argc) return usage(argv[0]);
         const std::string val = argv[++i];
-        if (arg == "--config") config_path = val;
+        if (arg == "--config") config_paths.push_back(val);
         else if (arg == "--label") label_override = val;
         else if (arg == "--mode") mode_override = val;
         else if (arg == "--log-level") log_level_text = val;
         else return usage(argv[0]);
     }
-    if (config_path.empty()) return usage(argv[0]);
+    if (config_paths.empty()) return usage(argv[0]);
     auto level = parse_log_level(log_level_text);
     if (!level) return usage(argv[0]);
     Logger log = Logger::stderr_logger("live", *level);
 
-    auto cfg = Config::load_file(config_path);
+    auto cfg = Config::load_files(config_paths);
     if (!cfg) {
         log.error("{}", cfg.error().to_string());
         return 1;

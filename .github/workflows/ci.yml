@@ -46,3 +46,17 @@ jobs:
       - name: Benchmark smoke
         if: matrix.build_type == 'Release'
         run: ./build/tools/tradebot-bench --quick
+
+  docker:
+    name: docker image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (runs the unit tests inside the build stage)
+        run: docker build -t tradebot .
+      - name: Smoke test the tools
+        run: |
+          docker run --rm -v "$PWD/configs:/config:ro" tradebot \
+            tradebot-live --config /config/layers/base.conf --config /config/layers/strategy-ma.conf \
+                          --config /config/layers/env-paper.conf --check
+          docker run --rm tradebot tradebot-healthcheck /runs/none/heartbeat; test $? -eq 2

@@ -123,6 +123,27 @@ Result<Config> Config::load_file(const std::string& path) {
     return cfg;
 }
 
+Result<Config> Config::load_files(const std::vector<std::string>& paths) {
+    if (paths.empty()) {
+        return make_error(ErrorCode::invalid_argument, "no config file given");
+    }
+    Config merged;
+    for (const auto& path : paths) {
+        auto layer = load_file(path);
+        if (!layer) {
+            return tl::make_unexpected(layer.error());
+        }
+        merged.merge(*layer);
+    }
+    return merged;
+}
+
+void Config::merge(const Config& overrides) {
+    for (const auto& [k, v] : overrides.values_) {
+        values_[k] = v;
+    }
+}
+
 void Config::apply_env_overrides(std::string_view prefix) {
     for (char** env = environ; env != nullptr && *env != nullptr; ++env) {
         std::string_view entry(*env);

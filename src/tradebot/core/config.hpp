@@ -34,6 +34,11 @@ public:
 
     [[nodiscard]] static Result<Config> parse(std::string_view text);
     [[nodiscard]] static Result<Config> load_file(const std::string& path);
+    // Layered configuration: later files override earlier ones key by key
+    // (base -> strategy -> environment), so a deployment never edits the
+    // file that research produced.
+    [[nodiscard]] static Result<Config> load_files(const std::vector<std::string>& paths);
+    void merge(const Config& overrides);
 
     // Apply TRADEBOT_* environment overrides ("TRADEBOT_EXCHANGE_API_KEY"
     // sets "exchange.api_key"; only the first '_' splits section from key).

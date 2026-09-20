@@ -1,0 +1,27 @@
+[Unit]
+Description=tradebot market-data collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tradebot
+Group=tradebot
+WorkingDirectory=/var/lib/tradebot
+ExecStart=/usr/local/bin/tradebot-collect --config /etc/tradebot/collect.conf --data-dir /var/lib/tradebot/data
+Restart=always
+RestartSec=5
+# Hardening: the process needs the network and its data directory, nothing else.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/tradebot
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

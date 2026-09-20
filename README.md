@@ -50,11 +50,12 @@ src/tradebot/research/ experiment index, sweeps, walk-forward, kill criteria, Mo
                      parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go
 src/tradebot/live/     wall-clock scheduler, trading runtime (paper/shadow/testnet/live), journal, feed health
 src/tradebot/gateway/  Binance spot gateway: request signing, private REST, user data stream, order state machine
-tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, live, bench)
-configs/             example configuration files
+tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, live, healthcheck, bench)
+configs/             example configuration files and layered deployment configs
+deploy/              systemd units, install script, secrets template; Dockerfile and compose file at the root
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
-docs/                architecture, design notes, pre-live checklist
+docs/                architecture, design notes, pre-live checklist, runbook
 cmake/               warning and sanitizer configuration
 ```
 
@@ -202,6 +203,26 @@ before exiting. The failure drills in `tests/live/live_modes_test.cpp` run
 every one of these paths against in-process fakes of the venue;
 `docs/PRE_LIVE_CHECKLIST.md` lists what remains to be done by hand.
 
+## Deploying
+
+```sh
+docker build -t tradebot .                       # builds Release, runs the tests, ships the tools
+cp deploy/env.example deploy/.env                 # API keys for shadow/testnet/live (never committed)
+docker compose up -d collector paper              # or shadow
+sudo deploy/install.sh build-release              # bare-metal alternative: systemd units
+```
+
+Configuration is layered: a base layer (instrument, feed, exchange model),
+a strategy layer frozen by research, and an environment layer
+(`configs/layers/env-{paper,shadow,testnet,live}.conf`) that sets the mode
+and the risk limits. `tradebot-live --config a --config b --config c`
+merges them key by key, later files winning, and any `TRADEBOT_SECTION_KEY`
+environment variable overrides both. Secrets only ever come from the
+environment. `tradebot-healthcheck <run>/heartbeat` backs the container
+HEALTHCHECK and the systemd watchdog timer; `docs/RUNBOOK.md` covers
+start/stop, promotion between environments, upgrades, key rotation and
+every alarm the runtime can raise.
+
 ## Live gateway
 
 `tradebot::gateway::BinanceGateway` implements the same `ExecutionVenue`
@@ -264,4 +285,5 @@ optimizations (the backtest tests check determinism).
 |    19 | Robust strategy validation | done        |
 |    20 | Live trading infrastructure | done       |
 |    21 | Final testing (shadow, testnet, live modes, drills) | done |
-| 22-23 | Deployment and monitoring  | not started |
+|    22 | Deployment                 | done        |
+|    23 | Continuous monitoring      | not started |

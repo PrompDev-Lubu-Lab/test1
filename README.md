@@ -35,7 +35,7 @@ runtime.
 src/tradebot/core/   core types: fixed-point money, time, clock, ids, config, logging
 src/tradebot/net/    TCP, TLS (OpenSSL), HTTP/1.1 client, WebSocket client
 src/tradebot/util/   SHA-256, streaming zip reader
-src/tradebot/market_data/  events, raw capture, Binance collector/fetcher/parsers, candles, validation
+src/tradebot/market_data/  events, raw capture, Binance collector/fetcher/parsers, order book, candles, validation
 tools/               command-line programs (tradebot-collect, tradebot-fetch)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -75,7 +75,7 @@ Re-running is idempotent.
 |     1 | Project setup, core types  | done        |
 |     2 | Market-data collection     | done        |
 |     3 | Market-data processing     | done        |
-|     4 | Order-book system          | not started |
+|     4 | Order-book system          | done        |
 |     5 | Historical data storage    | not started |
 |     6 | Historical market replay   | not started |
 |     7 | Simulated exchange         | not started |

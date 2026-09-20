@@ -4,7 +4,9 @@ add_library(tradebot_market_data
   binance/csv.cpp
   binance/parser.cpp
   binance/raw_processor.cpp
+  book_synchronizer.cpp
   candle_aggregator.cpp
+  order_book.cpp
   raw_capture.cpp
   validation.cpp)
 

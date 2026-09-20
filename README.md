@@ -45,7 +45,8 @@ src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, mult
 src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean reversion, breakout, random)
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
-tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest, -analyze)
+src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
+tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest, -analyze, -research)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -114,6 +115,21 @@ trade statistics from FIFO round trips (win rate, profit factor,
 expectancy, holding time, fee drag), and writes `metrics.json`,
 `report.txt` and `round_trips.csv` next to the run's artifacts.
 
+## Researching strategies
+
+```sh
+./build/tools/tradebot-research sweep --config configs/backtest.conf --metric sharpe
+./build/tools/tradebot-research walk-forward --config configs/backtest.conf --train 60d --test 14d
+./build/tools/tradebot-research judge runs/<run_id> --min-trades 30 --min-sharpe 0.5
+./build/tools/tradebot-research index
+```
+
+`sweep` runs the `[sweep]` grid, ranks the results and appends every run to
+`runs/index.csv`. `walk-forward` re-selects parameters on each rolling
+train window and reports only out-of-sample results, which are the numbers
+that count. `judge` applies pre-agreed kill criteria (minimum trades and
+Sharpe, maximum drawdown, minimum profit factor, must beat buy-and-hold).
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -131,4 +147,5 @@ expectancy, holding time, fee drag), and writes `metrics.json`,
 |    11 | Initial strategies         | done        |
 |    12 | Backtesting                | done        |
 |    13 | Performance analytics      | done        |
-| 14-23 | Research through live ops  | not started |
+|    14 | Strategy research tooling  | done        |
+| 15-23 | Paper trading through live ops | not started |

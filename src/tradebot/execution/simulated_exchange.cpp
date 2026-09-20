@@ -114,20 +114,24 @@ void SimulatedExchange::on_order_arrival(OrderRequest request, Timestamp now) {
         return;
     }
     const auto& book = sync_.book();
-    const bool aggressive_possible = !opts_.require_synced_book || sync_.synced();
+    const bool have_book = book_usable();
+    const bool have_trades = opts_.fallback_to_trades && last_trade_.has_value();
     order.order_id = order_ids_.next();
     const Side resting_side = opposite(request.side);
-    const auto best_opposite = book.side(resting_side).empty()
-                                   ? std::nullopt
-                                   : std::optional<Price>(book.side(resting_side).front().price);
+    std::optional<Price> best_opposite;
+    if (have_book && !book.side(resting_side).empty()) {
+        best_opposite = book.side(resting_side).front().price;
+    } else if (!have_book && have_trades) {
+        best_opposite = *last_trade_;  // trades-only mode: the tape is the touch
+    }
 
     if (request.type == OrderType::market) {
-        if (!aggressive_possible || !best_opposite) {
+        if (!best_opposite) {
             finish(order, ReportType::rejected, OrderStatus::rejected, now,
                    "no liquidity / book not synchronized");
             return;
         }
-        if (request.time_in_force == TimeInForce::fok) {
+        if (have_book && request.time_in_force == TimeInForce::fok) {
             const auto est = book.estimate_fill(request.side, request.quantity);
             if (!est.complete(request.quantity)) {
                 finish(order, ReportType::rejected, OrderStatus::rejected, now, "FOK cannot be filled");
@@ -137,7 +141,8 @@ void SimulatedExchange::on_order_arrival(OrderRequest request, Timestamp now) {
         order.status = OrderStatus::open;
         ++stats_.accepted;
         report(order, ReportType::accepted, now);
-        const Quantity filled = take(order, std::nullopt, now);
+        const Quantity filled = have_book ? take(order, std::nullopt, now)
+                                          : take_at_last_trade(order, std::nullopt, now);
         if (order.remaining().is_zero()) {
             return;  // finished inside take()
         }
@@ -157,8 +162,12 @@ void SimulatedExchange::on_order_arrival(OrderRequest request, Timestamp now) {
         return;
     }
     if (request.time_in_force == TimeInForce::fok) {
-        const auto est = book.estimate_fill(request.side, request.quantity, request.price);
-        if (!aggressive_possible || !est.complete(request.quantity)) {
+        bool fillable = crosses;
+        if (have_book) {
+            const auto est = book.estimate_fill(request.side, request.quantity, request.price);
+            fillable = est.complete(request.quantity);
+        }
+        if (!fillable) {
             finish(order, ReportType::rejected, OrderStatus::rejected, now, "FOK cannot be filled");
             return;
         }
@@ -166,8 +175,12 @@ void SimulatedExchange::on_order_arrival(OrderRequest request, Timestamp now) {
     order.status = OrderStatus::open;
     ++stats_.accepted;
     report(order, ReportType::accepted, now);
-    if (crosses && aggressive_possible) {
-        take(order, request.price, now);
+    if (crosses) {
+        if (have_book) {
+            take(order, request.price, now);
+        } else {
+            take_at_last_trade(order, request.price, now);
+        }
         if (order.remaining().is_zero()) {
             return;
         }
@@ -224,6 +237,34 @@ Quantity SimulatedExchange::take(OrderState& order, std::optional<Price> limit, 
         }
     }
     return total;
+}
+
+bool SimulatedExchange::book_usable() const noexcept {
+    if (opts_.require_synced_book) {
+        return sync_.synced() && !sync_.book().empty();
+    }
+    return !sync_.book().empty();
+}
+
+Quantity SimulatedExchange::take_at_last_trade(OrderState& order, std::optional<Price> limit,
+                                               Timestamp now) {
+    if (!last_trade_) {
+        return Quantity{};
+    }
+    // Slip against the order, then snap to the tick grid in the same direction.
+    const std::int64_t bps = opts_.trade_slippage_bps;
+    Price px = order.request.side == Side::buy ? last_trade_->mul_ratio(10'000 + bps, 10'000)
+                                              : last_trade_->mul_ratio(10'000 - bps, 10'000);
+    px = px.round_to(instrument_.tick_size,
+                     order.request.side == Side::buy ? RoundingMode::up : RoundingMode::down);
+    if (limit) {
+        // Never worse than the limit; if the slipped price breaches it, fill at the limit.
+        if (order.request.side == Side::buy && px > *limit) px = *limit;
+        if (order.request.side == Side::sell && px < *limit) px = *limit;
+    }
+    const Quantity qty = order.remaining();
+    fill(order, px, qty, Liquidity::taker, now);
+    return qty;
 }
 
 void SimulatedExchange::rest(OrderState& order) {
@@ -324,6 +365,7 @@ void SimulatedExchange::on_book_delta(const BookDelta& d) {
 }
 
 void SimulatedExchange::on_trade(const Trade& t) {
+    last_trade_ = t.price;
     match_resting_against_trade(t);
 }
 

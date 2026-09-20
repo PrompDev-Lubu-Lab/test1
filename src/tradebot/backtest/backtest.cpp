@@ -53,6 +53,8 @@ std::string BacktestSpec::describe() const {
     s += "taker_fee = " + std::to_string(exchange.fees.taker.numerator) + "/" +
          std::to_string(exchange.fees.taker.denominator) + "\n";
     s += "queue_model = " + std::to_string(static_cast<int>(exchange.queue_model)) + "\n";
+    s += "fallback_to_trades = " + std::string(exchange.fallback_to_trades ? "true" : "false") +
+         " slippage_bps=" + std::to_string(exchange.trade_slippage_bps) + "\n";
     s += "latency = " + std::to_string(static_cast<int>(latency.kind)) + " md=" +
          latency.market_data.to_string() + " order=" + latency.order.to_string() + " ack=" +
          latency.ack.to_string() + " jitter=" + latency.jitter.to_string() + "\n";
@@ -163,6 +165,11 @@ Result<BacktestSpec> parse_backtest_spec(const Config& cfg) {
     auto consume = cfg.get_bool_or("exchange.consume_liquidity", true);
     if (!consume) return fail(consume.error());
     spec.exchange.consume_liquidity = *consume;
+    auto fallback = cfg.get_bool_or("exchange.fallback_to_trades", true);
+    auto slip = cfg.get_int_or("exchange.trade_slippage_bps", 5);
+    if (!fallback || !slip) return fail(!fallback ? fallback.error() : slip.error());
+    spec.exchange.fallback_to_trades = *fallback;
+    spec.exchange.trade_slippage_bps = *slip;
 
     auto lat = cfg.get_string_or("exchange.latency", "jitter");
     if (!lat) return fail(lat.error());

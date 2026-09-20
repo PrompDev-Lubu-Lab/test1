@@ -44,7 +44,8 @@ src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps
 src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, multi-strategy runner
 src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean reversion, breakout, random)
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
-tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest)
+src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
+tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest, -analyze)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -103,6 +104,16 @@ The run id is derived from the spec, so the same inputs always map to the
 same directory, and the same spec and seed always reproduce the same
 numbers. A `[sweep]` section expands into a parameter grid run in parallel.
 
+```sh
+./build/tools/tradebot-analyze runs/<run_id>
+```
+
+prints returns (total, annualized, volatility, Sharpe, Sortino, Calmar, max
+drawdown and its duration), a buy-and-hold benchmark on the same marks, and
+trade statistics from FIFO round trips (win rate, profit factor,
+expectancy, holding time, fee drag), and writes `metrics.json`,
+`report.txt` and `round_trips.csv` next to the run's artifacts.
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -119,5 +130,5 @@ numbers. A `[sweep]` section expands into a parameter grid run in parallel.
 |    10 | Strategy framework         | done        |
 |    11 | Initial strategies         | done        |
 |    12 | Backtesting                | done        |
-|    13 | Performance analytics      | not started |
+|    13 | Performance analytics      | done        |
 | 14-23 | Research through live ops  | not started |

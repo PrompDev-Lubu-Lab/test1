@@ -245,7 +245,10 @@ EquitySample Portfolio::snapshot(Timestamp time) const {
     s.fees = account_.fees;
     for (const auto& [id, pos] : account_.positions) {
         s.position += pos.quantity;
-        if (auto m = mark(id)) s.mark = *m;
+    }
+    // The mark is recorded even when flat so benchmarks can use the curve.
+    if (!marks_.empty()) {
+        s.mark = marks_.begin()->second;
     }
     return s;
 }

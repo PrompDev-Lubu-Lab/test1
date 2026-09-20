@@ -360,3 +360,32 @@ TEST_CASE("SimulatedExchange: determinism with jitter latency") {
     REQUIRE(a.size() == 4);
     CHECK(a == b);
 }
+
+TEST_CASE("SimulatedExchange: trades-only data fills at the last trade with slippage") {
+    // No book at all: only trades. Market buy fills at last trade * (1 + 5bps), rounded up to tick.
+    Harness h({trade(Duration::seconds(1), "3000", "1", Side::buy, 1),
+               trade(Duration::seconds(5), "2990", "1", Side::sell, 2)});
+    h.at(Duration::seconds(2), [&] {
+        REQUIRE(h.exchange->submit(h.market(1, Side::buy, "0.5")).has_value());
+        REQUIRE(h.exchange->submit(h.limit(2, Side::buy, "3000.5", "0.5")).has_value());  // marketable: capped at limit
+        REQUIRE(h.exchange->submit(h.limit(3, Side::buy, "2995", "0.5")).has_value());  // rests, fills on the 2990 trade
+        REQUIRE(h.exchange->submit(h.limit(4, Side::sell, "3010", "0.5", TimeInForce::post_only)).has_value());
+    });
+    h.run();
+    auto fills = h.reports.fills();
+    REQUIRE(fills.size() == 3);
+    CHECK(fills[0].price == "3001.5"_px);  // 3000 * 1.0005
+    CHECK(fills[0].quantity == "0.5"_qty);
+    CHECK(fills[0].liquidity == Liquidity::taker);
+    CHECK(fills[1].price == "3000.5"_px);  // limit caps the slipped price
+    CHECK(fills[2].price == "2995"_px);  // resting buy filled by trade-through at its own price
+    CHECK(fills[2].liquidity == Liquidity::maker);
+    CHECK(h.exchange->order(ClientOrderId{4})->status == OrderStatus::open);  // resting ask untouched
+    CHECK(*h.exchange->last_trade_price() == "2990"_px);
+
+    // Fallback disabled: nothing fills without a book.
+    Harness strict({trade(Duration::seconds(1), "3000", "1", Side::buy, 1)}, nullptr, {.fallback_to_trades = false});
+    strict.at(Duration::seconds(2), [&] { REQUIRE(strict.exchange->submit(strict.market(1, Side::buy, "0.5")).has_value()); });
+    strict.run();
+    CHECK(strict.exchange->order(ClientOrderId{1})->status == OrderStatus::rejected);
+}

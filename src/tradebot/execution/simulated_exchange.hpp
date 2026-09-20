@@ -56,6 +56,12 @@ struct SimulatedExchangeOptions {
     bool consume_liquidity = true;  // aggressive fills deplete the venue book
     bool allow_partial_market_fills = true;  // market order on a thin book
     bool require_synced_book = true;  // reject aggressive orders while resyncing
+    // Trades-only data (bulk archives carry no order book): when no book is
+    // available, aggressive orders fill in full at the last trade price
+    // moved against the order by trade_slippage_bps. Coarser than book
+    // matching; results should be treated as optimistic on liquidity.
+    bool fallback_to_trades = true;
+    std::int64_t trade_slippage_bps = 5;
 };
 
 class SimulatedExchange final : public ExecutionVenue, public replay::MarketDataListener {
@@ -76,6 +82,7 @@ public:
 
     [[nodiscard]] const market_data::OrderBook& book() const noexcept { return sync_.book(); }
     [[nodiscard]] const Instrument& instrument() const noexcept { return instrument_; }
+    [[nodiscard]] std::optional<Price> last_trade_price() const noexcept { return last_trade_; }
     [[nodiscard]] std::vector<OrderState> open_orders() const;
 
     struct Stats {
@@ -104,6 +111,9 @@ private:
 
     // Aggressive execution against the venue book; returns filled quantity.
     Quantity take(OrderState& order, std::optional<Price> limit, Timestamp now);
+    // Aggressive execution at the last trade price with slippage (no book).
+    Quantity take_at_last_trade(OrderState& order, std::optional<Price> limit, Timestamp now);
+    [[nodiscard]] bool book_usable() const noexcept;
     void rest(OrderState& order);
     void unrest(const OrderState& order);
     void fill(OrderState& order, Price price, Quantity quantity, Liquidity liquidity, Timestamp now);
@@ -125,6 +135,7 @@ private:
     ExecutionListener* listener_ = nullptr;
 
     market_data::BookSynchronizer sync_;
+    std::optional<Price> last_trade_;
     std::unordered_map<ClientOrderId, OrderState> orders_;
     std::map<Price, PriceLevelQueue> resting_bids_;  // iterate from best: rbegin
     std::map<Price, PriceLevelQueue> resting_asks_;  // iterate from best: begin

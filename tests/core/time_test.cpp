@@ -22,7 +22,10 @@ TEST_CASE("Duration: to_string picks a sensible unit") {
     CHECK(Duration::nanos(250).to_string() == "250ns");
     CHECK(Duration::micros(3).to_string() == "3.000us");
     CHECK(Duration::millis(12).to_string() == "12.000ms");
-    CHECK(Duration::seconds(2).to_string() == "2.000000s");
+    CHECK(Duration::seconds(2).to_string() == "2.000s");
+    CHECK(Duration::seconds(90).to_string() == "1.50m");
+    CHECK(Duration::hours(1).to_string() == "1.00h");
+    CHECK(Duration::days(3).to_string() == "3.00d");
     CHECK((-Duration::millis(5)).to_string() == "-5.000ms");
 }
 

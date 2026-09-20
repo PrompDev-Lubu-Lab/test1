@@ -9,3 +9,6 @@ target_link_libraries(tradebot-ingest PRIVATE tradebot_options tradebot_storage 
 
 add_executable(tradebot-backtest backtest.cpp)
 target_link_libraries(tradebot-backtest PRIVATE tradebot_options tradebot_backtest tradebot_strategies)
+
+add_executable(tradebot-analyze analyze.cpp)
+target_link_libraries(tradebot-analyze PRIVATE tradebot_options tradebot_analytics)

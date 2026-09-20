@@ -66,8 +66,14 @@ std::string Duration::to_string() const {
     char buf[64];
     const std::int64_t abs_ns = ns_ < 0 ? -ns_ : ns_;
     const char* sign = ns_ < 0 ? "-" : "";
-    if (abs_ns >= kNanosPerSecond) {
-        std::snprintf(buf, sizeof buf, "%s%.6fs", sign, static_cast<double>(abs_ns) / 1e9);
+    if (abs_ns >= 86400LL * kNanosPerSecond) {
+        std::snprintf(buf, sizeof buf, "%s%.2fd", sign, static_cast<double>(abs_ns) / 86400e9);
+    } else if (abs_ns >= 3600LL * kNanosPerSecond) {
+        std::snprintf(buf, sizeof buf, "%s%.2fh", sign, static_cast<double>(abs_ns) / 3600e9);
+    } else if (abs_ns >= 60LL * kNanosPerSecond) {
+        std::snprintf(buf, sizeof buf, "%s%.2fm", sign, static_cast<double>(abs_ns) / 60e9);
+    } else if (abs_ns >= kNanosPerSecond) {
+        std::snprintf(buf, sizeof buf, "%s%.3fs", sign, static_cast<double>(abs_ns) / 1e9);
     } else if (abs_ns >= 1'000'000) {
         std::snprintf(buf, sizeof buf, "%s%.3fms", sign, static_cast<double>(abs_ns) / 1e6);
     } else if (abs_ns >= 1'000) {

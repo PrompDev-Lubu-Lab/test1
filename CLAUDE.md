@@ -34,3 +34,11 @@ this matrix.
 - No third-party dependency without a strong reason; header-only libraries
   are vendored under `third_party/` with their license.
 - Never commit market data or run artifacts (`data/`, `runs/` are ignored).
+
+## The board
+
+`board/` is the shared task list and message board for the humans and
+agents on this project. If you are asked to "check the board", "check
+your tasks", or given a task id like `T-007`, follow the protocol in
+`board/README.md` before doing anything else. Board edits are committed
+separately from code changes and are never destructive.

@@ -58,7 +58,8 @@ configs/             example configuration files and layered deployment configs
 deploy/              systemd units, install script, secrets template; Dockerfile and compose file at the root
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
-docs/                architecture, pre-live checklist, runbook, strategy lifecycle
+docs/                architecture, pre-live checklist, runbook, strategy lifecycle, platform plan
+board/               shared task list and message board for humans and agents (see board/README.md)
 cmake/               warning and sanitizer configuration
 ```
 

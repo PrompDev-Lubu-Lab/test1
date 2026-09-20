@@ -66,6 +66,8 @@ struct ExecutionReport {
     InstrumentId instrument;
     StrategyId strategy;
     Side side;
+    OrderType order_type = OrderType::limit;
+    Price price;  // limit price (zero for market orders)
     Timestamp time;  // venue time of the event
     OrderStatus status;  // order status after this event
     Quantity filled_quantity;  // cumulative

@@ -290,6 +290,8 @@ void SimulatedExchange::report(const OrderState& order, ReportType type, Timesta
     rep.instrument = order.request.instrument;
     rep.strategy = order.request.strategy;
     rep.side = order.request.side;
+    rep.order_type = order.request.type;
+    rep.price = order.request.type == OrderType::limit ? order.request.price : Price{};
     rep.time = now;
     rep.status = order.status;
     rep.filled_quantity = order.filled_quantity;

@@ -1,8 +1,10 @@
 # Single test runner executable; each module adds its sources here.
 add_executable(tradebot_tests
   main.cpp)
-target_link_libraries(tradebot_tests PRIVATE doctest tradebot_options tradebot_core)
+target_link_libraries(tradebot_tests PRIVATE doctest tradebot_options tradebot_core tradebot_net
+  OpenSSL::SSL OpenSSL::Crypto)
 
 add_subdirectory(core)
+add_subdirectory(net)
 
 add_test(NAME tradebot_tests COMMAND tradebot_tests)

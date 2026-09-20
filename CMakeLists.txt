@@ -36,6 +36,8 @@ endif()
 # ---------------------------------------------------------------------------
 # Third-party
 # ---------------------------------------------------------------------------
+find_package(OpenSSL REQUIRED)
+
 # Header-only vendored libraries live under third_party/ and are exposed as
 # SYSTEM includes so project warning flags do not apply to them.
 add_library(tradebot_third_party INTERFACE)

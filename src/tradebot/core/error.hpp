@@ -15,6 +15,11 @@ enum class ErrorCode {
     io_error,
     invalid_state,
     unsupported,
+    timeout,
+    connection_closed,
+    network_error,
+    tls_error,
+    protocol_error,
 };
 
 std::string_view to_string(ErrorCode code) noexcept;
@@ -49,6 +54,11 @@ inline std::string_view to_string(ErrorCode code) noexcept {
         case ErrorCode::io_error: return "io_error";
         case ErrorCode::invalid_state: return "invalid_state";
         case ErrorCode::unsupported: return "unsupported";
+        case ErrorCode::timeout: return "timeout";
+        case ErrorCode::connection_closed: return "connection_closed";
+        case ErrorCode::network_error: return "network_error";
+        case ErrorCode::tls_error: return "tls_error";
+        case ErrorCode::protocol_error: return "protocol_error";
     }
     return "unknown";
 }

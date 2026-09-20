@@ -15,7 +15,9 @@ function(tradebot_set_warnings target warnings_as_errors)
     -Wnull-dereference
     -Wdouble-promotion
     -Wformat=2
-    -Wimplicit-fallthrough)
+    -Wimplicit-fallthrough
+    # Designated initializers that omit defaulted members are an intended idiom.
+    -Wno-missing-field-initializers)
 
   set(gcc_only_warnings
     -Wmisleading-indentation

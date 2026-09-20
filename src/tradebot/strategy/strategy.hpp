@@ -110,6 +110,7 @@ public:
 
 protected:
     [[nodiscard]] StrategyContext& ctx() noexcept { return *ctx_; }
+    [[nodiscard]] const StrategyContext& ctx() const noexcept { return *ctx_; }
     [[nodiscard]] bool started() const noexcept { return ctx_ != nullptr; }
 
 private:

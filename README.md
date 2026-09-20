@@ -42,6 +42,7 @@ src/tradebot/execution/  execution interface (orders, reports, fees) and the sim
 src/tradebot/portfolio/  positions, cash, P&L, exposure, per-strategy ledgers, equity curve
 src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps any venue)
 src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, multi-strategy runner
+src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean reversion, breakout, random)
 tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -102,7 +103,7 @@ prints.
 |     8 | Portfolio management       | done        |
 |     9 | Risk management            | done        |
 |    10 | Strategy framework         | done        |
-|    11 | Initial strategies         | not started |
+|    11 | Initial strategies         | done        |
 |    12 | Backtesting                | not started |
 |    13 | Performance analytics      | not started |
 | 14-23 | Research through live ops  | not started |

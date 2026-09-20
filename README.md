@@ -49,6 +49,7 @@ src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, 
 src/tradebot/research/ experiment index, sweeps, walk-forward, kill criteria, Monte Carlo, cost and
                      parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go
 src/tradebot/live/     wall-clock scheduler, paper-trading runtime, execution journal, feed health, heartbeat
+src/tradebot/gateway/  Binance spot gateway: request signing, private REST, user data stream, order state machine
 tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, bench)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -169,6 +170,24 @@ the switch re-arms when data resumes. A `heartbeat` file is refreshed every
 few seconds for external watchdogs. The feed reconnects with backoff on
 any disconnect; malformed messages are logged and skipped.
 
+## Live gateway
+
+`tradebot::gateway::BinanceGateway` implements the same `ExecutionVenue`
+interface as the simulated exchange, so a strategy, the risk gate and the
+portfolio run against it unchanged. It signs requests (HMAC-SHA256) with
+`TRADEBOT_BINANCE_API_KEY` / `TRADEBOT_BINANCE_API_SECRET`, sends orders on a
+worker thread, and receives acknowledgements, fills and cancels both from
+the REST reply and from the user data stream. A per-order state machine
+de-duplicates by execution id, so a fill reported by the stream and again by
+a later query is applied once. A send whose outcome is unknown (timeout,
+proxy error) is resolved by querying the order; a cancel of an order the
+venue no longer knows is resolved the same way. Orders that go silent are
+re-queried, and `reconcile()` compares venue balances with the portfolio.
+`dry_run = true` rejects every order locally without sending anything, and
+API keys should be created without withdrawal permission. The gateway is
+unit-tested against an in-process fake of the Binance REST API; it has not
+been exercised against the real venue from this build environment.
+
 ## Performance
 
 `tradebot-bench` measures the hot paths on synthetic data (Release build,
@@ -211,4 +230,5 @@ optimizations (the backtest tests check determinism).
 |    17 | Performance optimization   | done        |
 |    18 | Advanced strategies        | done        |
 |    19 | Robust strategy validation | done        |
-| 20-23 | Live trading through monitoring | not started |
+|    20 | Live trading infrastructure | done       |
+| 21-23 | Final testing through monitoring | not started |

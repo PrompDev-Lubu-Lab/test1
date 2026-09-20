@@ -401,4 +401,26 @@ Result<HttpResponse> HttpClient::get_streaming(const std::string& url_text, cons
     return resp;
 }
 
+Result<HttpResponse> HttpClient::request(const std::string& method, const std::string& url_text,
+                                         const Headers& headers, const std::string& body) {
+    auto url = Url::parse(url_text);
+    if (!url) {
+        return tl::make_unexpected(url.error());
+    }
+    auto stream = open_stream(*url, tls_, proxy_for(*url), opts_.timeout);
+    if (!stream) {
+        return tl::make_unexpected(stream.error());
+    }
+    HttpRequest req;
+    req.method = method;
+    req.url = *url;
+    req.headers = headers;
+    req.headers.emplace_back("User-Agent", opts_.user_agent);
+    req.headers.emplace_back("Accept", "*/*");
+    req.body = body;
+    auto resp = http_exchange(**stream, req);
+    (*stream)->close();
+    return resp;
+}
+
 }  // namespace tradebot::net

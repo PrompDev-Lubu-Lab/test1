@@ -84,6 +84,9 @@ public:
     [[nodiscard]] Result<HttpResponse> get(const std::string& url, const Headers& headers = {});
     [[nodiscard]] Result<HttpResponse> get_streaming(const std::string& url, const BodySink& sink,
                                                      const Headers& headers = {});
+    // Any method with an optional body (POST/PUT/DELETE for signed venue calls).
+    [[nodiscard]] Result<HttpResponse> request(const std::string& method, const std::string& url,
+                                               const Headers& headers = {}, const std::string& body = {});
 
 private:
     HttpClient() = default;

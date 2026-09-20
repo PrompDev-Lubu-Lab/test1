@@ -30,23 +30,23 @@ ReplayEngine::ReplayEngine(EventSource& source, SimClock& clock, LatencyModel& l
     : source_(source), clock_(clock), latency_(latency), opts_(opts), rng_(opts.seed) {}
 
 TimerId ReplayEngine::schedule_at(Timestamp at, TimerCallback cb) {
-    timers_.push_back(Timer{std::move(cb), Duration{}, false});
-    const TimerId id = timers_.size();
-    pending_.push(Pending{std::max(at, clock_.now()), seq_++, kNoSlot, id});
+    const TimerId id = next_timer_id_++;
+    timers_.emplace(id, Timer{std::move(cb), Duration{}, false});
+    pending_.push(Pending{std::max(at, clock_.now()), seq_++, kNoSlot, id, false});
     return id;
 }
 
 TimerId ReplayEngine::schedule_every(Duration interval, TimerCallback cb) {
-    timers_.push_back(Timer{std::move(cb), interval, false});
-    const TimerId id = timers_.size();
+    const TimerId id = next_timer_id_++;
+    timers_.emplace(id, Timer{std::move(cb), interval, false});
     const Timestamp first = clock_.now().floor_to(interval) + interval;
-    pending_.push(Pending{first, seq_++, kNoSlot, id});
+    pending_.push(Pending{first, seq_++, kNoSlot, id, false});
     return id;
 }
 
 void ReplayEngine::cancel(TimerId id) {
-    if (id >= 1 && id <= timers_.size()) {
-        timers_[id - 1].cancelled = true;
+    if (auto it = timers_.find(id); it != timers_.end()) {
+        it->second.cancelled = true;  // erased when its pending entry fires
     }
 }
 
@@ -73,32 +73,59 @@ std::size_t ReplayEngine::acquire_slot(MarketEvent&& event) {
         const std::size_t slot = free_slots_.back();
         free_slots_.pop_back();
         slots_[slot] = std::move(event);
+        slot_uses_[slot] = 2;
         return slot;
     }
     slots_.push_back(std::move(event));
+    slot_uses_.push_back(2);
     return slots_.size() - 1;
 }
 
-void ReplayEngine::release_slot(std::size_t slot) noexcept { free_slots_.push_back(slot); }
+void ReplayEngine::release_slot(std::size_t slot) noexcept {
+    if (--slot_uses_[slot] == 0) {
+        free_slots_.push_back(slot);
+    }
+}
 
 void ReplayEngine::deliver(const Pending& p) {
     if (p.time > clock_.now()) {
         clock_.set(p.time);
     }
     if (p.slot != kNoSlot) {
-        ++stats_.events_delivered;
-        bus_.publish(slots_[p.slot]);
+        if (p.venue_side) {
+            venue_bus_.publish(slots_[p.slot]);
+        } else {
+            ++stats_.events_delivered;
+            bus_.publish(slots_[p.slot]);
+        }
         release_slot(p.slot);
         return;
     }
-    Timer& t = timers_[p.timer - 1];
-    if (t.cancelled) {
+    auto it = timers_.find(p.timer);
+    if (it == timers_.end()) {
+        return;
+    }
+    if (it->second.cancelled) {
+        timers_.erase(it);
         return;
     }
     ++stats_.timers_fired;
+    if (it->second.interval.is_zero()) {
+        // One-shot: take the callback out first, since it may schedule
+        // more timers (inserting into the map) or cancel this one.
+        TimerCallback cb = std::move(it->second.cb);
+        timers_.erase(it);
+        cb(clock_.now());
+        return;
+    }
+    // Periodic: element references stay valid across insertions.
+    Timer& t = it->second;
+    const Duration interval = t.interval;
     t.cb(clock_.now());
-    if (!t.interval.is_zero() && !t.cancelled && !source_exhausted_) {
-        pending_.push(Pending{p.time + t.interval, seq_++, kNoSlot, p.timer});
+    if (!t.cancelled && !source_exhausted_) {
+        pending_.push(Pending{p.time + interval, seq_++, kNoSlot, p.timer, false});
+    } else {
+        timers_.erase(p.timer);
     }
 }
 
@@ -118,7 +145,8 @@ Result<void> ReplayEngine::run() {
             if (pending_.empty() || t <= pending_.top().time) {
                 const Duration delay = latency_.market_data_delay(*peeked_, rng_);
                 const std::size_t slot = acquire_slot(std::move(*peeked_));
-                pending_.push(Pending{t + delay, seq_++, slot, 0});
+                pending_.push(Pending{t, seq_++, slot, 0, true});
+                pending_.push(Pending{t + delay, seq_++, slot, 0, false});
                 peeked_.reset();
                 stats_.max_pending = std::max(stats_.max_pending, pending_.size());
                 continue;

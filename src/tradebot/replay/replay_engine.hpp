@@ -15,6 +15,7 @@
 
 #include "tradebot/core/clock.hpp"
 #include "tradebot/core/error.hpp"
+#include "tradebot/core/scheduler.hpp"
 #include "tradebot/market_data/events.hpp"
 #include "tradebot/replay/event_source.hpp"
 #include "tradebot/replay/latency.hpp"
@@ -23,6 +24,7 @@
 #include <functional>
 #include <optional>
 #include <queue>
+#include <unordered_map>
 #include <vector>
 
 namespace tradebot::replay {
@@ -52,15 +54,17 @@ private:
     std::vector<EventHandler> handlers_;
 };
 
-using TimerId = std::uint64_t;
-using TimerCallback = std::function<void(Timestamp)>;
-
 struct ReplayOptions {
     std::uint64_t seed = 1;
     std::optional<Timestamp> end_time;  // stop once the clock would pass this
 };
 
-class ReplayEngine {
+// Two delivery points for every event:
+//   venue_bus   at the event's own time, undelayed: what the venue itself
+//               knows (the simulated exchange subscribes here)
+//   bus         after the market-data latency: what a client sees
+//               (strategies, portfolio marks, analytics subscribe here)
+class ReplayEngine final : public Scheduler {
 public:
     using Options = ReplayOptions;
 
@@ -68,16 +72,18 @@ public:
                  Options opts = Options{});
 
     [[nodiscard]] EventBus& bus() noexcept { return bus_; }
+    [[nodiscard]] EventBus& venue_bus() noexcept { return venue_bus_; }
     [[nodiscard]] const Clock& clock() const noexcept { return clock_; }
-    [[nodiscard]] Timestamp now() const noexcept { return clock_.now(); }
+    [[nodiscard]] Timestamp now() const noexcept override { return clock_.now(); }
     [[nodiscard]] Rng& rng() noexcept { return rng_; }
+    [[nodiscard]] LatencyModel& latency() noexcept { return latency_; }
 
     // One-shot timer. A time in the past fires at the current time.
-    TimerId schedule_at(Timestamp at, TimerCallback cb);
+    TimerId schedule_at(Timestamp at, TimerCallback cb) override;
     // Periodic timer aligned to the interval from the epoch (first fire at
     // the next boundary), stops when the source is exhausted.
-    TimerId schedule_every(Duration interval, TimerCallback cb);
-    void cancel(TimerId id);
+    TimerId schedule_every(Duration interval, TimerCallback cb) override;
+    void cancel(TimerId id) override;
 
     // Runs until the source is exhausted and all deliveries are done, until
     // end_time, or until stop() is called from a handler.
@@ -101,6 +107,7 @@ private:
         std::uint64_t seq;
         std::size_t slot = kNoSlot;  // event slot, or kNoSlot for a timer
         TimerId timer = 0;
+        bool venue_side = false;  // deliver on venue_bus instead of bus
         bool operator>(const Pending& o) const noexcept {
             if (time != o.time) return time > o.time;
             return seq > o.seq;
@@ -122,15 +129,18 @@ private:
     LatencyModel& latency_;
     Options opts_;
     EventBus bus_;
+    EventBus venue_bus_;
     Rng rng_;
     std::priority_queue<Pending, std::vector<Pending>, std::greater<>> pending_;
     std::vector<market_data::MarketEvent> slots_;
+    std::vector<int> slot_uses_;  // deliveries still owed per slot
     std::vector<std::size_t> free_slots_;
     std::optional<market_data::MarketEvent> peeked_;
     bool source_exhausted_ = false;
     bool stop_requested_ = false;
     std::uint64_t seq_ = 0;
-    std::vector<Timer> timers_;  // index = TimerId - 1
+    std::unordered_map<TimerId, Timer> timers_;  // one-shots erased after firing
+    TimerId next_timer_id_ = 1;
     Stats stats_;
 };
 

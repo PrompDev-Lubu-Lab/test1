@@ -54,10 +54,11 @@ bool depth_update_ids(std::string_view message, std::int64_t& first_id,
     return find_int_field(message, "U", first_id) && find_int_field(message, "u", final_id);
 }
 
-Collector::Collector(CollectorConfig config, RawCaptureWriter& writer,
+Collector::Collector(CollectorConfig config, RawCaptureWriter* writer, RecordHandler handler,
                      std::shared_ptr<net::TlsContext> tls, const Clock& clock, Logger log)
     : config_(std::move(config)),
       writer_(writer),
+      handler_(std::move(handler)),
       tls_(std::move(tls)),
       clock_(clock),
       log_(std::move(log)),
@@ -78,6 +79,25 @@ std::string Collector::stream_url() const {
         url += symbol_lower_ + "@" + config_.streams[i];
     }
     return url;
+}
+
+Result<void> Collector::emit(const RawRecord& record) {
+    if (writer_ != nullptr) {
+        if (auto w = writer_->write(record); !w) {
+            return w;
+        }
+    }
+    if (handler_) {
+        handler_(record);
+    }
+    return {};
+}
+
+Result<void> Collector::flush_writer() {
+    if (writer_ == nullptr) {
+        return {};
+    }
+    return writer_->flush();
 }
 
 void Collector::interruptible_sleep(Duration d, const std::atomic<bool>& stop) const {
@@ -106,7 +126,7 @@ Result<void> Collector::capture_exchange_info() {
     if (!nlohmann::json::accept(resp->body)) {
         return make_error(ErrorCode::protocol_error, "exchangeInfo body is not JSON");
     }
-    if (auto w = writer_.write({clock_.now(), "exchange_info", resp->body}); !w) {
+    if (auto w = emit({clock_.now(), "exchange_info", resp->body}); !w) {
         return w;
     }
     exchange_info_captured_ = true;
@@ -136,7 +156,7 @@ Result<void> Collector::capture_depth_snapshot(std::string_view reason) {
         !find_int_field(resp->body, "lastUpdateId", last_update_id)) {
         return make_error(ErrorCode::protocol_error, "depth snapshot body is not a valid snapshot");
     }
-    if (auto w = writer_.write({clock_.now(), "depth_snapshot", resp->body}); !w) {
+    if (auto w = emit({clock_.now(), "depth_snapshot", resp->body}); !w) {
         return w;
     }
     ++stats_.depth_snapshots;
@@ -149,7 +169,7 @@ Result<void> Collector::handle_message(std::string_view message, Timestamp recv_
     const std::string_view stream = combined_stream_name(message);
     RawRecord rec{recv_time, std::string(stream.empty() ? "unknown" : stream),
                   std::string(message)};
-    if (auto w = writer_.write(rec); !w) {
+    if (auto w = emit(rec); !w) {
         return w;
     }
     ++stats_.messages;
@@ -232,7 +252,7 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
 
         const auto now = std::chrono::steady_clock::now();
         if (now - last_flush >= config_.flush_interval.to_chrono()) {
-            if (auto r = writer_.flush(); !r) {
+            if (auto r = flush_writer(); !r) {
                 return r;
             }
             last_flush = now;
@@ -253,7 +273,7 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
     if (ws->is_open()) {
         static_cast<void>(ws->send_close());
     }
-    return writer_.flush();
+    return flush_writer();
 }
 
 Result<void> Collector::run(const std::atomic<bool>& stop) {
@@ -275,7 +295,7 @@ Result<void> Collector::run(const std::atomic<bool>& stop) {
         }
         ++stats_.errors;
         ++stats_.reconnects;
-        static_cast<void>(writer_.flush());
+        static_cast<void>(flush_writer());
         log_.warn("connection ended: {}; reconnecting in {}", r.error().to_string(),
                   backoff.to_string());
         interruptible_sleep(backoff, stop);
@@ -285,7 +305,7 @@ Result<void> Collector::run(const std::atomic<bool>& stop) {
             backoff = config_.reconnect_backoff_min;
         }
     }
-    return writer_.flush();
+    return flush_writer();
 }
 
 }  // namespace tradebot::market_data::binance

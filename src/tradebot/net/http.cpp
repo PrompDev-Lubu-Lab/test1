@@ -263,7 +263,35 @@ Result<HttpResponse> http_exchange(Stream& stream, const HttpRequest& req) {
     return resp;
 }
 
-std::optional<ProxyConfig> proxy_from_env() {
+bool host_bypasses_proxy(std::string_view host, std::string_view no_proxy) {
+    const std::string h = to_lower(host);
+    if (h == "localhost" || h == "127.0.0.1" || h == "::1" || h.rfind("127.", 0) == 0) {
+        return true;
+    }
+    std::size_t start = 0;
+    while (start <= no_proxy.size()) {
+        std::size_t end = no_proxy.find(',', start);
+        if (end == std::string_view::npos) end = no_proxy.size();
+        std::string entry = to_lower(trim(no_proxy.substr(start, end - start)));
+        start = end + 1;
+        if (entry.empty()) continue;
+        if (entry == "*") return true;
+        while (!entry.empty() && (entry.front() == '.' || entry.front() == '*')) entry.erase(0, 1);
+        if (h == entry) return true;
+        if (h.size() > entry.size() && h.compare(h.size() - entry.size(), entry.size(), entry) == 0 &&
+            h[h.size() - entry.size() - 1] == '.') {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<ProxyConfig> proxy_from_env(std::string_view host) {
+    const char* no_proxy = std::getenv("NO_PROXY");
+    if (no_proxy == nullptr) no_proxy = std::getenv("no_proxy");
+    if (host_bypasses_proxy(host, no_proxy ? no_proxy : "")) {
+        return std::nullopt;
+    }
     const char* env = std::getenv("HTTPS_PROXY");
     if (env == nullptr || *env == '\0') {
         env = std::getenv("https_proxy");
@@ -327,9 +355,15 @@ Result<std::unique_ptr<Stream>> open_stream(const Url& url, std::shared_ptr<TlsC
 Result<HttpClient> HttpClient::create(std::shared_ptr<TlsContext> tls, Options opts) {
     HttpClient c;
     c.tls_ = std::move(tls);
-    c.proxy_ = opts.proxy ? *opts.proxy : proxy_from_env().value_or(ProxyConfig{});
     c.opts_ = std::move(opts);
     return c;
+}
+
+ProxyConfig HttpClient::proxy_for(const Url& url) const {
+    if (opts_.proxy) {
+        return *opts_.proxy;
+    }
+    return proxy_from_env(url.host).value_or(ProxyConfig{});
 }
 
 Result<HttpResponse> HttpClient::get(const std::string& url, const Headers& headers) {
@@ -353,7 +387,7 @@ Result<HttpResponse> HttpClient::get_streaming(const std::string& url_text, cons
     if (!url) {
         return tl::make_unexpected(url.error());
     }
-    auto stream = open_stream(*url, tls_, proxy_, opts_.timeout);
+    auto stream = open_stream(*url, tls_, proxy_for(*url), opts_.timeout);
     if (!stream) {
         return tl::make_unexpected(stream.error());
     }

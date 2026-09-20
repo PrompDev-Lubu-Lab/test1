@@ -53,8 +53,11 @@ struct ProxyConfig {
     [[nodiscard]] bool enabled() const noexcept { return !host.empty(); }
 };
 
-// Reads HTTPS_PROXY / https_proxy (a plain http://host:port URL).
-[[nodiscard]] std::optional<ProxyConfig> proxy_from_env();
+// Reads HTTPS_PROXY / https_proxy (a plain http://host:port URL) unless
+// `host` is exempted by NO_PROXY / no_proxy (exact names, domain suffixes,
+// and always localhost / loopback addresses).
+[[nodiscard]] std::optional<ProxyConfig> proxy_from_env(std::string_view host);
+[[nodiscard]] bool host_bypasses_proxy(std::string_view host, std::string_view no_proxy);
 
 // Opens a TCP (+TLS when the URL is secure) connection to the URL's host,
 // via the proxy when one is configured. Shared by HTTP and WebSocket.
@@ -84,9 +87,9 @@ public:
 
 private:
     HttpClient() = default;
+    [[nodiscard]] ProxyConfig proxy_for(const Url& url) const;
     std::shared_ptr<TlsContext> tls_;
     Options opts_;
-    ProxyConfig proxy_;
 };
 
 }  // namespace tradebot::net

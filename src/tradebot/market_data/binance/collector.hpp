@@ -26,6 +26,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -64,10 +65,19 @@ struct CollectorStats {
     std::uint64_t errors = 0;
 };
 
+// Receives every captured record (after it has been written, if a writer is
+// attached). Used by the paper-trading runtime to feed live events.
+using RecordHandler = std::function<void(const RawRecord&)>;
+
 class Collector {
 public:
+    // `writer` may be null (no archive), `handler` may be empty (no
+    // consumer); at least one should be set for the collector to be useful.
+    Collector(CollectorConfig config, RawCaptureWriter* writer, RecordHandler handler,
+              std::shared_ptr<net::TlsContext> tls, const Clock& clock, Logger log);
     Collector(CollectorConfig config, RawCaptureWriter& writer, std::shared_ptr<net::TlsContext> tls,
-              const Clock& clock, Logger log);
+              const Clock& clock, Logger log)
+        : Collector(std::move(config), &writer, RecordHandler{}, std::move(tls), clock, std::move(log)) {}
 
     // Runs until `stop` becomes true. Returns an error only for unrecoverable
     // problems (e.g. the capture directory is unwritable); network failures
@@ -82,13 +92,16 @@ public:
     [[nodiscard]] std::string stream_url() const;
 
 private:
+    [[nodiscard]] Result<void> emit(const RawRecord& record);
+    [[nodiscard]] Result<void> flush_writer();
     [[nodiscard]] Result<void> capture_exchange_info();
     [[nodiscard]] Result<void> capture_depth_snapshot(std::string_view reason);
     [[nodiscard]] Result<void> handle_message(std::string_view message, Timestamp recv_time);
     void interruptible_sleep(Duration d, const std::atomic<bool>& stop) const;
 
     CollectorConfig config_;
-    RawCaptureWriter& writer_;
+    RawCaptureWriter* writer_;
+    RecordHandler handler_;
     std::shared_ptr<net::TlsContext> tls_;
     const Clock& clock_;
     Logger log_;

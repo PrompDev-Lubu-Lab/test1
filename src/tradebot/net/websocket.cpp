@@ -61,7 +61,7 @@ Result<WebSocketClient> WebSocketClient::connect(const std::string& url_text,
     if (url->scheme != "ws" && url->scheme != "wss") {
         return make_error(ErrorCode::invalid_argument, "not a WebSocket URL: " + url_text);
     }
-    const ProxyConfig proxy = opts.proxy ? *opts.proxy : proxy_from_env().value_or(ProxyConfig{});
+    const ProxyConfig proxy = opts.proxy ? *opts.proxy : proxy_from_env(url->host).value_or(ProxyConfig{});
     auto stream = open_stream(*url, std::move(tls), proxy, opts.connect_timeout);
     if (!stream) {
         return tl::make_unexpected(stream.error());

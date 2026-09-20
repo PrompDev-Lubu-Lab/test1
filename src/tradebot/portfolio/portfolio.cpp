@@ -1,5 +1,7 @@
 #include "tradebot/portfolio/portfolio.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 
 namespace tradebot::portfolio {
@@ -233,6 +235,132 @@ OpenExposure Portfolio::open_exposure() const {
         total.open_orders += e.open_orders;
     }
     return total;
+}
+
+// --- persistence ------------------------------------------------------------
+
+namespace {
+
+nlohmann::json ledger_to_json(const Ledger& l) {
+    nlohmann::json positions = nlohmann::json::array();
+    for (const auto& [id, p] : l.positions) {
+        positions.push_back({{"instrument", id.value()},
+                             {"quantity", p.quantity.to_string()},
+                             {"average_entry", p.average_entry.to_string()},
+                             {"realized_pnl", p.realized_pnl.to_string()},
+                             {"fees", p.fees.to_string()},
+                             {"bought", p.bought.to_string()},
+                             {"sold", p.sold.to_string()},
+                             {"fills", p.fills}});
+    }
+    return {{"cash", l.cash.to_string()},
+            {"fees", l.fees.to_string()},
+            {"realized_pnl", l.realized_pnl.to_string()},
+            {"positions", positions}};
+}
+
+Result<Ledger> ledger_from_json(const nlohmann::json& j) {
+    if (!j.is_object()) {
+        return make_error(ErrorCode::parse_error, "ledger is not an object");
+    }
+    Ledger l;
+    auto dec = [&](const char* key, auto& out) -> Result<void> {
+        using T = std::decay_t<decltype(out)>;
+        if (!j.contains(key) || !j[key].is_string()) {
+            return make_error(ErrorCode::parse_error, std::string("ledger missing '") + key + "'");
+        }
+        auto v = T::parse(j[key].get_ref<const std::string&>());
+        if (!v) return tl::make_unexpected(v.error());
+        out = *v;
+        return {};
+    };
+    if (auto r = dec("cash", l.cash); !r) return tl::make_unexpected(r.error());
+    if (auto r = dec("fees", l.fees); !r) return tl::make_unexpected(r.error());
+    if (auto r = dec("realized_pnl", l.realized_pnl); !r) return tl::make_unexpected(r.error());
+    if (j.contains("positions") && j["positions"].is_array()) {
+        for (const auto& pj : j["positions"]) {
+            Position p;
+            auto pd = [&](const char* key, auto& out) -> Result<void> {
+                using T = std::decay_t<decltype(out)>;
+                if (!pj.contains(key) || !pj[key].is_string()) {
+                    return make_error(ErrorCode::parse_error, std::string("position missing '") + key + "'");
+                }
+                auto v = T::parse(pj[key].get_ref<const std::string&>());
+                if (!v) return tl::make_unexpected(v.error());
+                out = *v;
+                return {};
+            };
+            if (auto r = pd("quantity", p.quantity); !r) return tl::make_unexpected(r.error());
+            if (auto r = pd("average_entry", p.average_entry); !r) return tl::make_unexpected(r.error());
+            if (auto r = pd("realized_pnl", p.realized_pnl); !r) return tl::make_unexpected(r.error());
+            if (auto r = pd("fees", p.fees); !r) return tl::make_unexpected(r.error());
+            if (auto r = pd("bought", p.bought); !r) return tl::make_unexpected(r.error());
+            if (auto r = pd("sold", p.sold); !r) return tl::make_unexpected(r.error());
+            p.fills = pj.value("fills", std::uint64_t{0});
+            if (!pj.contains("instrument") || !pj["instrument"].is_number_unsigned()) {
+                return make_error(ErrorCode::parse_error, "position missing instrument");
+            }
+            l.positions[InstrumentId{pj["instrument"].get<std::uint32_t>()}] = p;
+        }
+    }
+    return l;
+}
+
+}  // namespace
+
+Portfolio::State Portfolio::state() const {
+    State s;
+    s.account = account_;
+    for (const auto& [id, l] : ledgers_) {
+        s.strategies.emplace_back(id, l);
+    }
+    std::sort(s.strategies.begin(), s.strategies.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+    return s;
+}
+
+void Portfolio::restore(const State& s) {
+    account_ = s.account;
+    ledgers_.clear();
+    for (const auto& [id, l] : s.strategies) {
+        ledgers_[id] = l;
+    }
+    exposures_.clear();
+    open_orders_.clear();
+    peak_equity_ = std::max(peak_equity_, equity());
+}
+
+std::string Portfolio::state_to_json() const {
+    const State s = state();
+    nlohmann::json j;
+    j["version"] = 1;
+    j["initial_cash"] = initial_cash_.to_string();
+    j["account"] = ledger_to_json(s.account);
+    nlohmann::json strategies = nlohmann::json::array();
+    for (const auto& [id, l] : s.strategies) {
+        strategies.push_back({{"id", id.value()}, {"ledger", ledger_to_json(l)}});
+    }
+    j["strategies"] = strategies;
+    return j.dump(2);
+}
+
+Result<Portfolio::State> Portfolio::state_from_json(std::string_view text) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || !j.is_object() || j.value("version", 0) != 1) {
+        return make_error(ErrorCode::parse_error, "portfolio state: not a version 1 document");
+    }
+    State s;
+    auto account = ledger_from_json(j["account"]);
+    if (!account) return tl::make_unexpected(account.error());
+    s.account = std::move(*account);
+    if (j.contains("strategies") && j["strategies"].is_array()) {
+        for (const auto& sj : j["strategies"]) {
+            auto l = ledger_from_json(sj["ledger"]);
+            if (!l) return tl::make_unexpected(l.error());
+            s.strategies.emplace_back(StrategyId{sj.value("id", std::uint32_t{0})}, std::move(*l));
+        }
+    }
+    return s;
 }
 
 EquitySample Portfolio::snapshot(Timestamp time) const {

@@ -15,3 +15,6 @@ target_link_libraries(tradebot-analyze PRIVATE tradebot_options tradebot_analyti
 
 add_executable(tradebot-research research.cpp)
 target_link_libraries(tradebot-research PRIVATE tradebot_options tradebot_research tradebot_strategies)
+
+add_executable(tradebot-paper paper.cpp)
+target_link_libraries(tradebot-paper PRIVATE tradebot_options tradebot_live tradebot_strategies)

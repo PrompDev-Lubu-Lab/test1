@@ -170,14 +170,24 @@ TEST_CASE("HttpClient: CONNECT proxy tunnel") {
     CHECK(received.find("CONNECT origin.example:8080 HTTP/1.1\r\n") == 0);
 }
 
-TEST_CASE("proxy_from_env parses HTTPS_PROXY") {
+TEST_CASE("proxy_from_env parses HTTPS_PROXY and honours NO_PROXY") {
     setenv("HTTPS_PROXY", "http://127.0.0.1:3128", 1);
-    auto p = proxy_from_env();
+    setenv("NO_PROXY", "internal.example, .corp.net,*.lab", 1);
+    auto p = proxy_from_env("api.binance.com");
     REQUIRE(p.has_value());
     CHECK(p->host == "127.0.0.1");
     CHECK(p->port == 3128);
+    CHECK_FALSE(proxy_from_env("localhost").has_value());
+    CHECK_FALSE(proxy_from_env("127.0.0.1").has_value());
+    CHECK_FALSE(proxy_from_env("internal.example").has_value());
+    CHECK_FALSE(proxy_from_env("host.corp.net").has_value());
+    CHECK_FALSE(proxy_from_env("box.lab").has_value());
+    CHECK(proxy_from_env("notcorp.net").has_value());
+    CHECK(host_bypasses_proxy("a.b.c", "*"));
+    CHECK_FALSE(host_bypasses_proxy("a.b.c", ""));
     setenv("HTTPS_PROXY", "", 1);
     unsetenv("https_proxy");
-    CHECK_FALSE(proxy_from_env().has_value());
+    CHECK_FALSE(proxy_from_env("api.binance.com").has_value());
     unsetenv("HTTPS_PROXY");
+    unsetenv("NO_PROXY");
 }

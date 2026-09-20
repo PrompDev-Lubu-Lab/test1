@@ -104,6 +104,17 @@ public:
     [[nodiscard]] const OpenExposure& open_exposure(StrategyId strategy) const;
     [[nodiscard]] OpenExposure open_exposure() const;  // account total
 
+    // State persistence (paper/live restarts): the account ledger and the
+    // per-strategy ledgers. Open orders are not part of the state.
+    struct State {
+        Ledger account;
+        std::vector<std::pair<StrategyId, Ledger>> strategies;
+    };
+    [[nodiscard]] State state() const;
+    void restore(const State& state);
+    [[nodiscard]] std::string state_to_json() const;
+    [[nodiscard]] static Result<State> state_from_json(std::string_view json);
+
     // Appends the current state to the equity curve.
     void sample(Timestamp time);
     [[nodiscard]] const std::vector<EquitySample>& equity_curve() const noexcept { return curve_; }

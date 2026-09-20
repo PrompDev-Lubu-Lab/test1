@@ -46,7 +46,8 @@ src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean r
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
-tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest, -analyze, -research)
+src/tradebot/live/     wall-clock scheduler and the paper-trading runtime
+tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -130,6 +131,20 @@ train window and reports only out-of-sample results, which are the numbers
 that count. `judge` applies pre-agreed kill criteria (minimum trades and
 Sharpe, maximum drawdown, minimum profit factor, must beat buy-and-hold).
 
+## Paper trading
+
+```sh
+cp configs/paper.example.conf configs/paper.conf   # same strategy/risk sections as a backtest
+./build/tools/tradebot-paper --config configs/paper.conf
+```
+
+Runs the unchanged strategy against the live Binance feed with simulated
+fills (same exchange model as backtests, real market-data latency), archives
+the raw feed as it goes, and flushes artifacts in the backtest format plus
+`state.json` to `runs/paper-<label>/` every minute. A restart resumes the
+portfolio from `state.json`. Because the artifacts match, `tradebot-analyze`
+and `tradebot-research judge` compare paper results with backtests directly.
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -148,4 +163,5 @@ Sharpe, maximum drawdown, minimum profit factor, must beat buy-and-hold).
 |    12 | Backtesting                | done        |
 |    13 | Performance analytics      | done        |
 |    14 | Strategy research tooling  | done        |
-| 15-23 | Paper trading through live ops | not started |
+|    15 | Real-time paper trading    | done        |
+| 16-23 | Reliability through live ops | not started |

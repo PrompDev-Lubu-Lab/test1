@@ -29,7 +29,7 @@ jobs:
       - name: Install toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libssl-dev ${{ matrix.packages }}
+          sudo apt-get install -y ninja-build libssl-dev zlib1g-dev ${{ matrix.packages }}
 
       - name: Configure
         env:

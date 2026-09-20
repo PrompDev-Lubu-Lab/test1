@@ -15,8 +15,8 @@ strategies cheaply.
 
 ## Building
 
-Requirements: CMake 3.20+, Ninja, OpenSSL 3 development headers, and GCC 13+
-or Clang 18+.
+Requirements: CMake 3.20+, Ninja, OpenSSL 3 and zlib development headers, and
+GCC 13+ or Clang 18+.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
@@ -34,6 +34,7 @@ runtime.
 ```
 src/tradebot/core/   core types: fixed-point money, time, clock, ids, config, logging
 src/tradebot/net/    TCP, TLS (OpenSSL), HTTP/1.1 client, WebSocket client
+src/tradebot/market_data/  raw capture archives (more to come: parsers, order book)
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
 docs/                architecture and design notes

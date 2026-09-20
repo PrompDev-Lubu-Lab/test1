@@ -37,6 +37,7 @@ endif()
 # Third-party
 # ---------------------------------------------------------------------------
 find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 
 # Header-only vendored libraries live under third_party/ and are exposed as
 # SYSTEM includes so project warning flags do not apply to them.

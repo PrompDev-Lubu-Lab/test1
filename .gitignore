@@ -1,0 +1,17 @@
+# Build output
+build/
+build-*/
+cmake-build-*/
+compile_commands.json
+
+# Data and run artifacts (never commit market data or results)
+data/
+runs/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.cache/
+*.swp
+.DS_Store

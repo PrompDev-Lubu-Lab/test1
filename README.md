@@ -1,0 +1,58 @@
+# tradebot
+
+An event-driven cryptocurrency trading research system in C++, initially
+focused on ETH. It exists to test trading strategies honestly against real
+historical and live market data before any real capital is considered.
+
+The design is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The short version: strategies talk only to abstract market-data and
+execution interfaces, so the same compiled strategy runs unchanged against
+historical replay, a simulated exchange, live paper trading, and eventually a
+real exchange.
+
+No strategy is assumed to be profitable. The pipeline is built to disprove
+strategies cheaply.
+
+## Building
+
+Requirements: CMake 3.20+, Ninja, and GCC 13+ or Clang 18+.
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Debug builds enable AddressSanitizer and UndefinedBehaviorSanitizer and treat
+all warnings as errors. Use `-DCMAKE_BUILD_TYPE=Release` for backtests and
+`-DTRADEBOT_ENABLE_SANITIZERS=OFF` if your toolchain lacks the sanitizer
+runtime.
+
+## Layout
+
+```
+src/tradebot/core/   core types: fixed-point money, time, clock, ids, config, logging
+tests/               doctest unit tests, one directory per module
+third_party/         vendored header-only dependencies (doctest, tl::expected)
+docs/                architecture and design notes
+cmake/               warning and sanitizer configuration
+```
+
+## Status
+
+| Phase | Component                  | Status      |
+|------:|----------------------------|-------------|
+|     1 | Project setup, core types  | done        |
+|     2 | Market-data collection     | not started |
+|     3 | Market-data processing     | not started |
+|     4 | Order-book system          | not started |
+|     5 | Historical data storage    | not started |
+|     6 | Historical market replay   | not started |
+|     7 | Simulated exchange         | not started |
+|     8 | Portfolio management       | not started |
+|     9 | Risk management            | not started |
+|    10 | Strategy framework         | not started |
+|    11 | Initial strategies         | not started |
+|    12 | Backtesting                | not started |
+|    13 | Performance analytics      | not started |
+| 14-23 | Research through live ops  | not started |

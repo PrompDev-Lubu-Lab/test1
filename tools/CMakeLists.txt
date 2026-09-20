@@ -18,3 +18,6 @@ target_link_libraries(tradebot-research PRIVATE tradebot_options tradebot_resear
 
 add_executable(tradebot-paper paper.cpp)
 target_link_libraries(tradebot-paper PRIVATE tradebot_options tradebot_live tradebot_strategies)
+
+add_executable(tradebot-bench bench.cpp)
+target_link_libraries(tradebot-bench PRIVATE tradebot_options tradebot_backtest tradebot_strategies tradebot_replay tradebot_storage)

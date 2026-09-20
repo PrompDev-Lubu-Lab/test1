@@ -121,6 +121,7 @@ private:
     std::filesystem::path path_;
     FileHeader header_;
     std::vector<std::byte> block_;
+    std::vector<std::byte> comp_;  // reused compressed-block buffer
     std::size_t pos_ = 0;
     Timestamp from_;
     bool eof_ = false;

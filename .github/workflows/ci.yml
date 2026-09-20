@@ -42,3 +42,7 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Benchmark smoke
+        if: matrix.build_type == 'Release'
+        run: ./build/tools/tradebot-bench --quick

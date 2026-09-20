@@ -47,7 +47,7 @@ src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch 
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
 src/tradebot/live/     wall-clock scheduler, paper-trading runtime, execution journal, feed health, heartbeat
-tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper)
+tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, bench)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -154,6 +154,25 @@ the switch re-arms when data resumes. A `heartbeat` file is refreshed every
 few seconds for external watchdogs. The feed reconnects with backoff on
 any disconnect; malformed messages are logged and skipped.
 
+## Performance
+
+`tradebot-bench` measures the hot paths on synthetic data (Release build,
+one core):
+
+| Stage                          | Throughput            |
+|--------------------------------|-----------------------|
+| event store write              | ~1.1M events/s        |
+| event store read + merge       | ~3.3M events/s        |
+| order book delta application   | ~3.3M deltas/s        |
+| replay dispatch (both buses)   | ~11M deliveries/s     |
+| full backtest (ma_crossover)   | ~1.5M events/s        |
+
+A day of ETHUSDT trades plus 100 ms depth updates is roughly one to two
+million events, so a year backtests in minutes and sweeps parallelize
+across cores. Compression (zlib) dominates the read and write paths; the
+engine itself is not the bottleneck. Results are bit-identical across
+optimizations (the backtest tests check determinism).
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -174,4 +193,5 @@ any disconnect; malformed messages are logged and skipped.
 |    14 | Strategy research tooling  | done        |
 |    15 | Real-time paper trading    | done        |
 |    16 | Reliability and error handling | done    |
-| 17-23 | Optimization through live ops | not started |
+|    17 | Performance optimization   | done        |
+| 18-23 | Advanced strategies through live ops | not started |

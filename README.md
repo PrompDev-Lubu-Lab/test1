@@ -40,6 +40,7 @@ src/tradebot/storage/  normalized event store (TBEV files), catalog, ingest pipe
 src/tradebot/replay/   event sources, k-way merge, latency models, replay engine and event bus
 src/tradebot/execution/  execution interface (orders, reports, fees) and the simulated exchange
 src/tradebot/portfolio/  positions, cash, P&L, exposure, per-strategy ledgers, equity curve
+src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps any venue)
 tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -98,7 +99,7 @@ prints.
 |     6 | Historical market replay   | done        |
 |     7 | Simulated exchange         | done        |
 |     8 | Portfolio management       | done        |
-|     9 | Risk management            | not started |
+|     9 | Risk management            | done        |
 |    10 | Strategy framework         | not started |
 |    11 | Initial strategies         | not started |
 |    12 | Backtesting                | not started |

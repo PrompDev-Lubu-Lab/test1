@@ -16,7 +16,12 @@ target_link_libraries(tradebot-analyze PRIVATE tradebot_options tradebot_analyti
 add_executable(tradebot-research research.cpp)
 target_link_libraries(tradebot-research PRIVATE tradebot_options tradebot_research tradebot_strategies)
 
-add_executable(tradebot-paper paper.cpp)
+add_executable(tradebot-live live.cpp)
+target_link_libraries(tradebot-live PRIVATE tradebot_options tradebot_live tradebot_strategies)
+
+# tradebot-paper is tradebot-live pinned to paper mode: it cannot send an order.
+add_executable(tradebot-paper live.cpp)
+target_compile_definitions(tradebot-paper PRIVATE TRADEBOT_PAPER_ONLY=1)
 target_link_libraries(tradebot-paper PRIVATE tradebot_options tradebot_live tradebot_strategies)
 
 add_executable(tradebot-bench bench.cpp)

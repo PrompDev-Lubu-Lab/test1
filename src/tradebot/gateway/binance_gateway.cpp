@@ -130,6 +130,9 @@ Result<void> BinanceGateway::cancel(ClientOrderId client_id) {
     if (t.state.is_done()) {
         return make_error(ErrorCode::invalid_state, "order is already done");
     }
+    if (t.cancel_requested) {
+        return {};  // already in flight; the reply settles it either way
+    }
     t.cancel_requested = true;
     if (t.state.status != OrderStatus::pending_cancel) {
         t.state.status = OrderStatus::pending_cancel;
@@ -291,6 +294,7 @@ void BinanceGateway::handle_rest_cancel(ClientOrderId id, Result<json> response)
             return;
         }
         log_.error("cancel {} failed: {}", id.value(), response.error().to_string());
+        t.cancel_requested = false;  // a later cancel may retry
         ExecutionReport rep;
         rep.type = ReportType::cancel_rejected;
         rep.client_id = id;
@@ -414,14 +418,42 @@ void BinanceGateway::poll_silent_orders() {
 
 // --- reconciliation ------------------------------------------------------------------
 
+std::vector<ClientOrderId> BinanceGateway::open_order_ids() const {
+    std::vector<ClientOrderId> out;
+    for (const auto& [id, t] : orders_) {
+        if (!t.state.is_done()) out.push_back(id);
+    }
+    return out;
+}
+
 Result<BinanceGateway::Reconciliation> BinanceGateway::reconcile(const portfolio::Portfolio& portfolio,
                                                                  Quantity base_tolerance, Notional quote_tolerance) {
     auto balances = rest_.balances();
     if (!balances) {
         return tl::make_unexpected(balances.error());
     }
+    return compare(*balances, portfolio, base_tolerance, quote_tolerance);
+}
+
+void BinanceGateway::reconcile_async(const portfolio::Portfolio& portfolio, Quantity base_tolerance,
+                                     Notional quote_tolerance, ReconcileHandler handler) {
+    enqueue([this, &portfolio, base_tolerance, quote_tolerance, handler = std::move(handler)] {
+        auto balances = rest_.balances();
+        post_([this, &portfolio, base_tolerance, quote_tolerance, handler, balances = std::move(balances)] {
+            if (!balances) {
+                handler(tl::make_unexpected(balances.error()));
+                return;
+            }
+            handler(compare(*balances, portfolio, base_tolerance, quote_tolerance));
+        });
+    });
+}
+
+BinanceGateway::Reconciliation BinanceGateway::compare(const std::vector<Balance>& balances,
+                                                       const portfolio::Portfolio& portfolio, Quantity base_tolerance,
+                                                       Notional quote_tolerance) const {
     Reconciliation r;
-    for (const auto& b : *balances) {
+    for (const auto& b : balances) {
         if (b.asset == instrument_.base) r.venue_base = b.free + b.locked;
         if (b.asset == instrument_.quote) r.venue_quote = Notional::from_raw((b.free + b.locked).raw());
     }

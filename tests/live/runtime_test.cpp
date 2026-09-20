@@ -1,8 +1,9 @@
-// Integration: PaperRuntime against an in-process fake exchange feed.
+// Integration: TradingRuntime against an in-process fake exchange feed.
 
 #include "tradebot/live/journal.hpp"
-#include "tradebot/live/paper_runtime.hpp"
+#include "tradebot/live/runtime.hpp"
 
+#include "support/fake_feed.hpp"
 #include "support/ws_test_server.hpp"
 #include "tradebot/net/tcp.hpp"
 #include "tradebot/strategies/baselines.hpp"
@@ -12,7 +13,6 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
-#include <random>
 #include <thread>
 
 using namespace tradebot;
@@ -22,62 +22,9 @@ namespace fs = std::filesystem;
 
 namespace {
 
-struct TempDir {
-    fs::path path;
-    TempDir() {
-        std::random_device rd;
-        path = fs::temp_directory_path() / ("tradebot-paper-" + std::to_string(rd()));
-        fs::create_directories(path);
-    }
-    ~TempDir() { fs::remove_all(path); }
-};
-
-// Fake Binance REST serving exchangeInfo and depth snapshots.
-class FakeRest {
-public:
-    FakeRest() : listener_(*net::TcpListener::bind_loopback()) {
-        thread_ = std::thread([this] { serve(); });
-    }
-    ~FakeRest() {
-        stop_.store(true);
-        thread_.join();
-    }
-    [[nodiscard]] std::string base() const { return "http://127.0.0.1:" + std::to_string(listener_.port()); }
-
-private:
-    void serve() {
-        while (!stop_.load()) {
-            auto conn = listener_.accept(Duration::millis(50));
-            if (!conn) continue;
-            std::string req;
-            std::byte buf[4096];
-            while (req.find("\r\n\r\n") == std::string::npos) {
-                auto n = conn->read_some(buf);
-                if (!n || *n == 0) break;
-                req.append(reinterpret_cast<const char*>(buf), *n);
-            }
-            std::string body = "{}";
-            if (req.find("/api/v3/depth") != std::string::npos) {
-                body = R"({"lastUpdateId":100,"bids":[["3000.00","50"],["2999.00","50"]],"asks":[["3001.00","50"],["3002.00","50"]]})";
-            } else if (req.find("/api/v3/exchangeInfo") != std::string::npos) {
-                body = R"({"symbols":[{"symbol":"ETHUSDT","baseAsset":"ETH","quoteAsset":"USDT","filters":[
-                    {"filterType":"PRICE_FILTER","tickSize":"0.01"},{"filterType":"LOT_SIZE","minQty":"0.0001","stepSize":"0.0001"},
-                    {"filterType":"NOTIONAL","minNotional":"5"}]}]})";
-            }
-            static_cast<void>(conn->write_all("HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(body.size()) +
-                                              "\r\n\r\n" + body));
-        }
-    }
-    net::TcpListener listener_;
-    std::thread thread_;
-    std::atomic<bool> stop_{false};
-};
-
-std::string agg_trade(std::int64_t id, const char* price, std::int64_t ms) {
-    return R"({"stream":"ethusdt@aggTrade","data":{"e":"aggTrade","E":)" + std::to_string(ms) +
-           R"(,"s":"ETHUSDT","a":)" + std::to_string(id) + R"(,"p":")" + price +
-           R"(","q":"0.5","f":1,"l":1,"T":)" + std::to_string(ms) + R"(,"m":false,"M":true}})";
-}
+using test::agg_trade;
+using test::FakeRest;
+using test::TempDir;
 
 std::string config_text(const fs::path& dir, const FakeRest& rest, std::uint16_t ws_port, bool resume) {
     return "[paper]\nlabel = test\nsymbol = ETHUSDT\ninitial_cash = 10000\nflush_interval = 1s\narchive_raw = true\nresume = " +
@@ -91,7 +38,7 @@ std::string config_text(const fs::path& dir, const FakeRest& rest, std::uint16_t
 
 }  // namespace
 
-TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; resume restores state") {
+TEST_CASE("TradingRuntime: live feed -> simulated fills -> artifacts and state; resume restores state") {
     TempDir tmp;
     FakeRest rest;
     test::TestWsServer ws;
@@ -100,7 +47,7 @@ TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; re
 
     auto cfg = Config::parse(config_text(tmp.path, rest, ws.port(), false));
     REQUIRE(cfg.has_value());
-    auto spec = parse_paper_spec(*cfg);
+    auto spec = parse_runtime_spec(*cfg);
     REQUIRE_MESSAGE(spec.has_value(), spec.error().message);
     CHECK(spec->label == "test");
     CHECK(spec->collector.symbol == "ETHUSDT");
@@ -112,7 +59,7 @@ TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; re
     auto sink = std::make_shared<MemorySink>();
     WallClock wall;
     Logger log = Logger::make("paper", sink, wall, LogLevel::debug);
-    PaperRuntime runtime(*spec, registry, nullptr, log);
+    TradingRuntime runtime(*spec, registry, nullptr, log);
 
     // The fake exchange: handshake, stream trades once per 100ms for ~3s
     // (enough 1s candles for buy_and_hold to enter), then stop the runtime.
@@ -163,9 +110,9 @@ TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; re
         FakeRest rest2;
         test::TestWsServer ws2;
         auto cfg2 = Config::parse(config_text(tmp.path, rest2, ws2.port(), true));
-        auto spec2 = parse_paper_spec(*cfg2);
+        auto spec2 = parse_runtime_spec(*cfg2);
         REQUIRE(spec2.has_value());
-        PaperRuntime runtime2(*spec2, registry, nullptr, Logger{});
+        TradingRuntime runtime2(*spec2, registry, nullptr, Logger{});
         std::thread server2([&] {
             if (!ws2.accept_and_handshake(Duration::seconds(10))) {
                 CHECK_MESSAGE(false, "feed never reconnected");
@@ -182,7 +129,7 @@ TEST_CASE("PaperRuntime: live feed -> simulated fills -> artifacts and state; re
     }
 }
 
-TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, journal rebuild") {
+TEST_CASE("TradingRuntime: chaos - malformed messages, duplicates, disconnects, journal rebuild") {
     TempDir tmp;
     FakeRest rest;
     test::TestWsServer ws;
@@ -191,7 +138,7 @@ TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, jo
     auto cfg = Config::parse(config_text(tmp.path, rest, ws.port(), false) + "[collector]\nstale_timeout = 1s\n");
     // stale_timeout must be re-set after the base config's [collector] section; Config keeps the last value.
     REQUIRE(cfg.has_value());
-    auto spec = parse_paper_spec(*cfg);
+    auto spec = parse_runtime_spec(*cfg);
     REQUIRE(spec.has_value());
     spec->collector.reconnect_backoff_min = Duration::millis(20);
     spec->collector.reconnect_backoff_max = Duration::millis(50);
@@ -200,7 +147,7 @@ TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, jo
     auto sink = std::make_shared<MemorySink>();
     WallClock wall;
     Logger log = Logger::make("paper", sink, wall, LogLevel::debug);
-    PaperRuntime runtime(*spec, registry, nullptr, log);
+    TradingRuntime runtime(*spec, registry, nullptr, log);
 
     std::thread server([&] {
         const auto now_ms = [] {
@@ -255,9 +202,9 @@ TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, jo
         FakeRest rest2;
         test::TestWsServer ws2;
         auto cfg2 = Config::parse(config_text(tmp.path, rest2, ws2.port(), true));
-        auto spec2 = parse_paper_spec(*cfg2);
+        auto spec2 = parse_runtime_spec(*cfg2);
         REQUIRE(spec2.has_value());
-        PaperRuntime runtime2(*spec2, registry, nullptr, Logger{});
+        TradingRuntime runtime2(*spec2, registry, nullptr, Logger{});
         std::thread server2([&] {
             if (!ws2.accept_and_handshake(Duration::seconds(10))) { CHECK(false); }
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -272,18 +219,18 @@ TEST_CASE("PaperRuntime: chaos - malformed messages, duplicates, disconnects, jo
     }
 }
 
-TEST_CASE("PaperRuntime: stale feed trips the kill switch and re-arms on recovery") {
+TEST_CASE("TradingRuntime: stale feed trips the kill switch and re-arms on recovery") {
     TempDir tmp;
     FakeRest rest;
     test::TestWsServer ws;
     strategy::StrategyRegistry registry;
     strategies::register_baselines(registry);
     auto cfg = Config::parse(config_text(tmp.path, rest, ws.port(), false) + "[paper]\nfeed_stale_after = 1s\n");
-    auto spec = parse_paper_spec(*cfg);
+    auto spec = parse_runtime_spec(*cfg);
     REQUIRE(spec.has_value());
     CHECK(spec->feed_stale_after == Duration::seconds(1));
     spec->collector.stale_timeout = Duration::seconds(30);  // the collector itself stays connected
-    PaperRuntime runtime(*spec, registry, nullptr, Logger{});
+    TradingRuntime runtime(*spec, registry, nullptr, Logger{});
     std::atomic<bool> tripped_seen{false};
     std::thread server([&] {
         const auto now_ms = [] {

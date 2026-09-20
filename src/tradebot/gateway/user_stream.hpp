@@ -38,7 +38,7 @@ struct ParsedExecution {
 struct UserStreamOptions {
     std::string ws_base = "wss://stream.binance.com:9443";
     Duration keepalive_interval = Duration::minutes(30);
-    Duration stale_timeout = Duration::minutes(2);  // Binance pings every ~3 min; stream is quiet otherwise
+    Duration read_timeout = Duration::seconds(5);  // socket read timeout; the loop keeps the key alive on quiet accounts
     Duration reconnect_backoff = Duration::seconds(2);
     std::optional<net::ProxyConfig> proxy;
 };

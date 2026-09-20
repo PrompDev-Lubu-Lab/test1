@@ -127,7 +127,7 @@ Result<void> UserStream::run_connection(const std::atomic<bool>& stop) {
         return tl::make_unexpected(key.error());
     }
     net::WebSocketOptions ws_opts;
-    ws_opts.read_timeout = opts_.stale_timeout;
+    ws_opts.read_timeout = opts_.read_timeout;
     ws_opts.proxy = opts_.proxy;
     auto ws = net::WebSocketClient::connect(opts_.ws_base + "/ws/" + *key, tls_, ws_opts);
     if (!ws) {

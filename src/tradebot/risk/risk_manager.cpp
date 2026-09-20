@@ -15,6 +15,9 @@ RiskManager::RiskManager(execution::ExecutionVenue& venue, const portfolio::Port
 }
 
 Result<void> RiskManager::check(const OrderRequest& r) const {
+    if (!halt_reason_.empty()) {
+        return make_error(ErrorCode::invalid_state, "halted: " + halt_reason_);
+    }
     if (tripped_) {
         return make_error(ErrorCode::invalid_state, "kill switch tripped: " + trip_reason_);
     }
@@ -213,6 +216,11 @@ void RiskManager::cancel_all_open() {
             static_cast<void>(venue_.cancel(id));
         }
     }
+}
+
+void RiskManager::halt(std::string reason) {
+    halt_reason_ = reason.empty() ? "halted" : std::move(reason);
+    log_.warn("risk gate halted: {}", halt_reason_);
 }
 
 void RiskManager::reset() {

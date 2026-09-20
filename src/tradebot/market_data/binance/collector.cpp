@@ -202,7 +202,9 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
 
     net::WebSocketOptions ws_opts;
     ws_opts.connect_timeout = config_.connect_timeout;
-    ws_opts.read_timeout = config_.stale_timeout;
+    // Read in short slices so a stop request is noticed within a second;
+    // staleness is measured across slices against stale_timeout.
+    ws_opts.read_timeout = std::min(config_.stale_timeout, Duration::seconds(1));
     ws_opts.proxy = config_.proxy;
     const std::string url = stream_url();
     log_.info("connecting to {}", url);
@@ -225,6 +227,7 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
 
     auto last_flush = std::chrono::steady_clock::now();
     auto last_snapshot = last_flush;
+    auto last_message = last_flush;
     while (!stop.load()) {
         auto msg = ws->receive();
         if (stop.load()) {
@@ -233,6 +236,9 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
         }
         if (!msg) {
             if (msg.error().code == ErrorCode::timeout) {
+                if (std::chrono::steady_clock::now() - last_message < config_.stale_timeout.to_chrono()) {
+                    continue;
+                }
                 ++stats_.stale_timeouts;
                 log_.warn("no message for {}; treating feed as stale",
                           config_.stale_timeout.to_string());
@@ -240,6 +246,7 @@ Result<void> Collector::run_connection(const std::atomic<bool>& stop) {
             }
             return tl::make_unexpected(msg.error());
         }
+        last_message = std::chrono::steady_clock::now();
         const Timestamp recv_time = clock_.now();
         if (msg->opcode == net::WsOpcode::close) {
             log_.warn("server closed connection: code={} reason='{}'", msg->close_code,

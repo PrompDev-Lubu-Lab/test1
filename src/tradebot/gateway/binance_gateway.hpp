@@ -70,6 +70,13 @@ public:
     };
     [[nodiscard]] Result<Reconciliation> reconcile(const portfolio::Portfolio& portfolio, Quantity base_tolerance,
                                                    Notional quote_tolerance);
+    // Same, but the balance request runs on the worker thread and the
+    // comparison (against the portfolio at that moment) is posted back.
+    using ReconcileHandler = std::function<void(Result<Reconciliation>)>;
+    void reconcile_async(const portfolio::Portfolio& portfolio, Quantity base_tolerance, Notional quote_tolerance,
+                         ReconcileHandler handler);
+    // Client ids of orders the gateway tracks that are not done.
+    [[nodiscard]] std::vector<ClientOrderId> open_order_ids() const;
 
     // Periodic housekeeping: queries orders that have been silent too long.
     void poll_silent_orders();
@@ -103,6 +110,8 @@ private:
     void handle_rest_ack(ClientOrderId id, Result<nlohmann::json> response);
     void handle_rest_cancel(ClientOrderId id, Result<nlohmann::json> response);
     void handle_query(ClientOrderId id, Result<nlohmann::json> response);
+    [[nodiscard]] Reconciliation compare(const std::vector<Balance>& balances, const portfolio::Portfolio& portfolio,
+                                         Quantity base_tolerance, Notional quote_tolerance) const;
 
     BinanceRestClient& rest_;
     Instrument instrument_;

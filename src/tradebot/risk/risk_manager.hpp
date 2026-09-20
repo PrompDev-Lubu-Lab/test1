@@ -76,7 +76,16 @@ public:
     void trip(std::string reason);
     void reset();
     [[nodiscard]] bool tripped() const noexcept { return tripped_; }
+    // Refuses new orders without cancelling or flattening anything (orderly
+    // shutdown). Not cleared by reset().
+    void halt(std::string reason);
+    [[nodiscard]] bool halted() const noexcept { return !halt_reason_.empty(); }
     [[nodiscard]] const std::string& trip_reason() const noexcept { return trip_reason_; }
+
+    // Cancels every order accepted downstream and not yet done (also part of
+    // a trip). Exposed for orderly shutdown.
+    void cancel_all_open();
+    [[nodiscard]] std::size_t open_orders() const noexcept { return open_.size(); }
 
     [[nodiscard]] const RiskLimits& limits() const noexcept { return limits_; }
     void set_limits(RiskLimits limits) { limits_ = std::move(limits); }
@@ -84,7 +93,6 @@ public:
 
 private:
     void reject(const execution::OrderRequest& request, const std::string& reason);
-    void cancel_all_open();
     void flatten_positions();
     [[nodiscard]] Notional day_start_equity();
 
@@ -96,6 +104,7 @@ private:
     execution::ExecutionListener* listener_ = nullptr;
     bool tripped_ = false;
     std::string trip_reason_;
+    std::string halt_reason_;
     std::deque<Timestamp> recent_submits_;
     std::set<ClientOrderId> open_;  // orders accepted downstream and not yet done
     std::optional<Timestamp> day_;

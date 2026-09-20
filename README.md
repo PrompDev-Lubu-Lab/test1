@@ -48,13 +48,13 @@ src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch 
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweeps, walk-forward, kill criteria, Monte Carlo, cost and
                      parameter sensitivity, regime split, backtest-vs-paper consistency, go/no-go
-src/tradebot/live/     wall-clock scheduler, paper-trading runtime, execution journal, feed health, heartbeat
+src/tradebot/live/     wall-clock scheduler, trading runtime (paper/shadow/testnet/live), journal, feed health
 src/tradebot/gateway/  Binance spot gateway: request signing, private REST, user data stream, order state machine
-tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, bench)
+tools/               command-line programs (collect, fetch, ingest, backtest, analyze, research, paper, live, bench)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
-docs/                architecture and design notes
+docs/                architecture, design notes, pre-live checklist
 cmake/               warning and sanitizer configuration
 ```
 
@@ -170,6 +170,38 @@ the switch re-arms when data resumes. A `heartbeat` file is refreshed every
 few seconds for external watchdogs. The feed reconnects with backoff on
 any disconnect; malformed messages are logged and skipped.
 
+## Live trading modes
+
+```sh
+cp configs/live.example.conf configs/live.conf
+export TRADEBOT_BINANCE_API_KEY=... TRADEBOT_BINANCE_API_SECRET=...
+./build/tools/tradebot-live --config configs/live.conf --check         # preflight only
+./build/tools/tradebot-live --config configs/live.conf --mode shadow
+./build/tools/tradebot-live --config configs/live.conf --mode testnet
+```
+
+`tradebot-live` runs the same runtime as `tradebot-paper` in one of four
+modes; only what sits behind the `ExecutionVenue` interface changes.
+
+| Mode      | Fills                | Account access            | Needs                                   |
+|-----------|----------------------|---------------------------|-----------------------------------------|
+| `paper`   | simulated exchange   | none                      | nothing                                 |
+| `shadow`  | simulated exchange   | read-only (clock, balances, user stream); orders logged as "would send" | API keys |
+| `testnet` | Binance spot testnet | real orders on the testnet | testnet keys                           |
+| `live`    | Binance spot         | real orders, real money   | keys, confirmation phrase, capital limits |
+
+Before connecting, the runtime refuses to start unless the pre-flight
+checklist passes: credentials present, clock skew within a second of the
+venue, and in live mode an explicit confirmation phrase plus a capital cap
+that every notional limit must stay under. At start it cancels open orders
+left by a previous run and reconciles the portfolio with the venue's
+balances, refusing to trade on a mismatch. While running it re-queries
+silent orders, reconciles on a timer (consecutive mismatches trip the kill
+switch), and on shutdown it halts the risk gate and cancels working orders
+before exiting. The failure drills in `tests/live/live_modes_test.cpp` run
+every one of these paths against in-process fakes of the venue;
+`docs/PRE_LIVE_CHECKLIST.md` lists what remains to be done by hand.
+
 ## Live gateway
 
 `tradebot::gateway::BinanceGateway` implements the same `ExecutionVenue`
@@ -231,4 +263,5 @@ optimizations (the backtest tests check determinism).
 |    18 | Advanced strategies        | done        |
 |    19 | Robust strategy validation | done        |
 |    20 | Live trading infrastructure | done       |
-| 21-23 | Final testing through monitoring | not started |
+|    21 | Final testing (shadow, testnet, live modes, drills) | done |
+| 22-23 | Deployment and monitoring  | not started |

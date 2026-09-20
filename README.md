@@ -43,7 +43,8 @@ src/tradebot/portfolio/  positions, cash, P&L, exposure, per-strategy ledgers, e
 src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps any venue)
 src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, multi-strategy runner
 src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean reversion, breakout, random)
-tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
+src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
+tools/               command-line programs (tradebot-collect, -fetch, -ingest, -backtest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
 third_party/         vendored header-only dependencies (doctest, tl::expected, nlohmann/json)
@@ -89,6 +90,19 @@ compressed binary files per instrument, UTC day and stream kind under
 range and quality flags (sequence gaps, book resyncs), which `catalog`
 prints.
 
+## Running a backtest
+
+```sh
+cp configs/backtest.example.conf configs/backtest.conf   # edit range, strategy, params
+./build/tools/tradebot-backtest --config configs/backtest.conf --out runs
+```
+
+Every run writes `runs/<run_id>/` with `config.txt` (the full spec),
+`equity.csv`, `fills.csv`, `orders.csv`, `metrics.csv` and `summary.json`.
+The run id is derived from the spec, so the same inputs always map to the
+same directory, and the same spec and seed always reproduce the same
+numbers. A `[sweep]` section expands into a parameter grid run in parallel.
+
 ## Status
 
 | Phase | Component                  | Status      |
@@ -104,6 +118,6 @@ prints.
 |     9 | Risk management            | done        |
 |    10 | Strategy framework         | done        |
 |    11 | Initial strategies         | done        |
-|    12 | Backtesting                | not started |
+|    12 | Backtesting                | done        |
 |    13 | Performance analytics      | not started |
 | 14-23 | Research through live ops  | not started |

@@ -6,3 +6,6 @@ target_link_libraries(tradebot-fetch PRIVATE tradebot_options tradebot_market_da
 
 add_executable(tradebot-ingest ingest.cpp)
 target_link_libraries(tradebot-ingest PRIVATE tradebot_options tradebot_storage tradebot_market_data)
+
+add_executable(tradebot-backtest backtest.cpp)
+target_link_libraries(tradebot-backtest PRIVATE tradebot_options tradebot_backtest tradebot_strategies)

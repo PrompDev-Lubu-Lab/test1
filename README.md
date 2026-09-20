@@ -37,6 +37,7 @@ src/tradebot/net/    TCP, TLS (OpenSSL), HTTP/1.1 client, WebSocket client
 src/tradebot/util/   SHA-256, streaming zip reader
 src/tradebot/market_data/  events, raw capture, Binance collector/fetcher/parsers, order book, candles, validation
 src/tradebot/storage/  normalized event store (TBEV files), catalog, ingest pipelines
+src/tradebot/replay/   event sources, k-way merge, latency models, replay engine and event bus
 tools/               command-line programs (tradebot-collect, tradebot-fetch, tradebot-ingest)
 configs/             example configuration files
 tests/               doctest unit tests, one directory per module
@@ -92,7 +93,7 @@ prints.
 |     3 | Market-data processing     | done        |
 |     4 | Order-book system          | done        |
 |     5 | Historical data storage    | done        |
-|     6 | Historical market replay   | not started |
+|     6 | Historical market replay   | done        |
 |     7 | Simulated exchange         | not started |
 |     8 | Portfolio management       | not started |
 |     9 | Risk management            | not started |

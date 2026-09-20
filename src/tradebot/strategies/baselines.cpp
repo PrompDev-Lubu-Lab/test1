@@ -47,7 +47,20 @@ void CandleStrategy::on_execution_report(const execution::ExecutionReport& r) {
 
 bool CandleStrategy::in_position() const { return ctx().position().is_positive(); }
 
-Quantity CandleStrategy::entry_quantity(Price reference) const {
+Quantity CandleStrategy::entry_quantity(Price reference) const { return default_entry_quantity(reference); }
+
+void CandleStrategy::submit_market(Side side, Quantity quantity) {
+    if (pending_ || !quantity.is_positive()) {
+        return;
+    }
+    auto id = side == Side::buy ? ctx().buy_market(quantity) : ctx().sell_market(quantity);
+    if (id) {
+        pending_ = true;
+        pending_id_ = *id;
+    }
+}
+
+Quantity CandleStrategy::default_entry_quantity(Price reference) const {
     if (fixed_quantity_.is_positive()) {
         return fixed_quantity_;
     }

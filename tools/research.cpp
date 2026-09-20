@@ -11,6 +11,7 @@
 #include "tradebot/core/config.hpp"
 #include "tradebot/core/log.hpp"
 #include "tradebot/research/research.hpp"
+#include "tradebot/strategies/advanced.hpp"
 #include "tradebot/strategies/baselines.hpp"
 
 #include <cstdio>
@@ -123,6 +124,7 @@ int main(int argc, char** argv) {
     const Config sweep = cfg->section("sweep");
     strategy::StrategyRegistry registry;
     strategies::register_baselines(registry);
+    strategies::register_advanced(registry);
 
     if (mode == "sweep") {
         std::vector<backtest::BacktestSpec> specs;

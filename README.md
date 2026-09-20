@@ -42,7 +42,8 @@ src/tradebot/execution/  execution interface (orders, reports, fees) and the sim
 src/tradebot/portfolio/  positions, cash, P&L, exposure, per-strategy ledgers, equity curve
 src/tradebot/risk/     pre-trade checks, portfolio limits and kill switch (wraps any venue)
 src/tradebot/strategy/ Strategy and StrategyContext interfaces, indicators, multi-strategy runner
-src/tradebot/strategies/ baseline strategies (buy-and-hold, MA crossover, mean reversion, breakout, random)
+src/tradebot/strategies/ baselines (buy-and-hold, MA crossover, mean reversion, breakout, random) and
+                     advanced strategies (vol_trend, book_imbalance, market_maker, ensemble)
 src/tradebot/backtest/ backtest spec, wiring, artifacts, sweeps, parallel batch runner
 src/tradebot/analytics/ return/risk metrics, round trips, benchmark comparison, reports
 src/tradebot/research/ experiment index, sweep ranking, walk-forward evaluation, kill criteria
@@ -194,4 +195,5 @@ optimizations (the backtest tests check determinism).
 |    15 | Real-time paper trading    | done        |
 |    16 | Reliability and error handling | done    |
 |    17 | Performance optimization   | done        |
-| 18-23 | Advanced strategies through live ops | not started |
+|    18 | Advanced strategies        | done        |
+| 19-23 | Validation through live ops | not started |

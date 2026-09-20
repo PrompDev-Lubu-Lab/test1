@@ -8,6 +8,7 @@
 #include "tradebot/core/log.hpp"
 #include "tradebot/live/paper_runtime.hpp"
 #include "tradebot/net/tls.hpp"
+#include "tradebot/strategies/advanced.hpp"
 #include "tradebot/strategies/baselines.hpp"
 
 #include <atomic>
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
     }
     strategy::StrategyRegistry registry;
     strategies::register_baselines(registry);
+    strategies::register_advanced(registry);
 
     live::PaperRuntime runtime(*spec, registry, *tls, log);
     g_runtime = &runtime;

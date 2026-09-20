@@ -42,9 +42,14 @@ protected:
     [[nodiscard]] bool order_pending() const noexcept { return pending_; }
     [[nodiscard]] Duration interval() const noexcept { return interval_; }
 
-private:
-    [[nodiscard]] Quantity entry_quantity(Price reference) const;
+    // Size of a new long at `reference`; the default uses the fixed
+    // quantity or the equity fraction. Subclasses may override (e.g. for
+    // volatility-scaled sizing).
+    [[nodiscard]] virtual Quantity entry_quantity(Price reference) const;
+    [[nodiscard]] Quantity default_entry_quantity(Price reference) const;
+    void submit_market(Side side, Quantity quantity);
 
+private:
     Duration interval_ = Duration::minutes(1);
     Quantity fixed_quantity_;  // if set, always this size
     double equity_fraction_ = 0.95;  // else this fraction of equity at the mark

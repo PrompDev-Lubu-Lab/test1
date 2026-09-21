@@ -320,6 +320,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-12: re-scoped from Pages to Workers Static Assets on the account Worker (DeAndre told Astra to finish the platform updates; app.clawdie.ai is the only public hostname). Astra provisioning; code head for review pending (T-032)."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-13: provisioning reported complete: D1 clawdie-platform-accounts with migration 0001 applied once, private avatar and release buckets empty, app-only managed Turnstile widget, Access application per T-024; all feature flags and RUN_ORIGIN off; no accounts, emails, server or installer touched; no mail DNS changes. Private-config dry run passed. Deploy, custom domain and smoke still pending."
         }
       ]
     },
@@ -772,6 +777,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-12: single-origin scope; T-020 dependency cleared. Astra preparing the application; ACCESS_AUDIENCE and session length to be recorded here."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-13: Access application created for the confirmed hostname: 6 h session, HttpOnly SameSite=Lax cookie, no allow policy yet (denies everyone). Bootstrap policy reviewed: an owner-only rule by exact confirmed owner email with one-time PIN is acceptable for deployed smoke and for the owner to see the closed deployment, because that mailbox is not hosted by this system; it must be a single exact-email rule, never a domain rule, never an inbox.clawdie.ai or ali@ address, and it is removed when the GitHub method is live. Member policy for ali: GitHub identity only, as designed. Audience tag name and final session length still to be recorded here."
         }
       ]
     },
@@ -991,13 +1001,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-07: delivered on d452828: scripts/seed-invite.mjs inserts only a 24 h owner invite digest into an empty account database, verifies the exact row, prints the one-use link once to an interactive terminal, refuses existing users or active invites; three SQLite tests. Not run against any real database. Reviewed by deandre-fable; boundaries accepted."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-13: seeding under the one-time PIN identity is NOT approved. Signup binds the Access sub permanently (users.access_sub UNIQUE, no rebind path), so an owner created while signed in by PIN could be locked out when the policy moves to GitHub if the sub differs. Seed only after the owner signs in through the final login method, or after a probe shows the same sub for both methods, or after a reviewed one-row operator rebind procedure is documented and accepted by DeAndre."
         }
       ]
     },
     {
       "id": "T-032",
       "title": "Production hosting integration: Workers Static Assets wrapper, worker-first routing, Access before assets, private deploy config (review gate G4)",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -1013,6 +1028,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-12 from the hosting integration review; Astra provisioning storage, Access and Turnstile, code head pending"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-13: G4 code review on f462cc8 (site.mjs, 15 real-RS256 tests, wrangler.example.jsonc, PRODUCTION-HOSTING.md) PASSES. Checklist items 1-5 and 8-11 verified in source or reported provisioning: /api-only delegation, global worker-first with html/not-found none, Access verified before ASSETS.fetch plus post-fetch expiry recheck, credentials stripped, same-origin guarded redirects, wrapper-set CSP and private no-store, unprefixed routes are static 404s, no SPA fallback, control files and encoded aliases 404. Non-blocking notes: (a) observability stays off by Astra decision; (b) the deployed step-3 check can only show Access denying at the edge, the Worker independence is proven by the tests and a local wrangler dev run, wording to adjust; (c) smoke must load the page in a real browser so encoding passthrough of app.js is exercised; (d) style-src unsafe-inline inherited from the design, later cleanup. Remaining before invite: custom domain attach, deployed smoke (item 12), one test send (item 6). Reviewed by deandre-fable; stays in review until the deployed smoke is recorded."
         }
       ]
     },

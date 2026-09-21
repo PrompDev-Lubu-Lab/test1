@@ -163,6 +163,62 @@ TEST_CASE("BinanceGateway: venue rejection, cancel paths and late fill after can
     CHECK(f.gw->order(ClientOrderId{11})->status == OrderStatus::filled);
 }
 
+TEST_CASE("BinanceGateway: a fill that lands after the cancel confirmation keeps the order cancelled") {
+    // The REST cancel reply (worker thread) and a stream fill race for the
+    // dispatch loop. Here the cancel confirmation lands first, so the order is
+    // already terminal when the late fill arrives: the quantities update, the
+    // status stays cancelled, and the fill is counted as late.
+    Fixture f;
+    f.server.on("POST /api/v3/order", test::FakeBinanceRest::Reply{200, R"({"orderId":700,"transactTime":1})"});
+    f.server.on("DELETE /api/v3/order", test::FakeBinanceRest::Reply{200, R"({"orderId":700,"status":"CANCELED"})"});
+    REQUIRE(f.gw->submit(f.limit(12, Side::buy, "3000", "1")).has_value());
+    REQUIRE(f.pump_until([&] { return !f.reports.all.empty(); }));
+    REQUIRE(f.gw->cancel(ClientOrderId{12}).has_value());
+    REQUIRE(f.pump_until([&] { return f.gw->order(ClientOrderId{12})->status == OrderStatus::cancelled; }));
+    REQUIRE(f.reports.all.size() == 2);
+    CHECK(f.reports.all[1].type == ReportType::cancelled);
+
+    f.gw->on_stream_execution(f.stream(12, "TRADE", "PARTIALLY_FILLED", "0.3", "0.3", "3000", 31, 700));
+    REQUIRE(f.pump_until([&] { return f.reports.all.size() >= 3; }));
+    const auto& late = f.reports.all.back();
+    CHECK(late.type == ReportType::fill);
+    CHECK(late.status == OrderStatus::cancelled);
+    CHECK(late.filled_quantity == "0.3"_qty);
+    CHECK(late.remaining_quantity == "0.7"_qty);
+    CHECK(f.gw->stats().late_fills == 1);
+    const auto st = *f.gw->order(ClientOrderId{12});
+    CHECK(st.status == OrderStatus::cancelled);
+    CHECK(st.is_done());
+    CHECK(st.filled_quantity == "0.3"_qty);
+    CHECK(st.fees == "0.001"_ntl);
+    CHECK_FALSE(f.gw->cancel(ClientOrderId{12}).has_value());  // done
+
+    // The stream's own CANCELED afterwards is a duplicate of the REST confirmation.
+    f.gw->on_stream_execution(f.stream(12, "CANCELED", "CANCELED", "0.3", "0", "0", -1, 700));
+    REQUIRE(f.pump_until([&] { return f.gw->stats().stream_events >= 2; }));
+    CHECK(f.reports.all.size() == 3);
+    CHECK(f.gw->stats().duplicates == 1);
+    CHECK(f.gw->order(ClientOrderId{12})->status == OrderStatus::cancelled);
+}
+
+TEST_CASE("BinanceGateway: a cancel confirmation after a full fill keeps the order filled") {
+    // First terminal state wins in the other direction too: the venue cannot
+    // cancel what it has already filled, so a stale CANCELED never un-fills.
+    Fixture f;
+    f.server.on("POST /api/v3/order", test::FakeBinanceRest::Reply{200, R"({"orderId":701,"transactTime":1})"});
+    REQUIRE(f.gw->submit(f.limit(13, Side::buy, "3000", "1")).has_value());
+    REQUIRE(f.pump_until([&] { return !f.reports.all.empty(); }));
+    f.gw->on_stream_execution(f.stream(13, "TRADE", "FILLED", "1", "1", "3000", 41, 701));
+    REQUIRE(f.pump_until([&] { return f.gw->order(ClientOrderId{13})->status == OrderStatus::filled; }));
+    f.gw->on_stream_execution(f.stream(13, "CANCELED", "CANCELED", "1", "0", "0", -1, 701));
+    REQUIRE(f.pump_until([&] { return f.gw->stats().stream_events >= 2; }));
+    CHECK(f.reports.all.size() == 3);
+    CHECK(f.reports.all.back().type == ReportType::cancelled);
+    CHECK(f.reports.all.back().status == OrderStatus::filled);
+    CHECK(f.gw->order(ClientOrderId{13})->status == OrderStatus::filled);
+    CHECK(f.gw->order(ClientOrderId{13})->filled_quantity == "1"_qty);
+}
+
 TEST_CASE("BinanceGateway: send failure is queried; unknown after failure => rejected") {
     Fixture f;
     // No POST route => 404 with a venue-style body => treated as a venue rejection.

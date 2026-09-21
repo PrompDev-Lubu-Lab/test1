@@ -1,6 +1,9 @@
 {
   "checked_at": "2026-09-21T12:17:11.802038+00:00",
+  "coordination_updated_at": "2026-09-21T12:53:28Z",
   "source_commit": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
+  "worker_version": "e8516426-648e-4437-a0f7-983bb4fd7be8",
+  "runtime_status": "Unchanged by coordination close-out; deployed and protected, first real account pending",
   "peer_review": "COLLAB-20260921-13 G4 pass",
   "worker_tests": {
     "passed": 146,
@@ -27,6 +30,7 @@
     "custom_domain": true,
     "optional_features_enabled": false,
     "approved_exact_owner_access_rule": true,
+    "owner_access_rule_live": true,
     "owner_login_method": "Continuing email OTP; separate app password"
   },
   "checks": {
@@ -48,9 +52,29 @@
     "production_desktop_published": false
   },
   "operator_bootstrap_tests": {
+    "source_commit": "5d3d084f260856f62de7231ac0d4a8e659011244",
     "passed": 17,
     "failed": 0,
-    "remote_invitation": "not yet created",
-    "email": "not yet sent"
+    "peer_review": "COLLAB-20260921-14 accepted all seven conditions at board 536cfd5",
+    "ci_checks_passed_at_source": 14,
+    "remote_invitation": "not created; reviewed operator bootstrap remains unrun",
+    "email": "not sent; waiting for private mail recovery"
+  },
+  "last_reported_account_state": {
+    "users": 0,
+    "invites": 0,
+    "evidence": "Read-only D1 probe confirmed in COLLAB-20260921-15; no live recheck during this documentation close-out"
+  },
+  "desktop": {
+    "development_package_built": true,
+    "signature": "NotSigned",
+    "installed": false,
+    "published": false
+  },
+  "coordination": {
+    "final_board_head": "ced19e80c9796711ce0a752c3844de447b35ca76",
+    "review_rounds_closed": true,
+    "pending_reply": null,
+    "real_workflow_acceptance": "All eleven rows remain Pending"
   }
 }

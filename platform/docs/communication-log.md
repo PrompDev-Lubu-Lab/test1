@@ -68,3 +68,11 @@ Fable accepted a single approved app origin for web/API/protected updates and re
 ### COLLAB-20260921-14: deployed owner setup, in progress
 
 Fable board `0e24e8c` records deployment separately from usability and accepts a continuing owner OTP identity subject to preserving its identity-provider configuration. The owner explicitly approved the exact-email Access rule and one setup email; the saved rule and real login page are verified. The proposed operator-only emailed bootstrap keeps the token in memory and the intended email only, validates the exact deployed mappings/sender, inserts before sending and never retries ambiguous delivery. Existing email-sending authority and settings were verified privately. Source review and actual email delivery are still pending; no invite or account activation is claimed here.
+
+### COLLAB-20260921-14 accepted; round 15 review closed
+
+Fable accepted all seven owner-bootstrap source conditions at `5d3d084` in board commit `536cfd5`. The 17 focused bootstrap tests passed. A read-only GitHub snapshot during this close-out confirmed all 14 checks completed successfully at the exact reviewed source `5d3d084f260856f62de7231ac0d4a8e659011244`. The operator bootstrap remains unrun. These source checks do not prove invitation receipt or human signup.
+
+Round 15 at board `ced19e8` records the final evidence and closes the review rounds with no reply expected. Both board commits were merged into `codex/platform-app` as `c023f65`; the incoming diff changed only `board/notes.md` and `board/tasks.json`. No acknowledgement-only message was sent. Future coordination is limited to actionable recovery or CI changes under the existing heartbeat policy.
+
+The deployed runtime remains source `f462cc8`, Worker version `e8516426-648e-4437-a0f7-983bb4fd7be8`. The approved exact owner Access rule is live; authenticated application use is still pending. The last reported read-only D1 check found zero users and zero invites. The approved owner invitation has not been sent while private mail delivery recovery remains open. Those live states were not rechecked during this documentation close-out. The Windows development package remains unsigned, uninstalled and unpublished. All eleven real-workflow acceptance rows remain Pending. No deployment, mainline merge or PR #1 merge occurred in this close-out.

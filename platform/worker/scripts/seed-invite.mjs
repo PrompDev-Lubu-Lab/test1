@@ -36,9 +36,9 @@ export function prepareBootstrap(accounts, now = Math.floor(Date.now() / 1000)) 
 SELECT ${literal(hash)},${literal(email)},'deandre','owner',NULL,${expiresAt},${now}
 WHERE NOT EXISTS (SELECT 1 FROM users)
   AND NOT EXISTS (SELECT 1 FROM invites WHERE accepted_at IS NULL AND expires_at > ${now});
-SELECT token_hash,email,handle,role,expires_at FROM invites WHERE token_hash=${literal(hash)};
 `;
-  return { token, hash, email, expiresAt, sql };
+  const confirmationSql = `SELECT token_hash,email,handle,role,expires_at FROM invites WHERE token_hash=${literal(hash)};`;
+  return { token, hash, email, expiresAt, sql, confirmationSql };
 }
 
 export function verifyBootstrapResult(result, prepared) {
@@ -160,7 +160,7 @@ export async function bootstrapByEmail(settings, { wranglerConfig, apiToken, exe
     prepared = prepareBootstrap(selected.accounts, now);
   } catch { return outcome('bootstrap_invalid'); }
   let result;
-  try { result = await executeSql(prepared.sql); }
+  try { result = await executeSql(prepared.sql, prepared.confirmationSql); }
   catch { return outcome('bootstrap_unconfirmed', prepared); }
   try { verifyBootstrapResult(result, prepared); }
   catch {
@@ -173,9 +173,11 @@ export async function bootstrapByEmail(settings, { wranglerConfig, apiToken, exe
   return outcome(status, prepared, true, true);
 }
 
-async function executeWrangler(settings, sqlFile, mode) {
-  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/.test(settings.database ?? '') || !settings.wrangler || !settings.wranglerConfig) throw new Error('Supply the exact database and installed Wrangler/config paths.');
-  const args = [resolve(settings.wrangler), 'd1', 'execute', settings.database, mode, '--config', resolve(settings.wranglerConfig), '--file', sqlFile, '--json', '--yes'];
+async function executeWrangler(settings, input, mode) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/.test(settings.database ?? '') || !settings.wrangler || !settings.wranglerConfig
+    || !['--local', '--remote'].includes(mode)) throw new Error('Supply the exact database and installed Wrangler/config paths.');
+  const query = input.file ? ['--file', input.file] : ['--command', input.command];
+  const args = [resolve(settings.wrangler), 'd1', 'execute', settings.database, mode, '--config', resolve(settings.wranglerConfig), ...query, '--json', '--yes'];
   return new Promise((accept, reject) => {
     const environment = { ...process.env };
     delete environment.BOOTSTRAP_EMAIL_API_TOKEN;
@@ -198,12 +200,17 @@ async function executeWrangler(settings, sqlFile, mode) {
   });
 }
 
-async function executeBootstrapSql(settings, sql, mode) {
+/** Remote --file returns import totals, never confirmation rows; read them separately. */
+export async function executeBootstrapSql(settings, sql, confirmationSql, mode, { runWrangler = executeWrangler } = {}) {
   const sqlFile = join(tmpdir(), `platform-bootstrap-${crypto.randomUUID()}.sql`);
   try {
     // The temporary query contains only the digest, never the invite credential.
     await writeFile(sqlFile, sql, { flag: 'wx', mode: 0o600 });
-    return await executeWrangler(settings, sqlFile, mode);
+    const imported = await runWrangler(settings, { file: sqlFile }, mode);
+    if (!Array.isArray(imported) || !imported.length || imported.some(value => value?.success !== true)) {
+      throw new Error('Bootstrap import was not confirmed; inspect the database before retrying.');
+    }
+    return await runWrangler(settings, { command: confirmationSql }, mode);
   } finally { await unlink(sqlFile).catch(() => {}); }
 }
 
@@ -232,7 +239,8 @@ export async function runBootstrapCli(args, {
   if (email) delete environment.BOOTSTRAP_EMAIL_API_TOKEN;
   try {
     const settings = await loadJson(args[1]);
-    const executor = sql => executeSql ? executeSql(sql) : executeBootstrapSql(settings, sql, args[3]);
+    const executor = (sql, confirmationSql) => executeSql ? executeSql(sql, confirmationSql)
+      : executeBootstrapSql(settings, sql, confirmationSql, args[3]);
     if (email) {
       const wranglerConfig = await loadJson(settings.wranglerConfig);
       const result = await bootstrapByEmail(settings, { wranglerConfig, apiToken, executeSql: executor, fetchImpl });
@@ -242,7 +250,7 @@ export async function runBootstrapCli(args, {
     }
     const app = appOrigin(settings.APP_ORIGIN);
     const prepared = prepareBootstrap(settings.INVITE_ACCOUNTS);
-    verifyBootstrapResult(await executor(prepared.sql), prepared);
+    verifyBootstrapResult(await executor(prepared.sql, prepared.confirmationSql), prepared);
     app.hash = `invite=${prepared.token}`;
     writeOut(`Owner invitation confirmed. Expires ${new Date(prepared.expiresAt * 1000).toISOString()}.\nKeep the following one-use link private; it is shown once.\n${app.href}\n`);
     return 0;

@@ -49,7 +49,7 @@
     {
       "id": "T-003",
       "title": "Run the first end-to-end backtest and keep the run directory as a fixture",
-      "status": "todo",
+      "status": "blocked",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-fable",
@@ -57,12 +57,17 @@
       "due": "2026-09-24",
       "area": "research",
       "depends_on": [],
-      "instructions": "tradebot-fetch one month of ETHUSDT, tradebot-ingest, tradebot-backtest with configs/backtest.example.conf for ma_crossover and buy_and_hold, tradebot-analyze. Commit nothing from runs/ (ignored) but record the run ids and summary numbers in a note. The run directory is the sample data the dashboard is built against (T-005).",
+      "instructions": "Real-data sample run. Must run where data.binance.vision is reachable (the server or DeAndre's machine; Fable's sandbox cannot reach it). Commands, from the repo root with a Release build in build-release/: (1) ./build-release/tools/tradebot-fetch --symbol ETHUSDT --from 2024-01-01 --to 2024-02-01 --datasets aggTrades,klines --interval 1m --data-dir data ; (2) ./build-release/tools/tradebot-ingest bulk --symbol ETHUSDT --from 2024-01-01 --to 2024-02-01 --data-dir data ; (3) cp configs/backtest.example.conf configs/backtest.conf ; (4) ./build-release/tools/tradebot-backtest --config configs/backtest.conf --out runs ; (5) ./build-release/tools/tradebot-backtest --config configs/backtest.conf --strategy buy_and_hold --out runs ; (6) ./build-release/tools/tradebot-analyze runs/<each run dir> . Deliverable: tar of both runs/<label>_2024-01-01_2024-02-01_<hash>/ directories (config.txt, equity.csv, fills.csv, orders.csv, metrics.csv, summary.json, metrics.json, report.txt, round_trips.csv) plus runs/index.csv, uploaded to R2 (Astra names the bucket), and a note with run ids and summary numbers. Never commit runs/.",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "exact commands and deliverable written; blocked on a machine with Binance access (server T-002 or DeAndre local)"
         }
       ]
     },
@@ -90,7 +95,7 @@
     },
     {
       "id": "T-005",
-      "title": "Build the run API sidecar (tradebot-api) that serves runs/ and board/",
+      "title": "Build the read-only run API service (tradebot-api) that serves runs/",
       "status": "todo",
       "priority": "high",
       "assigned_by": "deandre-fable",
@@ -101,32 +106,42 @@
       "depends_on": [
         "T-004"
       ],
-      "instructions": "A small service under platform/api/ (TypeScript on Bun, or Python FastAPI; pick one and record it in the log) that reads the runs volume read-only, watches heartbeat/state.json for changes, serves the endpoints in docs/API.md, and pushes updates over WebSocket. Add it to docker-compose.yml as service 'api'. No trading logic in it; it never writes to runs/.",
+      "instructions": "A small service under platform/api/ (TypeScript on Bun, or Python FastAPI; pick one and record it in the log) that mounts the runs volume read-only, serves the run endpoints in docs/API.md, watches heartbeat and status.json and pushes changes over WebSocket. Add it to docker-compose.yml as service 'api' with cloudflared beside it. No trading logic, never writes under runs/, and no board endpoints: the board is owned by the Cloudflare Worker (T-008).",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "corrected: read-only, board writes moved to the Worker"
         }
       ]
     },
     {
       "id": "T-006",
-      "title": "Import the existing app design and wire the tab shell",
+      "title": "Reuse the Case Forge Electron app: choose fork vs shared renderer package, wire the tab shell",
       "status": "todo",
       "priority": "high",
       "assigned_by": "deandre-fable",
-      "assigned_to": "deandre",
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
       "depends_on": [],
-      "instructions": "Copy the design system and tab shell from DeAndre's other project (the one with the Downloads tab) into platform/app/. Tabs in order: Overview, Live, Runs, Research, Tasks, Notes, Downloads, Settings. Keep its build tooling. Record where the source project lives in the log so agents can find it.",
+      "instructions": "Case Forge is Electron with electron-builder and electron-updater (confirmed). Astra proposes fork-the-repo vs extract-the-renderer-into-a-shared-package, records the choice and the Case Forge source location in the log, then wires the tab shell under platform/app/. Tabs in order: Overview, Live, Runs, Research, Tasks, Notes, Downloads, Settings. Keep Case Forge's build tooling, design system, wizard, terms step, scene control and footer. App name is {{APP_NAME}} in one constant.",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created; needs the source project path or repo from deandre"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "source and stack confirmed; reassigned to deandre-gpt6 to propose fork vs shared package"
         }
       ]
     },
@@ -167,12 +182,17 @@
         "T-005",
         "T-006"
       ],
-      "instructions": "Tasks: table + kanban toggle, filters by assignee/status/area, assignee picker limited to the roster, due-date picker, per-task log. Notes: newest-first feed with recipient chips and task links. Writes go through the API, which commits to board/ on the repo (git is the store; the app is a view).",
+      "instructions": "Tasks: table + kanban toggle, filters by assignee/status/area, assignee picker limited to the roster, due-date picker, per-task log, avatars for human handles. Notes: newest-first feed with recipient chips and task links. All writes go through the Cloudflare Worker, which commits to board/tasks.json or board/notes.md via the GitHub API with the person's handle in the commit message. Git is the store; the app is a view. Conflicts: keep both sides, keep every log line, take the newest status (board/README.md).",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "corrected: writes go through the Worker and the GitHub API"
         }
       ]
     },
@@ -189,12 +209,17 @@
       "depends_on": [
         "T-005"
       ],
-      "instructions": "cloudflared as a compose service, one tunnel, hostnames api.<domain> -> api:8080 and app.<domain> -> Pages. Cloudflare Access policy: allow the five roster emails; service tokens for agents. No inbound ports open on the server. Document in docs/PLATFORM_PLAN.md section 4.",
+      "instructions": "cloudflared as a compose service, one tunnel, hostname api.clawdie.ai (proposed) -> api:8080; app.clawdie.ai -> Pages. Cloudflare Access policy: allow the roster emails; service tokens for agents; choose the Access session length deliberately. No inbound ports open on the server. Document in docs/PLATFORM_PLAN.md section 4.",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "hostnames: app.clawdie.ai decided, api.clawdie.ai proposed"
         }
       ]
     },
@@ -212,7 +237,7 @@
         "T-007",
         "T-009"
       ],
-      "instructions": "GitHub Actions workflow: build platform/app on push to main, deploy to Pages, custom domain app.<domain>. Preview deploys per PR.",
+      "instructions": "GitHub Actions workflow: build platform/app on push to main, deploy to Pages, custom domain app.clawdie.ai. Preview deploys per PR.",
       "log": [
         {
           "on": "2026-09-20",
@@ -223,7 +248,7 @@
     },
     {
       "id": "T-011",
-      "title": "Package the dashboard as a desktop app with Tauri and a signed auto-updater",
+      "title": "Package the dashboard as an Electron app with electron-updater and a signed update channel",
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
@@ -234,12 +259,17 @@
       "depends_on": [
         "T-007"
       ],
-      "instructions": "Tauri 2 shell around platform/app. Updater plugin pointed at https://updates.<domain>/latest.json. Generate the updater signing keypair; private key only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux.",
+      "instructions": "Electron with electron-builder and electron-updater, reused from Case Forge. Generic provider pointed at https://updates.clawdie.ai (proposed) serving per-platform latest.yml. Code-signing and updater keys only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux. Session token via Electron safeStorage.",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "corrected: Electron, not Tauri"
         }
       ]
     },
@@ -256,12 +286,17 @@
       "depends_on": [
         "T-011"
       ],
-      "instructions": "On a v* tag: build all installers, upload to Cloudflare R2 (public bucket behind updates.<domain>), write latest.json for the updater, create a GitHub Release, append a note to board/notes.md with the download links, and populate the Downloads tab from the same manifest. This mirrors the update-link flow of DeAndre's other project.",
+      "instructions": "On a v* tag: build all installers, upload to Cloudflare R2 (public bucket behind updates.clawdie.ai), write the latest.yml manifests for electron-updater, create a GitHub Release, append a note to board/notes.md with the download links, message the Claude session over MCP, and populate the Downloads tab from the same manifests. This mirrors Case Forge's update-link flow.",
       "log": [
         {
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "corrected: latest.yml manifests"
         }
       ]
     },
@@ -307,6 +342,150 @@
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        }
+      ]
+    },
+    {
+      "id": "T-015",
+      "title": "Produce a synthetic fixture run directory for the app's Runs tab",
+      "status": "in_progress",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-fable",
+      "due": "2026-09-21",
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "Generate a two-day synthetic run with the backtest code path used by tests/backtest/backtest_test.cpp, run tradebot-analyze on it, and commit it under platform/fixtures/synthetic-<label>/ with a README stating it is synthetic. Same file formats and field names as a real run. Not a substitute for T-003.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-016",
+      "title": "After PR #1 merges, create main from baseline and set it as the default branch",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre",
+      "due": null,
+      "area": "ops",
+      "depends_on": [
+        "T-001"
+      ],
+      "instructions": "Merging PR #1 does not create main. In GitHub: create branch main from baseline, set it as the default branch under Settings > General, then delete or keep baseline. Human step by design.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-017",
+      "title": "Open the plan/board/brief pull request into main",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-fable",
+      "due": null,
+      "area": "board",
+      "depends_on": [
+        "T-016"
+      ],
+      "instructions": "PR from claude/cool-sagan-7klcfy into main: docs/PLATFORM_PLAN.md, board/, docs/prompts/astra-platform-brief.md, README and CLAUDE.md changes, the synthetic fixture. Only after main exists, otherwise the diff repeats PR #1.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-018",
+      "title": "M1 design note for review before building auth",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "One page: D1 tables, endpoint list with the role required for each, session model, Cloudflare Access configuration and chosen session length, the email sender chosen, the Workers plan and the measured password-hash cost (do not lower the security baseline for speed). Post as a note and message the Claude session over MCP; Fable reviews before implementation.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-019",
+      "title": "Mailbox ali@clawdie.ai on Cloudflare, coexisting with Microsoft 365 MX",
+      "status": "todo",
+      "priority": "normal",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "due": null,
+      "area": "ops",
+      "depends_on": [],
+      "instructions": "Outside the app; does not gate M1. Approach reviewed by Fable: keep apex MX on Microsoft; Email Routing on a subdomain (e.g. inbox.clawdie.ai) with a specific-address rule; an unlicensed Exchange Online Mail User ali@clawdie.ai with external address ali@inbox.clawdie.ai; Cloudflare Email Service sending domain on the apex (cf-bounce records only; check _dmarc alignment). Verify three things first: subdomain onboarding does not touch apex MX; the Mail User delivers without licence and is not blocked by the outbound-spam auto-forward setting; sending-domain onboarding completes with MX at Microsoft. If agentic-inbox is used: specific rule not catch-all, EMAIL_ADDRESSES set, send binding restricted to ali@clawdie.ai, Access policy limited to Ali, agent and EMAIL_MCP disabled until wanted, pin a commit.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-020",
+      "title": "Confirm owner email and the api./updates. hostnames",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "Decide: owner account email; whether api.clawdie.ai and updates.clawdie.ai are the hostnames; the email sender for verification mails; whether agents may run docker compose on the server or only humans.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-021",
+      "title": "Measure password-hash cost on the actual Workers plan",
+      "status": "todo",
+      "priority": "normal",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-gpt6",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "Measure PBKDF2-SHA256 at the brief's iteration count in a real Worker on the account's plan and record the number. If it does not fit, the fix is the plan, not the iteration count. Feeds T-018.",
+      "assigned_on": "2026-09-21",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created from the coordination pass with Astra"
         }
       ]
     }

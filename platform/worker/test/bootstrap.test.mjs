@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, unlink, rmdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { D1Harness } from './d1-harness.mjs';
 import { prepareBootstrap, verifyBootstrapResult, bootstrapByEmail, executeBootstrapSql, runBootstrapCli } from '../scripts/seed-invite.mjs';
@@ -300,26 +302,22 @@ test('original interactive CLI still shows the confirmed one-use link only to it
   assert.equal((output.match(/#invite=/g) ?? []).length, 1);
 });
 
-// This is Wrangler's remote --file response: import totals, not SELECT results.
-const importSummary = [{ success: true, results: [{
-  'Total queries executed': 1, 'Rows read': 0, 'Rows written': 1, 'Database size (MB)': '0.01'
-}], finalBookmark: 'synthetic-import-bookmark', meta: { rows_written: 1 } }];
+const insertSummary = [{ success: true, results: [], meta: { changes: 1 } }];
 
-test('remote file import totals require a separate exact-digest command read before the CLI sends', async t => {
-  for (const imported of [importSummary, [{ success: true, results: [] }]]) {
+test('the guarded command requires a separate exact-digest command read before the CLI sends', async t => {
+  for (const inserted of [insertSummary, [{ success: true, results: [] }]]) {
     const { db } = setup(t);
-    const steps = []; let sqlFile, insertSql, confirmationSql, output = '', rawToken;
-    const runWrangler = async (selected, input, mode) => {
+    const steps = []; let insertSql, confirmationSql, output = '', rawToken;
+    const runWrangler = async (selected, sql, mode) => {
       assert.equal(selected, settings); assert.equal(mode, '--remote');
-      if (input.file) {
-        assert.deepEqual(Object.keys(input), ['file']);
-        steps.push('file'); sqlFile = input.file; insertSql = await readFile(sqlFile, 'utf8');
+      assert.equal(typeof sql, 'string');
+      if (sql.startsWith('INSERT INTO invites(')) {
+        steps.push('insert'); insertSql = sql;
         assert.equal(insertSql.includes('SELECT token_hash'), false);
         db.exec(insertSql);
-        return structuredClone(imported);
+        return structuredClone(inserted);
       }
-      assert.deepEqual(Object.keys(input), ['command']);
-      assert.deepEqual(steps, ['file']); steps.push('command'); confirmationSql = input.command;
+      assert.deepEqual(steps, ['insert']); steps.push('confirmation'); confirmationSql = sql;
       const hash = db.database.prepare('SELECT token_hash FROM invites').get().token_hash;
       assert.equal(confirmationSql, `SELECT token_hash,email,handle,role,expires_at FROM invites WHERE token_hash='${hash}';`);
       return [{ success: true, results: db.database.prepare(confirmationSql).all().map(row => ({ ...row })) }];
@@ -329,7 +327,7 @@ test('remote file import totals require a separate exact-digest command read bef
       loadJson: async path => path === '/private/settings.json' ? settings : config,
       executeSql: (sql, confirmation) => executeBootstrapSql(settings, sql, confirmation, '--remote', { runWrangler }),
       fetchImpl: async (_url, request) => {
-        assert.deepEqual(steps, ['file', 'command']); steps.push('email');
+        assert.deepEqual(steps, ['insert', 'confirmation']); steps.push('email');
         const link = new URL(JSON.parse(request.body).text.match(/https:\/\/\S+/)[0]);
         rawToken = link.hash.slice('#invite='.length);
         assert.equal(insertSql.includes(rawToken), false); assert.equal(confirmationSql.includes(rawToken), false);
@@ -337,42 +335,40 @@ test('remote file import totals require a separate exact-digest command read bef
         return provider('queued');
       }, writeOut: value => { output += value; }, writeError: () => assert.fail('Unexpected CLI error')
     });
-    assert.equal(code, 0); assert.deepEqual(steps, ['file', 'command', 'email']);
+    assert.equal(code, 0); assert.deepEqual(steps, ['insert', 'confirmation', 'email']);
     assert.equal(JSON.parse(output).status, 'email_queued'); assertSanitized(output, [rawToken]);
-    await assert.rejects(readFile(sqlFile), { code: 'ENOENT' });
   }
 });
 
-test('an uncertain file import never attempts a confirmation read or email and removes its temporary file', async t => {
-  for (const imported of ['throws', undefined, [], [{ success: false, results: [] }]]) {
-    const { db, options } = setup(t); let calls = 0, sqlFile;
-    const runWrangler = async (_selected, input) => {
-      calls++; assert.ok(input.file); sqlFile = input.file;
-      db.exec(await readFile(sqlFile, 'utf8')); // The insert may have happened before failure.
-      if (imported === 'throws') throw new Error(`${apiToken} private import diagnostic`);
-      return imported;
+test('an uncertain insert command never attempts a confirmation read or email', async t => {
+  for (const inserted of ['throws', undefined, [], [{ success: false, results: [] }]]) {
+    const { db, options } = setup(t); let calls = 0;
+    const runWrangler = async (_selected, sql) => {
+      calls++; assert.ok(sql.startsWith('INSERT INTO invites('));
+      db.exec(sql); // The insert may have happened before failure.
+      if (inserted === 'throws') throw new Error(`${apiToken} private insert diagnostic`);
+      return inserted;
     };
     const result = await bootstrapByEmail(settings, { ...options,
       executeSql: (sql, confirmation) => executeBootstrapSql(settings, sql, confirmation, '--remote', { runWrangler }),
-      fetchImpl: async () => assert.fail('An unconfirmed import must never send')
+      fetchImpl: async () => assert.fail('An unconfirmed insert must never send')
     });
     assert.equal(result.status, 'bootstrap_unconfirmed'); assert.equal(result.send_attempted, false);
     assert.equal(calls, 1); assert.equal(db.database.prepare('SELECT COUNT(*) AS n FROM invites').get().n, 1);
-    assertSanitized(result, ['private import diagnostic']);
-    await assert.rejects(readFile(sqlFile), { code: 'ENOENT' });
+    assertSanitized(result, ['private insert diagnostic']);
   }
 });
 
 test('a failed or mismatched separate confirmation never sends or retries the inserted invitation', async t => {
   for (const failure of ['throws', 'invalid', 'wrong-expiry']) {
-    const { db, options } = setup(t); let commands = 0, calls = 0, sqlFile, recoverRead = false;
-    const runWrangler = async (_selected, input) => {
+    const { db, options } = setup(t); let commands = 0, calls = 0, recoverRead = false;
+    const runWrangler = async (_selected, sql) => {
       calls++;
-      if (input.file) { sqlFile = input.file; db.exec(await readFile(sqlFile, 'utf8')); return importSummary; }
+      if (sql.startsWith('INSERT INTO invites(')) { db.exec(sql); return insertSummary; }
       commands++;
       if (!recoverRead && failure === 'throws') throw new Error(`${apiToken} private query diagnostic`);
       if (!recoverRead && failure === 'invalid') return { success: true, results: [] };
-      const results = db.database.prepare(input.command).all().map(row => ({ ...row }));
+      const results = db.database.prepare(sql).all().map(row => ({ ...row }));
       if (!recoverRead && failure === 'wrong-expiry') results[0].expires_at++;
       return [{ success: true, results }];
     };
@@ -382,31 +378,96 @@ test('a failed or mismatched separate confirmation never sends or retries the in
     assert.equal(result.status, 'bootstrap_unconfirmed'); assert.equal(result.invitation_confirmed, false);
     assert.equal(result.send_attempted, false); assert.equal(result.automatic_retry, false);
     assert.equal(commands, 1); assert.equal(calls, 2); assertSanitized(result, ['private query diagnostic']);
-    await assert.rejects(readFile(sqlFile), { code: 'ENOENT' });
     recoverRead = true;
     const rerun = await bootstrapByEmail(settings, { ...options, executeSql, fetchImpl });
     assert.equal(rerun.status, 'bootstrap_refused'); assert.equal(rerun.send_attempted, false);
     assert.equal(db.database.prepare('SELECT COUNT(*) AS n FROM invites').get().n, 1);
-    await assert.rejects(readFile(sqlFile), { code: 'ENOENT' });
   }
 });
 
-test('successful remote import metadata cannot override the active-invite or existing-account guard', async t => {
+test('successful insert metadata cannot override the active-invite or existing-account guard', async t => {
   for (const existing of ['invite', 'account']) {
     const { db, options } = setup(t); let commands = 0;
     if (existing === 'invite') execute(db, prepareBootstrap(accounts, 999));
     else db.exec("INSERT INTO users(id,email,handle,display_name,role,access_sub,access_email,password_scheme,password_iterations,password_salt,password_hash,created_at,updated_at) VALUES('u','owner@example.test','deandre','Owner','owner','subject','identity@example.test','pbkdf2-sha256',600000,'salt','hash',1,1)");
-    const runWrangler = async (_selected, input) => {
-      if (input.file) { db.exec(await readFile(input.file, 'utf8')); return importSummary; }
+    const runWrangler = async (_selected, sql) => {
+      if (sql.startsWith('INSERT INTO invites(')) { db.exec(sql); return insertSummary; }
       commands++;
-      return [{ success: true, results: db.database.prepare(input.command).all().map(row => ({ ...row })) }];
+      return [{ success: true, results: db.database.prepare(sql).all().map(row => ({ ...row })) }];
     };
     const result = await bootstrapByEmail(settings, { ...options,
       executeSql: (sql, confirmation) => executeBootstrapSql(settings, sql, confirmation, '--remote', { runWrangler }),
-      fetchImpl: async () => assert.fail('Import metadata must not override the guard')
+      fetchImpl: async () => assert.fail('Insert metadata must not override the guard')
     });
     assert.equal(result.status, 'bootstrap_refused'); assert.equal(result.send_attempted, false); assert.equal(commands, 1);
     assert.equal(db.database.prepare('SELECT COUNT(*) AS n FROM invites').get().n, existing === 'invite' ? 1 : 0);
     assertSanitized(result);
+  }
+});
+
+// Run the production spawn/argv/environment/JSON parser against a local child,
+// without loading Wrangler, calling D1 or contacting an email service.
+async function childFixture(t, responses) {
+  const directory = await mkdtemp(join(tmpdir(), 'platform-bootstrap-child-'));
+  const script = join(directory, 'child.mjs'), configuration = join(directory, 'config.json'), record = join(directory, 'calls.ndjson');
+  await writeFile(record, '');
+  await writeFile(configuration, JSON.stringify({ record, responses }));
+  await writeFile(script, `
+import { readFile, appendFile } from 'node:fs/promises';
+const args = process.argv.slice(2);
+const plan = JSON.parse(await readFile(args[args.indexOf('--config') + 1], 'utf8'));
+const previous = (await readFile(plan.record, 'utf8')).trim();
+const index = previous ? previous.split('\\n').length : 0;
+await appendFile(plan.record, JSON.stringify({ args, emailTokenPresent: process.env.BOOTSTRAP_EMAIL_API_TOKEN !== undefined, logLevel: process.env.WRANGLER_LOG }) + '\\n');
+const response = plan.responses[index];
+if (!response) process.exitCode = 7;
+else {
+  process.stdout.write(response.stdout);
+  process.stderr.write(response.stderr ?? '');
+  process.exitCode = response.code ?? 0;
+}
+`);
+  t.after(async () => { for (const file of [record, configuration, script]) await unlink(file); await rmdir(directory); });
+  return { settings: { ...settings, wrangler: script, wranglerConfig: configuration },
+    calls: async () => (await readFile(record, 'utf8')).trim().split('\n').filter(Boolean).map(value => JSON.parse(value)) };
+}
+
+test('production subprocesses use command-only SQL, pin JSON log level and exclude the email token', async t => {
+  const reply = [{ success: true, results: [{ probe: 1 }] }];
+  const fixture = await childFixture(t, [{ stdout: JSON.stringify(reply) }, { stdout: JSON.stringify(reply) }]);
+  const priorLog = process.env.WRANGLER_LOG, priorToken = process.env.BOOTSTRAP_EMAIL_API_TOKEN;
+  process.env.WRANGLER_LOG = 'error'; process.env.BOOTSTRAP_EMAIL_API_TOKEN = apiToken;
+  try {
+    assert.deepEqual(await executeBootstrapSql(fixture.settings, 'SELECT 1 AS first_probe;', 'SELECT 1 AS second_probe;', '--remote'), reply);
+  } finally {
+    if (priorLog === undefined) delete process.env.WRANGLER_LOG; else process.env.WRANGLER_LOG = priorLog;
+    if (priorToken === undefined) delete process.env.BOOTSTRAP_EMAIL_API_TOKEN; else process.env.BOOTSTRAP_EMAIL_API_TOKEN = priorToken;
+  }
+  const calls = await fixture.calls(); assert.equal(calls.length, 2);
+  for (const [index, call] of calls.entries()) {
+    assert.deepEqual(call.args, ['d1', 'execute', settings.database, '--remote', '--config', resolve(fixture.settings.wranglerConfig),
+      '--command', `SELECT 1 AS ${index === 0 ? 'first' : 'second'}_probe;`, '--json', '--yes']);
+    assert.equal(call.emailTokenPresent, false); assert.equal(call.logLevel, 'log');
+    assert.equal(call.args.includes('--file'), false);
+  }
+});
+
+test('production subprocess rejects progress-prefixed, empty, malformed or failed output without email or retry', async t => {
+  const clean = { stdout: JSON.stringify(insertSummary) };
+  const failures = [
+    { stdout: `├ Checking if file needs uploading\n│\n${JSON.stringify(insertSummary)}` },
+    { stdout: '' }, { stdout: 'not-json' }, { stdout: JSON.stringify(insertSummary), code: 1 }
+  ];
+  for (const step of [0, 1]) for (const failed of failures) {
+    const responses = [clean, clean]; responses[step] = { ...failed, stderr: `${apiToken} private child diagnostic` };
+    const fixture = await childFixture(t, responses);
+    const result = await bootstrapByEmail(settings, {
+      wranglerConfig: config, apiToken, now: 1000,
+      executeSql: (sql, confirmation) => executeBootstrapSql(fixture.settings, sql, confirmation, '--remote'),
+      fetchImpl: async () => assert.fail('Unconfirmed subprocess output must never send')
+    });
+    assert.equal(result.status, 'bootstrap_unconfirmed'); assert.equal(result.send_attempted, false);
+    assert.equal(result.invitation_confirmed, false); assert.equal(result.automatic_retry, false);
+    assert.equal((await fixture.calls()).length, step + 1); assertSanitized(result, ['private child diagnostic']);
   }
 });

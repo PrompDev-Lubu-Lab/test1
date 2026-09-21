@@ -1,6 +1,5 @@
-import { readFile, writeFile, unlink } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { randomToken, digestToken, normalizeEmail } from '../security.mjs';
@@ -173,14 +172,15 @@ export async function bootstrapByEmail(settings, { wranglerConfig, apiToken, exe
   return outcome(status, prepared, true, true);
 }
 
-async function executeWrangler(settings, input, mode) {
+async function executeWrangler(settings, sql, mode) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/.test(settings.database ?? '') || !settings.wrangler || !settings.wranglerConfig
     || !['--local', '--remote'].includes(mode)) throw new Error('Supply the exact database and installed Wrangler/config paths.');
-  const query = input.file ? ['--file', input.file] : ['--command', input.command];
-  const args = [resolve(settings.wrangler), 'd1', 'execute', settings.database, mode, '--config', resolve(settings.wranglerConfig), ...query, '--json', '--yes'];
+  const args = [resolve(settings.wrangler), 'd1', 'execute', settings.database, mode, '--config', resolve(settings.wranglerConfig), '--command', sql, '--json', '--yes'];
   return new Promise((accept, reject) => {
     const environment = { ...process.env };
     delete environment.BOOTSTRAP_EMAIL_API_TOKEN;
+    // D1 prints --json through logger.log; lower inherited levels suppress it.
+    environment.WRANGLER_LOG = 'log';
     const child = spawn(process.execPath, args, { env: environment, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '', bytes = 0, failed = false;
     const timer = setTimeout(() => { failed = true; child.kill(); reject(new Error('Bootstrap timed out; inspect the database before retrying.')); }, 60000);
@@ -200,18 +200,14 @@ async function executeWrangler(settings, input, mode) {
   });
 }
 
-/** Remote --file returns import totals, never confirmation rows; read them separately. */
+/** Short commands avoid --file import progress on stdout; confirmation stays separate. */
 export async function executeBootstrapSql(settings, sql, confirmationSql, mode, { runWrangler = executeWrangler } = {}) {
-  const sqlFile = join(tmpdir(), `platform-bootstrap-${crypto.randomUUID()}.sql`);
-  try {
-    // The temporary query contains only the digest, never the invite credential.
-    await writeFile(sqlFile, sql, { flag: 'wx', mode: 0o600 });
-    const imported = await runWrangler(settings, { file: sqlFile }, mode);
-    if (!Array.isArray(imported) || !imported.length || imported.some(value => value?.success !== true)) {
-      throw new Error('Bootstrap import was not confirmed; inspect the database before retrying.');
-    }
-    return await runWrangler(settings, { command: confirmationSql }, mode);
-  } finally { await unlink(sqlFile).catch(() => {}); }
+  // SQL contains the digest and fixed account metadata, never the raw invite token.
+  const inserted = await runWrangler(settings, sql, mode);
+  if (!Array.isArray(inserted) || !inserted.length || inserted.some(value => value?.success !== true)) {
+    throw new Error('Bootstrap insert was not confirmed; inspect the database before retrying.');
+  }
+  return await runWrangler(settings, confirmationSql, mode);
 }
 
 async function loadPrivateJson(path) {

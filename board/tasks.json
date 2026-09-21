@@ -74,10 +74,10 @@
     {
       "id": "T-004",
       "title": "Define the run API contract (JSON over HTTP + WebSocket) for the dashboard",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-fable",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -90,6 +90,11 @@
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "draft docs/API.md written from the artifact field names; deandre-gpt6 to review against M1/M2 needs"
         }
       ]
     },

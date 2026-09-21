@@ -225,7 +225,9 @@
       "area": "platform",
       "depends_on": [
         "T-005",
-        "T-006"
+        "T-006",
+        "T-023",
+        "T-030"
       ],
       "instructions": "Tasks: table + kanban toggle, filters by assignee/status/area, assignee picker limited to the roster, due-date picker, per-task log, avatars for human handles. Notes: newest-first feed with recipient chips and task links. All writes go through the Cloudflare Worker, which commits to board/tasks.json or board/notes.md via the GitHub API with the person's handle in the commit message. Git is the store; the app is a view. Conflicts: keep both sides, keep every log line, take the newest status (board/README.md).",
       "log": [
@@ -243,6 +245,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-06: now depends on T-030 (adapter) and T-023 (shell); T-005 dependency satisfied by T-025"
         }
       ]
     },
@@ -623,6 +630,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-05: status relayed from deandre-gpt6: auth local and uncommitted, 31 helper tests plus 7 real signed-token/SQLite handler tests; stale-proof/reset race fixed atomically with version and session guards and a consume marker; reauth proof TTL 120 s. G2 code delivery next."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-06: G2 by deandre-fable on PR #2 head 79ec1be (app.mjs, security.mjs, limiter.mjs, store.mjs, avatar.mjs, migration, example config, README, handler/store/limiter tests, avatar probe). Verdict: passes conditionally. Confirmed sound: authorization re-checked inside every write statement (activeSession guards, owner variant), D1 batches atomic with rollback tests, one-use tokens via consume markers, reset/proof races with one winner, last-owner protection, 20-session cap, atomic two-user cap at signup, RS256-only JWT with exact iss/aud and service tokens rejected, one KDF per request enforced by the budget, tokens in URL fragments, audit writes bounded to admitted requests. Findings: (F1, before staging) the IP window (10 per 10 min) is shared between password attempts and authenticated writes (profile, terms, avatar, email, invites, later board edits), so ten writes from one IP block login and recovery from that IP; and the per-user write allowance of 10 per 10 min is far too low for board edits: add a separate 'write' purpose class with its own IP and account windows (about 120 per 10 min), no lockout semantics, and keep the global 60/min for KDF purposes only. (F2, before staging) reserve() runs before verifyAccess() on password routes, so a request with an expired or invalid Access assertion consumes the named account's window and, for login, counts toward the ten-failure lock; verify the assertion first (JWKS is cached), then reserve. (F3, before M1 done) only login reports success to the limiter; signup, verify, reset, reauth, password change, email change and invites report failure on success, so their account windows never clear: set outcomeRecorded on each success path. (F4, before staging) no owner bootstrap exists in code; README defers to an operator transaction: add a seeding script that prints a one-time invite token and inserts its digest (role owner, handle deandre, 24 h) via wrangler d1 execute, so the first owner signs up through the normal flow and binds the Access sub (T-031). (F5, app) the 24 h Access session is shorter than the 7-day app session; after 24 h every call returns 403 access_denied while the cookie is valid: the SPA must treat that code as 'renew Access' (full navigation), not 'logged out'; desktop refreshes the cloudflared token. (F6, nit) CSRF compare is a plain string compare of two hashes; use equalDigest on the bytes. (F7, known limitation) verifyAccess rejects an identity whose email has a non-ASCII local part. (F8, note) every password and recovery route, including authenticated ones (reauth, password, email, invites), requires a Turnstile token whose action equals the last path segment; the UI must match. (F9, note) Electron must send Origin, X-CSRF-Token and the Access assertion header. (F10, low) an R2 object can be orphaned if the Worker dies between put and save; add a lifecycle rule on the avatars/ prefix or a periodic sweep."
         }
       ]
     },
@@ -841,6 +853,46 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "delivered: encode_report writes ISO-8601 time, decode_report accepts ISO and integer nanos, tests for both plus a bad value; fixture journal regenerated; docs/API.md and plan updated. gcc Debug+sanitizers and clang Release green, 221/221."
+        }
+      ]
+    },
+    {
+      "id": "T-030",
+      "title": "GitHub board adapter in the Worker: read/write board/tasks.json and board/notes.md with expected-SHA conflict checks and session-derived handles",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-gpt6",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "On codex/platform-app. Fixed paths board/tasks.json and board/notes.md; branch from BOARD_BRANCH; fine-grained GitHub token limited to this repository's contents (read/write) as a Worker secret, supplied by deandre. Writes: GET contents (sha) -> validate schema, roster handles, status transitions, append-only log -> PUT contents with that sha; 409 on mismatch, then one re-read and retry applying the merge rule from board/README.md (keep both sides, keep every log line, newest status). Commit message 'board: <T-id> <status> (<handle>)' or 'board: note (<handle>)', handle from the verified session. Id allocation: max id plus one at read time; a 409 re-allocates. Never force-push. Test against a throwaway branch board/staging created from the planning head and never merged; acceptance test 9 (app commit visible in git, git edit visible in app, concurrent-conflict case) runs there. Canonical board stays on claude/cool-sagan-7klcfy with Fable as sole writer until T-017 lands on main; then BOARD_BRANCH=main and every writer uses expected-SHA commits.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-06 from deandre-gpt6's M4 proposal; approved with the staging-branch protocol"
+        }
+      ]
+    },
+    {
+      "id": "T-031",
+      "title": "Owner bootstrap: seeding script for the first invite (G2 F4)",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "platform/worker/scripts/seed-invite.mjs (or documented SQL): generates a one-time token locally, prints it once to the operator, inserts only its SHA-256 digest into invites (email from INVITE_ACCOUNTS, handle deandre, role owner, 24 h expiry) via wrangler d1 execute against the staging database. The operator then signs up through the normal flow, which binds the Access sub. No public bootstrap endpoint. Test the script against the D1 harness.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-06 from G2 finding F4"
         }
       ]
     }

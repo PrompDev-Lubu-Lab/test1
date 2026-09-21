@@ -7,8 +7,11 @@
 // blocking the dispatch thread) and receives outcomes from the user data
 // stream. An order state machine reconciles the two sources: REST
 // acknowledgements and stream events can arrive in either order, fills may
-// arrive after a cancel was sent, and a cancel may find the order already
-// gone. Every report delivered downstream is deduplicated by (order,
+// arrive after a cancel was sent or even after the cancel was confirmed, and
+// a cancel may find the order already gone. The first terminal state wins:
+// a late fill updates quantities but never revives a cancelled order, and a
+// stale cancel never un-fills a filled one. Every report delivered
+// downstream is deduplicated by (order,
 // execution type, trade id) and delivered in venue time order per order.
 //
 // dry_run mode (shadow trading) validates and records orders but never

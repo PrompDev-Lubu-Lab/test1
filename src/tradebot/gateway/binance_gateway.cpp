@@ -190,23 +190,30 @@ void BinanceGateway::apply(Tracked& t, ExecutionReport report, const std::string
                 s.fees += report.fill->fee;
                 if (t.cancel_requested) ++stats_.late_fills;
             }
-            s.status = s.remaining().is_zero() ? OrderStatus::filled : OrderStatus::partially_filled;
+            // The REST cancel reply and the stream race for the dispatch loop.
+            // A fill that lands after the venue already confirmed a cancel (or
+            // an expiry) updates the quantities but never revives the order:
+            // the first terminal state wins, whichever path delivered it.
+            if (!s.is_done()) {
+                s.status = s.remaining().is_zero() ? OrderStatus::filled : OrderStatus::partially_filled;
+            }
             report.status = s.status;
             report.filled_quantity = s.filled_quantity;
             report.remaining_quantity = s.remaining();
             break;
         case ReportType::cancelled:
-            s.status = OrderStatus::cancelled;
+            // Likewise a stale CANCELED never un-fills an order the venue filled.
+            if (!s.is_done()) s.status = OrderStatus::cancelled;
             report.status = s.status;
             report.filled_quantity = s.filled_quantity;
             report.remaining_quantity = s.remaining();
             break;
         case ReportType::rejected:
-            s.status = OrderStatus::rejected;
+            if (!s.is_done()) s.status = OrderStatus::rejected;
             report.status = s.status;
             break;
         case ReportType::expired:
-            s.status = OrderStatus::expired;
+            if (!s.is_done()) s.status = OrderStatus::expired;
             report.status = s.status;
             report.filled_quantity = s.filled_quantity;
             report.remaining_quantity = s.remaining();

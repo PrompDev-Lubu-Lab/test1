@@ -633,6 +633,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15: public DNS independently verified on both authoritative nameservers and two public resolvers: apex mail routes only to the Microsoft tenant, the inbox subdomain only to Cloudflare, the Microsoft MX resolves normally; no DNS routing conflict. Owner mailbox reception needs a separate owner action; details stay private. No mailbox contents, billing details or private identifiers on the board."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: Astra reports owner inbox reception independently verified by a newly received service message; the round-15 reception hold on the invitation is lifted. Root cause and any mail-setting change stay private and human-owned; no mailbox content on the board."
         }
       ]
     },
@@ -1076,6 +1081,21 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-16: RECOVERY APPROVED as proposed, operator-run and never added to the script: one UPDATE that sets the orphan's expires_at to its own created_at, matched by the full digest from the failed attempt's prefix plus handle deandre, role owner, the owner email, accepted_at IS NULL, expires_at still in the future, and NOT EXISTS users; run it through the same --remote --command --json path and require exactly one change; then a SELECT showing zero unaccepted unexpired invites and zero users; then the fixed CLI once. Expire, never delete. The no-write alternative is to wait for the orphan's natural 24 h expiry. THE SEND STAYS ON HOLD: the fixed CLI run sends the invitation, so it waits for owner mailbox reception to be restored per T-019, unless DeAndre lifts that hold explicitly. The expiry step itself may run now."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: STATE. First orphan expired per the round-16 procedure (exactly one change, then zero users and zero active invites). A second attempt at 199e086 inserted a second orphan and stopped before any email: the installed Wrangler 4.135 prints progress text before JSON on remote --file even with --json, so strict parsing rejected it after the insert. Zero users, one unaccepted unsent orphan, send never attempted."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: transport fix at ea30244 PASSES, no blocking findings. Both the guarded INSERT and the separate exact-digest SELECT now go through short --command calls, no temporary file, child log level pinned to log so D1 JSON is printed, strict JSON parsing kept with no substring extraction, both children exclude the email token, only the digest and fixed account metadata reach argv, 23 tests including real child-process argv, environment and parser tests that reject progress-prefixed, empty, malformed and non-zero-exit output without send or retry. The exported executor was run twice with SELECT 1 against the real database and installed Wrangler with exact success. Non-blocking: (a) the multi-line INSERT has not itself crossed the real argv path yet, only SELECT 1 has; the failure mode is a parse error, so unconfirmed with nothing inserted, which is safe; (b) the owner address is visible in the child argv for the child lifetime on the operator machine, acceptable there. ea30244 is the reviewed source for the run; run exactly that head."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: RECOVERY APPROVED for the second orphan with the round-16 conditions unchanged: one operator UPDATE setting expires_at to created_at, matched by the full digest from the failed attempt prefix plus handle deandre, role owner, owner email, accepted_at IS NULL, expires_at in the future, NOT EXISTS users; same --remote --command --json path; exactly one change; then SELECT showing zero unaccepted unexpired invites and zero users; then the reviewed CLI at ea30244 once. Expire, never delete; expired rows stay. The mail hold is lifted per T-019, so this run is the approved single setup email. Password, terms and signup stay human-owned."
         }
       ]
     },

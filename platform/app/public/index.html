@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Private workspace</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/caseforge/landscape.css">
+  <link rel="stylesheet" href="/assets/caseforge/onboarding.css">
+  <link rel="stylesheet" href="/assets/caseforge/terms.css">
+  <link rel="stylesheet" href="/assets/caseforge/scene-controls.css">
+  <link rel="stylesheet" href="/assets/caseforge/topbar.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/assets/caseforge/scene-time.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
+  <div class="landscape workspace-landscape" aria-hidden="true"></div>
+  <div class="app" id="workspace" hidden>
+    <header class="workspace-shell">
+      <div class="bar">
+        <a href="#overview" class="brand-lockup" aria-label="Workspace overview"><span class="brand-symbol" aria-hidden="true">∧</span><span data-app-name></span><span class="beta-tag">BETA</span></a>
+        <div class="environment-chip"><span class="status-dot"></span><span id="environment-label">Checking access</span></div>
+        <div class="top-actions"><span id="checked-at" class="muted"></span><button class="icon-button" id="refresh-data" aria-label="Refresh data" title="Refresh data"><span data-icon="refresh"></span></button><button class="account-chip" id="open-account"><span class="avatar">P</span><span>Preview access</span></button></div>
+      </div>
+      <nav id="navigation" class="workspace-nav" aria-label="Workspace tabs"></nav>
+    </header>
+    <div class="preview-banner" id="preview-banner"><span class="status-dot"></span><strong>Synthetic preview</strong><span>Generated market data and frozen instance snapshots. No trading controls.</span><button id="review-access">Review access</button></div>
+    <main class="main" id="main">
+      <div class="workspace-viewline"><div><p class="eyebrow" id="view-eyebrow">YOUR WORKSPACE</p><h1 id="view-title" tabindex="-1">Overview</h1></div><p class="view-description" id="view-description"></p></div>
+      <div id="view" class="content" tabindex="-1" aria-live="polite"></div>
+    </main>
+  </div>
+  <section id="gate" class="gate" aria-label="Workspace access">
+    <header class="gate-heading"><span class="brand-symbol" aria-hidden="true">∧</span><span data-app-name>Private workspace</span><span class="beta-tag">BETA</span></header>
+    <main class="entry-main">
+      <nav class="setup-progress" aria-label="Setup progress"><ol><li data-step="configure" data-state="current" aria-current="step"><span class="progress-number">01</span> Account</li><li data-step="preferences" data-state="pending"><span class="progress-number">02</span> Connect</li><li data-step="ready" data-state="pending"><span class="progress-number">03</span> Terms</li></ol><div class="progress-track" aria-hidden="true"><span id="setup-progress-fill"></span></div></nav>
+      <section id="configure-stage" class="entry-stage">
+        <div class="entry-card access-card"><span class="overline">BY INVITATION</span><h1>Your private workspace.</h1><p class="gate-intro">One place to follow your instances, understand every run, and work together.</p><div class="access-grid"><div><span data-icon="shield"></span><h2>Two invited accounts</h2><p>Verified access for the owner and Ali. Roles will be checked by the Cloudflare Worker.</p></div><div><span data-icon="lock"></span><h2>Protected by Cloudflare</h2><p>The account service must be ready before production sign-in becomes available.</p></div></div><p class="gate-status" id="gate-status" role="status">Checking this environment…</p><button class="primary" id="account-continue" disabled>Continue to connection <span aria-hidden="true">→</span></button></div>
+      </section>
+      <section id="preferences-stage" class="entry-stage" hidden><div class="entry-card access-card"><span class="overline">A READ-ONLY CONNECTION</span><h1>Know what you are seeing.</h1><p class="gate-intro">This local preview reads sample outputs through the Run API. It cannot start a bot, change risk limits, or write run data.</p><div class="connection-summary"><span class="status-dot"></span><div><strong id="connection-title">Synthetic fixture connection</strong><p id="connection-status">The API will be checked before entry.</p></div></div><div class="setup-facts"><span>Run data <strong>Read only</strong></span><span>Live execution <strong>Unavailable</strong></span><span>Account changes <strong>Unavailable</strong></span></div><div class="wizard-actions"><button class="secondary" data-stage="configure">← Back</button><button class="primary" id="connection-continue">Continue to preview terms →</button></div></div></section>
+      <section id="ready-stage" class="entry-stage" hidden><div class="entry-card access-card terms-card"><div class="terms-heading"><div><span class="overline">PREVIEW CONDITIONS</span><h1>Before you explore.</h1></div><span class="tag">LOCAL PREVIEW</span></div><div id="terms-reader" class="terms-reader" tabindex="0" role="region" aria-label="Synthetic preview conditions"><article class="terms-document"><h2>Sample data, with clear limits</h2><p>The displayed sample backtests come from bot-generated outputs over generated market data. Instance views are frozen synthetic snapshots. They are not a running paper account or a record of real exchange execution.</p><h2>Research and observation</h2><p>Every money and quantity value is displayed as its original decimal string. Charts use approximate numeric positions for presentation. Sample returns do not establish future performance.</p><h2>No account is created</h2><p>Entering this preview does not register a user, verify an email address, accept production terms, or grant access to a live service. Production access remains closed until its Worker and identity checks are configured.</p><h2>Nothing is sent to the bot</h2><p>The application exposes no buttons to enable live mode, change risk limits, or manage exchange keys. Run data stays read only. The preview has no account or board write controls.</p><h2>A shared foundation</h2><p>This entry lasts for this browser tab only. A future account will use its own versioned terms and recorded consent. Read these conditions, then explicitly choose to view the synthetic workspace.</p></article></div><div class="terms-reading-status"><span id="terms-scroll-status" role="status">Scroll to the end to continue.</span><span class="tag">No account consent recorded</span></div><div class="wizard-actions"><button class="secondary" data-stage="preferences">← Back</button><button class="primary" id="enter-preview" disabled>Open synthetic preview →</button></div></div></section>
+    </main>
+  </section>
+  <footer class="entry-footer app-footer"><div class="footer-identity"><span data-app-name></span><span class="footer-separator">/</span><span id="footer-version">Beta</span><span class="footer-separator">/</span><span>Read-only workspace</span></div><div class="footer-right"><span id="footer-clock"></span><div id="scene-controls" class="scene-controls-host"><button class="scene-tab" id="scene-toggle" aria-expanded="false" aria-controls="scene-panel"><span data-icon="sun"></span>Weather &amp; scene</button><section id="scene-panel" class="scene-panel" aria-labelledby="scene-panel-title" hidden><div class="scene-panel-heading"><h2 id="scene-panel-title">Your atmosphere</h2><button id="scene-close" aria-label="Close scene settings">×</button></div><label for="scene-zone">Scene timezone</label><select id="scene-zone"><option value="Australia/Brisbane">Brisbane</option><option value="Australia/Sydney">Sydney</option><option value="Europe/London">London</option><option value="America/New_York">New York</option></select><p>Time of day only. Live weather is not connected.</p><p class="muted">Changes apply to this tab and are not saved.</p></section></div></div></footer>
+  <noscript><p class="noscript">JavaScript is needed for the private workspace. No account data has been loaded.</p></noscript>
+  <script src="/assets/caseforge/landscape.js"></script>
+  <script src="/assets/caseforge/entry-flow.js"></script>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

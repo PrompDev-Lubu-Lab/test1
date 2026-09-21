@@ -1,0 +1,41 @@
+# Preparation only. Operator must supply exact roots, approved origins, image digest and secret file.
+# Deliberately no published ports and no bot service/configuration changes.
+services:
+  run-api:
+    build:
+      context: ../..
+      dockerfile: platform/deploy/Dockerfile.api
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    environment:
+      RUNS_ROOT: /runs
+      BIND_HOST: 0.0.0.0
+      PORT: '8788'
+      ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:?Set the exact host header used by the protected tunnel}
+      ALLOWED_ORIGINS: ${APP_ORIGIN:?Set the approved HTTPS application origin}
+    volumes:
+      - type: bind
+        source: ${BOT_RUNS_ROOT:?Set the verified existing bot runs directory}
+        target: /runs
+        read_only: true
+    networks: [origin]
+  tunnel:
+    image: ${CLOUDFLARED_IMAGE:?Set an official cloudflared image pinned by digest}
+    command: [tunnel, --no-autoupdate, run]
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/tunnel_token
+    secrets: [tunnel_token]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    networks: [origin, tunnel-egress]
+secrets:
+  tunnel_token:
+    file: ${TUNNEL_TOKEN_FILE:?Set an operator-provisioned secret file outside the repository}
+networks:
+  origin:
+    internal: true
+  tunnel-egress: {}

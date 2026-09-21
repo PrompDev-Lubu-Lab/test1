@@ -1,0 +1,8 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY platform/api/package.json platform/api/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+COPY platform/api/server.mjs ./server.mjs
+USER node
+ENV PORT=8788 BIND_HOST=0.0.0.0 RUNS_ROOT=/runs
+CMD ["node", "server.mjs"]

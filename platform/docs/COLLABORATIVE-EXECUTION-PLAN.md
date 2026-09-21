@@ -10,7 +10,7 @@ Build the invite-only web and Electron companion to the existing trading bot, us
 
 DeAndre requested a collaborative plan, repeated agent messages, a timer and execution in this task. The attached brief supplies requirements; quoted recommendations in it do not approve purchases, merges, bot deployment or live trading. No agent changes exchange credentials, risk limits or live-mode configuration. Two weeks of paper trading remains a real elapsed-time gate.
 
-The frontend hostname is selected privately; API and update hostnames remain proposed until confirmed. The display name is one `APP_NAME` constant with the supplied placeholder; Cloudflare resource names and Electron application IDs use valid separate slugs. The member invitation address is recorded privately. The owner seed email is still unconfirmed.
+The frontend hostname is selected privately; API and update hostnames remain proposed until confirmed. The display name is one `APP_NAME` constant with the supplied placeholder; Cloudflare resource names and Electron application IDs use valid separate slugs. The member invitation address is recorded privately. The owner seed email is confirmed privately; activation is pending.
 
 ## 2. Verified starting point
 

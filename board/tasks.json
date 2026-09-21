@@ -127,6 +127,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-02: runtime decided by deandre-gpt6: Node.js LTS with a small read-only HTTP adapter (fits the Electron toolchain; no C++ runtime dependency)"
         }
       ]
     },
@@ -152,6 +157,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "source and stack confirmed; reassigned to deandre-gpt6 to propose fork vs shared package"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-02: decided by deandre-gpt6: pinned clean MIT source import from CaseForgeHq/family-court-strategist at c8bea2a9fe3ad3a1702f7915f2712a604cc57cc9, allowlisted presentation assets with original licence/font notices and hashes"
         }
       ]
     },
@@ -625,12 +635,17 @@
         "T-015",
         "T-027"
       ],
-      "instructions": "Implements T-005's service. Contract tests: every endpoint in docs/API.md sections 1-4 returns the fixture values unchanged (string money, exact keys). Runs against a fixtures directory locally and against /runs on the server in compose. Read-only. Fable reviews field-name fidelity.",
+      "instructions": "Implements T-005's service. Contract tests: every endpoint in docs/API.md sections 1-4 returns the fixture values unchanged (string money, exact keys). Runs against a fixtures directory locally and against /runs on the server in compose. Read-only. Fable reviews field-name fidelity. G3 also covers journal.jsonl: `time` is an integer above JavaScript's safe-integer range, so the run API must serve journal lines as raw bytes (NDJSON passthrough, no parse/stringify on the API or the Worker) and the app must parse `time` losslessly; see T-029 for the source-side fix.",
       "log": [
         {
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-02: G3 extended to journal timestamp fidelity"
         }
       ]
     },
@@ -645,12 +660,17 @@
       "due": null,
       "area": "board",
       "depends_on": [],
-      "instructions": "During COLLAB-20260921-01 Fable is the sole writer of board/ and allocator of task ids on claude/cool-sagan-7klcfy. Astra sends status requests in its messages; Fable records them. Astra merges (never rebases) claude/cool-sagan-7klcfy into codex/platform-app at least once per working session and before every PR. Code never lands on claude/cool-sagan-7klcfy from Astra; board and docs never land on codex/platform-app except via merge. Ends when T-017 merges and the board lives on main.",
+      "instructions": "During COLLAB-20260921-01 Fable is the sole writer of board/ and allocator of task ids on claude/cool-sagan-7klcfy. Astra sends status requests in its messages; Fable records them. Astra merges (never rebases) claude/cool-sagan-7klcfy into codex/platform-app at least once per working session and before every PR. Code never lands on claude/cool-sagan-7klcfy from Astra; board and docs never land on codex/platform-app except via merge. Ends when T-017 merges and the board lives on main. Clarified in COLLAB-20260921-02: Fable owns root docs/ and board/; Astra owns platform/docs/ (platform design, test evidence, coordination plan) and sends those commits to Fable for review. A draft PR from codex/platform-app stacked against claude/cool-sagan-7klcfy is acceptable for review only until T-016 creates main; it is retargeted to main and never merged into claude/cool-sagan-7klcfy.",
       "log": [
         {
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-02: docs ownership split and stacked draft PR rule recorded"
         }
       ]
     },
@@ -701,6 +721,26 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "started after T-027"
+        }
+      ]
+    },
+    {
+      "id": "T-029",
+      "title": "Journal `time` as ISO-8601 nanosecond string (backward-compatible decode) so JSON clients read it losslessly",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-gpt6",
+      "assigned_to": "deandre-fable",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "bot",
+      "depends_on": [],
+      "instructions": "journal.jsonl encodes `time` as integer nanoseconds since epoch, which exceeds 2^53 and is lossy in JSON.parse. No real journals exist yet, so change encode_report to write `time` as the same ISO-8601 string every other artifact uses, keep decode_report accepting both integer and string, add doctests for both, regenerate platform/fixtures/synthetic/paper-ma_synthetic/journal.jsonl, update docs/API.md section 1. Until merged, the run API passes journal bytes through unparsed (T-025).",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-02 from deandre-gpt6's review of journal timestamps"
         }
       ]
     }

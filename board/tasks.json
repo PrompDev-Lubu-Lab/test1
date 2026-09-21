@@ -321,7 +321,7 @@
     {
       "id": "T-011",
       "title": "Package the dashboard as an Electron app with electron-updater and a signed update channel",
-      "status": "todo",
+      "status": "review",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -357,13 +357,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-09: cookie-bridge and check-timing rules recorded"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-10: M5 source reviewed by deandre-fable on PR #2 head 0e91a9e (policy, transport, updater, signature, install, main, preload, settings template, desktop-config, package-desktop, verify-package, worker downloads, app.mjs wiring, platform-desktop.yml). Verdict: passes; no blocker before staging. Confirmed against the recorded rules: remote-loaded app in a hardened window (context isolation, sandbox, no node integration, permission requests denied, downloads blocked, navigation limited to the app origin, the Access team's /cdn-cgi/access paths and GitHub's login and session paths); same-origin feed; request-time cookie bridge limited to latest.yml and the one consented installer name, every redirect cancelled before headers, Cookie/Authorization/cf-access/Referer stripped and replaced; /me preflight and 10 s rechecks bound by the earlier of Access and session expiry; one held-file attestation (size, SHA-512, inode identity, directory chain, reparse points) around a fixed PowerShell Authenticode check with pinned publisher CN and thumbprint allowlist, run again before install; monotonic version and single complete installer enforced in validateUpdateInfo; main spawns only the verified path with fixed arguments and no elevation or openPath fallback; production packaging requires signing and the signed job runs only from main under a protected environment. Findings, none blocking: (M1, should) the installer response uses a custom ReadableStream so Content-Length is dropped as chunked; wrap in FixedLengthStream(object.size) so Content-Length matches HEAD and the updater's size accounting. (M2, should) publisherNames are compared to the certificate's CN (SimpleName), not the full subject; state that in DESKTOP-RELEASES.md and settings docs so the pin is written correctly. (M3, nit) the verifier's 15 s budget covers two SHA-512 passes over a 110 MB file plus PowerShell startup; raise to 30 s to avoid false denials on slow disks. (M4, nit) updater.cjs relies on electron-updater internals (getOrCreateDownloadHelper, helper.cacheDir, helper.file); keep the exact pin and add a test that fails if those members disappear. (M5, nit) pin GitHub Actions by commit SHA in the signing job. (M6, nit) the failure dialog says 'could not be verified or downloaded' even when the cause is 'not signed in'; distinguish the two. (M7, pending by design) the minimum-version compatibility gate on /config is not in this delta. Real Access/Turnstile login in the shell and a real installed upgrade remain staging acceptance (row 10); the unsigned development package was built and verified, not installed or published."
         }
       ]
     },
     {
       "id": "T-012",
       "title": "Release pipeline: tag -> installers -> R2 -> download link posted to the board",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -394,6 +399,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-09: same-origin feed, strict verifier and forward-only rollback recorded"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-10: release workflow delivered on 0e91a9e (review mode builds and verifies an unsigned development package; signed mode gated to main plus a protected environment, then verify-package writes latest.yml, catalog.json and verification.json). Publication to R2 and the protected round trip remain a separate step after signing (T-020)."
         }
       ]
     },
@@ -603,6 +613,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-09: T-011/T-012 signed-installer acceptance and any updates hostname remain pending DeAndre's signing decision and hostname answer"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-10: signing decision now also gates T-012 publication and acceptance row 10"
         }
       ]
     },

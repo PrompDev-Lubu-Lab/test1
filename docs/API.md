@@ -284,6 +284,22 @@ Conflict rule (from `board/README.md`): keep both sides, keep every log
 line, take the newest status. The Worker retries a rejected commit after
 re-reading the file; it never force-pushes.
 
+## 5b. Downloads and updates (Worker only)
+
+Same-origin, session and terms required, GET and HEAD only, `Cache-Control:
+private, no-store`, no Range support. Served from private R2 by the
+Worker, never from a public bucket.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /downloads` | the release catalog: `{version, file, size, sha512, released_at, url, notes?}` |
+| `GET /updates/windows/x64/latest.yml` | electron-updater's manifest for the one complete Windows x64 installer |
+| `GET /updates/windows/x64/clawdie-platform-<version>-win-x64.exe` | the installer bytes; `HEAD` gives the exact size |
+
+`GET /me` also returns `authentication_expires_at`, the earlier of the
+Access assertion's expiry and the app session's expiry, which the desktop
+updater uses to bound a download.
+
 ## 6. Accounts (Worker only)
 
 Defined by Astra's M1 design note (board task T-018), not here. This

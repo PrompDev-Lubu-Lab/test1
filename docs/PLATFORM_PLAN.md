@@ -387,12 +387,14 @@ task instructions say so wherever they come up.
 
 ### 4.4 The downloadable app and its update link
 
-The desktop app is the web app packaged with **Electron**, exactly as
-Case Forge is: the same electron-builder packaging and electron-updater
-mechanism, so the design and the update flow are reused rather than
-rebuilt. electron-updater's generic provider reads a per-platform
-`latest.yml` manifest from `updates.clawdie.ai` on R2. The flow DeAndre's
-other project has:
+The desktop app is an **Electron** shell, as Case Forge is, that loads
+the deployed web app from `app.clawdie.ai` in a hardened window. Access
+login, Turnstile, the host-only session cookie and CSRF then behave
+exactly as in a browser, and the installer ships no credential of any
+kind. electron-updater's generic provider reads the Windows manifest
+from the same origin at `/api/updates/windows/x64/`, behind Access and
+the app session, streamed from private R2 by the Worker. The flow
+DeAndre's other project has:
 
 1. A `v*` tag is pushed.
 2. GitHub Actions builds installers (macOS arm64 and x64 `.dmg`, Windows
@@ -408,6 +410,15 @@ other project has:
    so a fresh install is one click from inside any browser.
 
 Installers are stored in R2, never in git.
+
+**Verification and rollback.** The manifest is not signed, so the shell
+verifies each installer twice, at download and again immediately before
+install: exact size and SHA-512 from the manifest, then Authenticode
+with a pinned publisher and an allowlist of certificate thumbprints
+holding the current and the next certificate. Versions only move up, so
+rollback is forward-only: withdraw the bad version and publish the
+earlier build under a higher number. Every step needs the user's
+explicit acceptance; nothing downloads or installs on its own.
 
 **Signing.** electron-updater on macOS only applies updates to a signed
 and notarized build, which needs an Apple Developer Program membership

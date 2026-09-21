@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, mkdtemp, mkdir, writeFile, rm, symlink, rename } from 'node:fs/promises';
+import { readFile, mkdtemp, mkdir, writeFile, appendFile, rm, symlink, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -53,7 +53,7 @@ test('large journals page by lines or validated byte cursor without reading the 
   const line=JSON.stringify({time:'2026-09-21T01:15:00.123456789Z',sequence:'9007199254740993',message:'x'.repeat(190)})+'\n';
   const count=90000; assert.ok(Buffer.byteLength(line)*count>22*1024*1024);
   await writeFile(path.join(directory,'journal.jsonl'),line.repeat(count)+'{"unfinished":');
-  const {get}=await setup(t,{root});
+  const {get,api,base}=await setup(t,{root,pollMs:60000});
   const first=await get('/instances/paper-large/journal?limit=10'); assert.equal(first.status,200); assert.equal(await first.text(),line.repeat(10)); assert.equal(first.headers.get('X-Next-After'),'10'); assert.equal(first.headers.get('X-Has-More'),'true');
   const cursor=Number(first.headers.get('X-Next-Offset')); assert.equal(cursor,Buffer.byteLength(line)*10);
   const next=await get(`/instances/paper-large/journal?offset=${cursor}&limit=2`); assert.equal(next.status,200); assert.equal(await next.text(),line.repeat(2)); assert.equal(next.headers.get('X-Next-After'),null);
@@ -61,6 +61,12 @@ test('large journals page by lines or validated byte cursor without reading the 
   assert.equal((await get('/instances/paper-large/journal?offset=1')).status,400);
   assert.equal((await get('/instances/paper-large/journal?offset=0&after=0')).status,400);
   assert.equal((await get('/instances/paper-large/journal?offset=999999999')).status,409);
+  const ws=new WebSocket(base.replace('http:','ws:')+'/events');
+  await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});t.after(()=>ws.terminate());
+  await api.poll();
+  const message=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Large journal event missing')),3000);ws.once('message',bytes=>{clearTimeout(timer);resolve(JSON.parse(bytes));});});
+  await appendFile(path.join(directory,'journal.jsonl'),'1}\n');await api.poll();
+  assert.deepEqual(await message,{kind:'journal',instance:'paper-large',bytes:Buffer.byteLength(line)*count+Buffer.byteLength('{"unfinished":1}\n')});
 });
 
 test('more than 500 research directories use bounded listing pages and a warning',async t=>{

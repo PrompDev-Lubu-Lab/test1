@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "platform-account-api",
+  "main": "app.mjs",
+  "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "limits": { "cpu_ms": 10000 },
+  "vars": {
+    "APP_ORIGIN": "https://app.example.test",
+    "ACCESS_TEAM_DOMAIN": "https://team.example.test",
+    "ACCESS_AUDIENCE": "",
+    "TURNSTILE_HOSTNAME": "app.example.test",
+    "TURNSTILE_SITE_KEY": "",
+    "EMAIL_FROM": "no-reply@example.test",
+    "RUN_ORIGIN": "",
+    "INVITE_ACCOUNTS": "[]"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "platform-accounts",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "migrations"
+  }],
+  "durable_objects": { "bindings": [{ "name": "AUTH_LIMITER", "class_name": "AuthLimiter" }] },
+  "migrations": [{ "tag": "v1-auth-limits", "new_sqlite_classes": ["AuthLimiter"] }],
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["no-reply@example.test"] }],
+  "triggers": { "crons": ["7,22,37,52 * * * *"] }
+  // Add exact approved routes and Access policy only at deployment.
+  // Real addresses, account/database IDs and secrets belong in private configuration.
+  // Images/R2 are intentionally absent until the decoder and binding are verified.
+}

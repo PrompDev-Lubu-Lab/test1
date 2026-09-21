@@ -1,0 +1,10 @@
+{
+  "name": "platform-avatar-probe",
+  "main": "avatar.mjs",
+  "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "images": { "binding": "IMAGES" }
+}

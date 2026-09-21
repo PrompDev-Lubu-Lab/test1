@@ -281,7 +281,10 @@ export async function createReadApi({ root, synthetic = false, now = Date.now, p
           if (file === 'heartbeat') { const { time, status } = heartbeatFrom(await read(id, file), now()); broadcast(json({ kind: 'heartbeat', instance: id, time, status })); }
           else if (file === 'status.json') broadcast(`{"kind":"status","instance":${json(id)},"status":${rawJson(await read(id, file))}}`);
           else if (file === 'state.json') broadcast(json({ kind: 'state', instance: id }));
-          else if (file === 'journal.jsonl') broadcast(json({ kind: 'journal', instance: id, lines: (await read(id, file)).split('\n').length - 1 }));
+          else if (file === 'journal.jsonl') {
+            const bytes = await withArtifact(id, file, async (_handle, opened) => opened.size);
+            broadcast(json({ kind: 'journal', instance: id, bytes }));
+          }
           else broadcast(json({ kind: 'run', run_id: id, event: lastSnapshot.has(key) ? 'updated' : 'created' }));
         } catch { /* Transient atomic file replacement: retry the next poll. */ next.delete(key); }
       }

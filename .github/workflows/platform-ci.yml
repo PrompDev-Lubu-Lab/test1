@@ -35,3 +35,9 @@ jobs:
       - name: Build static presentation
         working-directory: platform/app
         run: npm run build
+      - name: Install pinned authentication dependencies without lifecycle scripts
+        working-directory: platform/worker
+        run: npm ci --ignore-scripts --no-fund
+      - name: Check signed authentication and transactional account boundaries
+        working-directory: platform/worker
+        run: npm test

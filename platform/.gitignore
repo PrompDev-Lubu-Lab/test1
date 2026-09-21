@@ -6,3 +6,4 @@
 **/release/
 **/coverage/
 **/*.local.json
+**/*.local.jsonc

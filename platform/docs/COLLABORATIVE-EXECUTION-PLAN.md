@@ -128,6 +128,6 @@ Rollback: keep previous Worker version and Pages deployment; apply forward-compa
 
 ## 10. Remaining human inputs
 
-Complete the pending human authentication step recorded privately. Confirm the platform owner seed email and API/update hostnames; provide the authorized server SSH alias/host and working directory if agent deployment is desired; choose production signing options when a build is ready. The plan can advance on fixtures and local builds while these are pending. No passwords or secret values should be pasted into the chat.
+Complete the pending human authentication step recorded privately. The platform owner email is confirmed privately. Confirm API/update hostnames; provide the authorized server SSH alias/host and working directory if agent deployment is desired; choose production signing options when a build is ready. The plan can advance on fixtures and local builds while these are pending. No passwords or secret values should be pasted into the chat.
 
 Read `ACCEPTANCE.md` for the eleven individual completion gates and `operations-inventory.md` in the private parent folder for exact operational locations.

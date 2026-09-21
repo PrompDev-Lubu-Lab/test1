@@ -9,7 +9,7 @@ exposes it.
 | Service | Where | Owns |
 |---|---|---|
 | **Run API** (`tradebot-api`) | on the server, `runs/` mounted read-only, reachable only through the Cloudflare Tunnel | instances, runs, research files, change events |
-| **Worker** | Cloudflare, `api.clawdie.ai` (proposed) | accounts, sessions, roles, avatars, the board, proxying the run API |
+| **Worker** | Cloudflare, `app.clawdie.ai/api/*`, the same origin as the web app | accounts, sessions, roles, avatars, the board, proxying the run API |
 
 The Worker proxies every path below under the same names, after
 checking the session and role. The run API itself has no auth and no

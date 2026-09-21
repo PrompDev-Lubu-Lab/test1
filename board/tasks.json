@@ -442,7 +442,7 @@
     {
       "id": "T-019",
       "title": "Mailbox ali@clawdie.ai on Cloudflare, coexisting with Microsoft 365 MX",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "normal",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -456,6 +456,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "status relayed from deandre-gpt6: inbox.clawdie.ai routing enabled (apex MX/SPF untouched); private Worker + R2 deployed, browser access fails closed pending Access; exact rule ali@inbox.clawdie.ai; Exchange MailContact 'Ali Cloudflare Inbox' with proxy ali@clawdie.ai -> external ali@inbox.clawdie.ai (no user, licence or password); 12 local tests pass. Unverified: real send/receive with header checks, Ali's independent sign-in (GitHub IdP proposed; username asked of deandre)."
         }
       ]
     },

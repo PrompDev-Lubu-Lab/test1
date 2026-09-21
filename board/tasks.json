@@ -340,6 +340,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-18: first-owner invitation delivered (T-031); usability now waits on DeAndre completing signup, then the authenticated browser acceptance (T-032 item 12 second half). Runtime source unchanged at f462cc8."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-19: usability blocked by the onboarding regression T-034."
         }
       ]
     },
@@ -724,7 +729,7 @@
     {
       "id": "T-022",
       "title": "M1: Worker + D1 accounts (invite, signup, verification, login, reset, roles, avatar, terms) behind Access",
-      "status": "review",
+      "status": "in_progress",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -765,6 +770,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-18: first real invitation delivered to the owner; real signup, verification, session and terms flow remain unverified until DeAndre completes them. Member (ali) access still waits on the human passkey."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-19: real acceptance found a defect (T-034): fragment lost across the Access login and Turnstile verification failure; back to in_progress until the fix is reviewed and DeAndre completes signup."
         }
       ]
     },
@@ -1111,6 +1121,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-18: DELIVERED. At the reviewed source ea30244 the second unsent orphan was expired under every approved guard (exactly one changed row, then zero users and zero active invites confirmed). The reviewed CLI then ran once: exact new invite confirmed, exactly one email request, provider reported queued, and a separate mailbox metadata read confirmed the setup invitation arrived from the configured sender at 13:41:47 UTC. One email attempt in total; the two earlier guarded failures attempted none. The two earlier invite rows remain as expired history; the new invite is active for 24 hours. No token or message body was printed or committed. PENDING HUMAN STEP: DeAndre completes the Access PIN sign-in, chooses the app password and accepts the terms; that signup binds the continuing owner identity. Real signup and session are not yet verified."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-19: the delivered invitation is still active and unaccepted; zero users. DeAndre's signup is blocked by T-034, not by delivery. Once fixed, reopen the same email link while the Access session is valid; no resend unless the 24 h expiry passes, then the documented recovery."
         }
       ]
     },
@@ -1165,6 +1180,26 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-12 to record the mainline sequence"
+        }
+      ]
+    },
+    {
+      "id": "T-034",
+      "title": "Onboarding regression: invite fragment lost across the Access login, then Turnstile verification failure on the login form",
+      "status": "in_progress",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "Observed by DeAndre on the real deployment: the invitation link opens, Access sign-in completes, the app lands on the plain login view with no prefilled email because the Access login flow drops the URL fragment (a form navigation cannot carry it), a password attempt then fails with the generic 503 turnstile_unavailable after a successful limiter reservation; zero users, the invite is still active and unaccepted. Design accepted with these boundaries: (1) POST /auth/link-context {kind, token} stays behind Access and the ingress IP gate plus an IP-keyed reservation, requires no Turnstile, is read-only (never consumes, extends or re-issues a token), requires the Access subject to match for verify, reset and email-change kinds exactly as the existing token lookup does, and returns only {kind, email} with one uniform error for unknown, expired or used tokens; audit records kind and outcome, never the address. (2) The client clears the fragment from the URL immediately and keeps the token and prefilled email in page memory only, never sessionStorage, localStorage, query strings or logs; the recovery text tells the user to reopen the same email link once the Access session exists, since the second open carries the fragment straight to the app. (3) Turnstile diagnostics go into the existing audit code field as a fixed allowlist of stage names and provider error codes, never secrets or provider bodies; a token the provider rejects (expired, duplicate, hostname or action mismatch) returns a 4xx that resets the widget, while only a provider outage or missing configuration returns 503. (4) Read-only checks before code: deployed TURNSTILE_HOSTNAME equals the exact app host, widget action names equal the server expectation per route, the secret was set on the deployed Worker, the widget is the managed exact-host one; a consumed widget token reused on a second submit is a likely cause. (5) The display-name change to Clawdie is DeAndre's naming decision to confirm; no other placeholder handling changes. No Access weakening, no password entry by agents, invite consumption stays at signup with Access, Turnstile and a chosen password.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-19 from DeAndre's real first-signup attempt; design reviewed, tested source head pending"
         }
       ]
     }

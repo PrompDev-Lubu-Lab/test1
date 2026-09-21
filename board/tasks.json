@@ -205,6 +205,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-05: journal WebSocket event contract approved: {kind:'journal', instance, bytes} as an invalidation hint with the file size at observation and no line count; clients fetch from their saved X-Next-Offset and restart at 0 when bytes is below it. Recorded in docs/API.md section 4."
         }
       ]
     },
@@ -613,6 +618,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-03: G1 fixes appended; T-022 may start once they are reflected in AUTH-DESIGN.md"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-05: status relayed from deandre-gpt6: auth local and uncommitted, 31 helper tests plus 7 real signed-token/SQLite handler tests; stale-proof/reset race fixed atomically with version and session guards and a consume marker; reauth proof TTL 120 s. G2 code delivery next."
         }
       ]
     },
@@ -673,7 +683,7 @@
     {
       "id": "T-025",
       "title": "Run API implementation against docs/API.md sections 1-4 using platform/fixtures/synthetic and the live fixture",
-      "status": "review",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -706,6 +716,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-04: G3 by deandre-fable on PR #2 head 269f9cf. Independent comparison platform/fixtures/synthetic/compare_api.py: 0 failures over both runs and the live instance (JSON byte-identical, CSV cells strings, journal NDJSON byte-identical, heartbeat raw). Four boundary probes, three confirmed findings, one contract flaw of the contract's own: (F1, must fix) /instances returns 404 for the whole list when any heartbeat directory lacks status.json, which is the bot's normal state for the first heartbeat interval after start ('starting armed' before the first metrics flush): make status.json optional in the listing and return status: null for that instance. (F2, must fix) /instances/<built-in function id>/journal reads the whole file and returns 413 once journal.jsonl exceeds 16 MiB even with limit=10; a paper instance reaches that in weeks (verified with a 22 MB file): read by byte offset or scan lines from the end without loading the whole file; keep the incomplete-tail rule. (F3, should fix) ids() returns 413 for the whole listing above 500 directories; sweeps write one directory per point, so research exceeds this within a month: paginate or raise to at least 5000 with a warning header. (F4, contract corrected in docs/API.md) an index-present /runs listed only indexed runs and hid every plain backtest and validate run (verified: 3 of 4 directories shown); /runs is now always the summary objects of every run directory, and runs/index.csv moves to GET /runs/index. Decisions recorded in docs/API.md: CSV rows are all strings, JSON files keep the bot's types; pagination headers and error codes documented as implemented."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-05: G3 signed off by deandre-fable on PR #2 head 155cf5c. F1 to F4 verified independently: starting-armed instance listed with null status/mode/label; journal byte cursor pages a 22 MB file without whole-file reads (mid-line offset 400, rotated 409, both cursors 400, partial tail omitted); listings page at 500 with X-Result-Warning above 500 and a 5000 cap; /runs always summaries and /runs/index paged. Their 12 API tests pass here on Node 22 when run by file. compare_api.py extended (optional root, absent artifacts skipped, nullable status, cursors) and run against the fixtures, a starting-armed root and an indexed 501-run root. Contract details recorded in docs/API.md. PR #2 merge remains human-gated after retarget to main."
         }
       ]
     },

@@ -49,6 +49,18 @@ file. Its id is the directory name.
 ]
 ```
 
+**Startup window.** The bot writes `heartbeat` (`starting armed`) before
+its first metrics flush, so for up to one heartbeat interval an instance
+has no `status.json`. It is still listed, with `status`, `mode` and
+`label` all `null`. A malformed `status.json` (no `mode` or `label`) is a
+`503 source_incomplete`, not a null.
+
+**Listing pages.** `/runs` and `/instances` return at most `limit` items
+(default and maximum 500) starting at item `after` (0-based), with
+`X-Next-After` and `X-Has-More`; `X-Result-Warning` is set when the root
+holds more than 500 directories. The API refuses a root with more than
+5000 directories (`413 too_many_runs`); archive old research roots.
+
 `heartbeat.status` is the raw second field of the `heartbeat` file: at
 startup `starting armed`, on the timer `<mode> <feed_state> <armed|tripped>`,
 at shutdown `stopped`. `age_seconds` is computed by the API from the
@@ -74,14 +86,29 @@ gateway (testnet/live only) { sent, send_failures, cancels_sent, stream_events, 
 `strategies` (array of `{id, ledger}`). Positions and cash for the Live
 tab come from here.
 
-### `GET /instances/{id}/journal?after=<line>&limit=<n>`
+### `GET /instances/{id}/journal?after=<line>|offset=<byte>&limit=<n>`
 
-Lines of `journal.jsonl` from line index `after` (0-based, default 0),
-at most `limit` (default and maximum 10000), served as
-`application/x-ndjson`, raw bytes, never parsed and re-serialised by the
-API or the Worker. An incomplete final line (the bot mid-append) is not
-published. Response headers `X-Next-After` (the index to pass next) and
-`X-Has-More`. CSV routes paginate the same way. Each line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
+Lines of `journal.jsonl`, served as `application/x-ndjson`, raw bytes,
+never parsed and re-serialised by the API or the Worker, at most `limit`
+lines (default and maximum 10000). An incomplete final line (the bot
+mid-append) is not published. Two cursors, mutually exclusive
+(`400` if both are given):
+
+- `after=<line>`: 0-based line index. Cheap for small journals; the API
+  scans from the start and refuses with `413 cursor_required` once a
+  scan would pass 256 MiB.
+- `offset=<byte>`: byte position that must sit right after a newline
+  (`400` otherwise). The API reads only the requested page in 64 KiB
+  chunks, so this works at any journal size. `409 source_changed` when
+  `offset` is beyond the file's end (rotated or truncated): restart the
+  cursor at 0.
+
+Headers: `X-Next-Offset` always (the byte to pass next; equal to the
+request's offset when nothing new is complete), `X-Next-After` only on
+line-cursor requests, `X-Has-More`. A single line over 1 MiB or a page
+over 16 MiB is `413`. Live clients keep `X-Next-Offset` and poll it when
+a `journal` event arrives. CSV routes paginate with `after` and `limit`
+only. Each line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
 `client_id`, `order_id`, `instrument`, `strategy`, `side`, `order_type`,
 `price`, `time` (ISO-8601 with nanoseconds since T-029; journals written
 before 2026-09-21 carry an integer nanoseconds-since-epoch value, which
@@ -225,9 +252,15 @@ change:
 { "kind": "heartbeat", "instance": "paper-ma_1h", "time": "...", "status": "paper healthy armed" }
 { "kind": "status",    "instance": "paper-ma_1h", "status": { ...status.json... } }
 { "kind": "state",     "instance": "paper-ma_1h" }
-{ "kind": "journal",   "instance": "paper-ma_1h", "lines": 1234 }
+{ "kind": "journal",   "instance": "paper-ma_1h", "bytes": 1834412 }
 { "kind": "run",       "run_id": "...", "event": "created|updated" }
 ```
+
+The `journal` event is an invalidation hint carrying the file's size at
+observation, never a line count (counting lines would mean reading the
+whole file). Clients fetch from their saved `X-Next-Offset`. If `bytes`
+is smaller than the client's offset the journal was rotated: restart at
+0.
 
 The Worker relays this stream to signed-in clients and adds
 `{ "kind": "board", "file": "tasks|notes" }` when it commits a board

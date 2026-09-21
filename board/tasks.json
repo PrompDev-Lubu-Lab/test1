@@ -775,6 +775,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-19: real acceptance found a defect (T-034): fragment lost across the Access login and Turnstile verification failure; back to in_progress until the fix is reviewed and DeAndre completes signup."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-20: T-034 fix reviewed; real flow acceptance pending after deploy."
         }
       ]
     },
@@ -1186,7 +1191,7 @@
     {
       "id": "T-034",
       "title": "Onboarding regression: invite fragment lost across the Access login, then Turnstile verification failure on the login form",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -1200,6 +1205,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-19 from DeAndre's real first-signup attempt; design reviewed, tested source head pending"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-20: source review at b2021bd PASSES, no blockers. Worker: POST /api/auth/link-context runs ingress, then Access, then a recovery-class reservation keyed by hashed IP plus the signed subject, no Turnstile and no KDF; body limited to kind and token with the kind enum and token format enforced; invite lookup requires unaccepted and unexpired, credential kinds go through the existing subject and version guarded token lookup; returns only kind and email; never consumes or extends; one uniform invalid_token error; audit rows carry kind and outcome only and exist only after admission, so origin and JWT floods write nothing; 10 lookups per IP window then 429. Turnstile: documented token rejections (missing, invalid, expired or duplicate) and hostname or action mismatch are 403 turnstile_failed with fresh-check guidance; configuration, provider internal, bad request, HTTP outage, timeout, network and malformed or contradictory bodies are 503 with fixed categories; raw provider codes and bodies never reach errors, responses or audit; failed bodies are cancelled. Client: fragment scrubbed before render, token and confirmed email held in page memory only, readonly prefilled address and the submit overrides any edited value with the confirmed one, stale async responses guarded, retry keeps the link privately, invalid or used links show a neutral message, first-time users are told to reopen the original invitation in the same browser after Access, typed email remembered in memory and cleared on sign-out, disposal and new links. Tests: 94 app, 176 Worker. Non-blocking: (a) the client friendly text still keys on the old turnstile_unavailable code, so new 503 categories show the generic server detail; map any turnstile_ 503 to the friendly text in a later pass; (b) Clawdie is a working display name chosen by Astra from the domain, not a naming decision by DeAndre, and stays a single constant. Deploy and real-flow acceptance next: reopen the same invitation in the same browser within its 24 h, prefilled signup, verification mail, verify, sign in, terms."
         }
       ]
     }

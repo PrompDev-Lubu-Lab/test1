@@ -1,0 +1,32 @@
+Run: bah_synthetic_2024-03-15_2024-03-17_f2e66a79
+Samples: 2881  span: 2.00 days  period: 1.00m
+
+Returns
+  total return             -0.17%
+  annualized return       -27.31%
+  annualized vol            4.48%
+  sharpe                   -7.09
+  sortino                  -9.92
+  calmar                  -13.77
+  max drawdown              1.98%  (11.95h longest)
+  best/worst period      +0.009% / -0.035%
+  time in market            99.4%
+
+Benchmark (buy & hold)
+  total return             -0.23%
+  max drawdown              6.45%
+  sharpe                   -2.72
+  excess return            +0.05%
+
+Trades
+  fills / round trips      1 / 0
+  win rate                   0.0%  (0 wins, 0 losses)
+  profit factor             0.00
+  net pnl                      0
+  expectancy                   0
+  avg win / loss               0 / 0
+  largest win / loss           0 / 0
+  avg holding                0ns
+  turnover               3013.56
+  fees                   3.01356  (0.100% of turnover)
+  open at end                  1

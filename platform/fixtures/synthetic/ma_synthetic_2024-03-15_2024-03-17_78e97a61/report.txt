@@ -1,0 +1,32 @@
+Run: ma_synthetic_2024-03-15_2024-03-17_78e97a61
+Samples: 2881  span: 2.00 days  period: 1.00m
+
+Returns
+  total return              5.30%
+  annualized return   1251662.45%
+  annualized vol            2.86%
+  sharpe                  330.15
+  sortino                 656.34
+  calmar              4601446.15
+  max drawdown              0.27%  (7.93h longest)
+  best/worst period      +0.009% / -0.040%
+  time in market            41.1%
+
+Benchmark (buy & hold)
+  total return             -0.23%
+  max drawdown              6.45%
+  sharpe                   -2.72
+  excess return            +5.53%
+
+Trades
+  fills / round trips      7 / 3
+  win rate                 100.0%  (3 wins, 0 losses)
+  profit factor              inf
+  net pnl                 454.98
+  expectancy              151.66
+  avg win / loss          151.66 / 0
+  largest win / loss      151.66 / 0
+  avg holding              6.00h
+  turnover              20921.17
+  fees                  20.92117  (0.100% of turnover)
+  open at end                  1

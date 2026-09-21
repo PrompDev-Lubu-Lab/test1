@@ -1,0 +1,29 @@
+{
+  "equity_samples": 2881,
+  "events": 5760,
+  "fees": "3.01356",
+  "fills": 1,
+  "final_equity": "9982.55644",
+  "from": "2024-03-15T00:00:00.000000000Z",
+  "initial_cash": "10000",
+  "kill_switch_trips": 0,
+  "max_drawdown": "200",
+  "max_drawdown_fraction": 0.01983452759734716,
+  "orders": 1,
+  "realized_pnl_net": "-3.01356",
+  "rejected": 0,
+  "run_id": "bah_synthetic_2024-03-15_2024-03-17_f2e66a79",
+  "seed": 5,
+  "strategies": [
+    {
+      "id": 1,
+      "label": "bah_synthetic"
+    }
+  ],
+  "symbol": "ETHUSDT",
+  "to": "2024-03-17T00:00:00.000000000Z",
+  "total_return": -0.001744356,
+  "turnover": "3013.56",
+  "volume": "1",
+  "wall_time_seconds": 0.006425112
+}

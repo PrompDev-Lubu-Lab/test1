@@ -1,0 +1,26 @@
+run_id = bah_synthetic_2024-03-15_2024-03-17_f2e66a79
+symbol = ETHUSDT
+venue = binance
+data_dir = data
+from = 2024-03-15T00:00:00.000000000Z
+to = 2024-03-17T00:00:00.000000000Z
+initial_cash = 10000
+seed = 5
+sample_interval = 60s
+tick_size = 0.01
+lot_size = 0.0001
+min_notional = 5
+maker_fee = 10/10000
+taker_fee = 10/10000
+queue_model = 1
+fallback_to_trades = true slippage_bps=5
+latency = 1 md=10.000ms order=20.000ms ack=5.000ms jitter=10.000ms
+max_position = 10
+max_order_notional = 50000
+max_drawdown = 5000
+max_daily_loss = 5000
+strategy = buy_and_hold (bah_synthetic)
+  fast = 4
+  interval = 15m
+  quantity = 1
+  slow = 12

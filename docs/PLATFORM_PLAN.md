@@ -407,6 +407,13 @@ other project has:
 
 Installers are stored in R2, never in git.
 
+**Signing.** electron-updater on macOS only applies updates to a signed
+and notarized build, which needs an Apple Developer Program membership
+(paid, human-owned). Windows needs a code-signing certificate or ships
+unsigned with SmartScreen warnings. Linux needs nothing. Until DeAndre
+decides (T-020), releases are unsigned development builds, the Downloads
+tab labels them so, and macOS users reinstall by hand.
+
 Session tokens in the desktop app are kept with Electron's `safeStorage`,
 which uses the operating system's credential store.
 

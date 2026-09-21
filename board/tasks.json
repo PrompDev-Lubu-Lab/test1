@@ -104,7 +104,7 @@
       "status": "todo",
       "priority": "high",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -122,6 +122,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "corrected: read-only, board writes moved to the Worker"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -156,7 +161,7 @@
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -170,6 +175,11 @@
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -179,7 +189,7 @@
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -198,6 +208,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "corrected: writes go through the Worker and the GitHub API"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -234,7 +249,7 @@
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -248,6 +263,11 @@
           "on": "2026-09-20",
           "by": "deandre-fable",
           "text": "created"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -257,7 +277,7 @@
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -275,6 +295,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "corrected: Electron, not Tauri"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -284,7 +309,7 @@
       "status": "todo",
       "priority": "normal",
       "assigned_by": "deandre-fable",
-      "assigned_to": null,
+      "assigned_to": "deandre-gpt6",
       "assigned_on": "2026-09-20",
       "due": null,
       "area": "platform",
@@ -302,6 +327,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "corrected: latest.yml manifests"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
         }
       ]
     },
@@ -479,13 +509,18 @@
       "due": null,
       "area": "platform",
       "depends_on": [],
-      "instructions": "Decide: owner account email; whether api.clawdie.ai and updates.clawdie.ai are the hostnames; the email sender for verification mails; whether agents may run docker compose on the server or only humans.",
+      "instructions": "Decide: owner account email; whether api.clawdie.ai and updates.clawdie.ai are the hostnames; the email sender for verification mails; whether agents may run docker compose on the server or only humans. Also decide code signing for the Electron app: macOS auto-update via electron-updater requires a signed and notarized build (Apple Developer Program, paid, human-owned); Windows needs a code-signing certificate or ships unsigned with SmartScreen warnings. Until decided, releases are unsigned dev builds and the Downloads tab labels them so.",
       "assigned_on": "2026-09-21",
       "log": [
         {
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-01: added the Electron signing decision"
         }
       ]
     },
@@ -506,6 +541,156 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        }
+      ]
+    },
+    {
+      "id": "T-022",
+      "title": "M1: Worker + D1 accounts (invite, signup, verification, login, reset, roles, avatar, terms) behind Access",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-018"
+      ],
+      "instructions": "Implement the M1 design note (T-018) after Fable's review. Endpoints under the names in docs/API.md section 5-6. Acceptance tests from docs/prompts/astra-platform-brief.md section 6 (auth, roles, avatar, terms). Secrets only in Cloudflare secrets. PR into main (or baseline) from codex/platform-app; Fable reviews the auth and session code before merge.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-023",
+      "title": "M1: Electron shell from a pinned clean Case Forge snapshot, wizard, eight empty tabs, {{APP_NAME}} constant",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-006"
+      ],
+      "instructions": "Reuse from a pinned clean snapshot of CaseForgeHq/family-court-strategist (MIT); keep the MIT and font notices in platform/app. Three-step wizard (Account, Connect, Terms) and the tab strip in docs/PLATFORM_PLAN.md section 2.1. Web build deployable to Pages and Electron build runnable locally from the same code. No trading logic.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-024",
+      "title": "M1: Access application for app.clawdie.ai and api.clawdie.ai with GitHub IdP and deliberate session length",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-020"
+      ],
+      "instructions": "Separate Access application from the mailbox one. Rules: the two humans by verified email with required GitHub login method; service tokens for agents. No membership or org changes. Record the audience tag name (not value) and session length on the board.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-025",
+      "title": "Run API implementation against docs/API.md sections 1-4 using platform/fixtures/synthetic and the live fixture",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-004",
+        "T-015",
+        "T-027"
+      ],
+      "instructions": "Implements T-005's service. Contract tests: every endpoint in docs/API.md sections 1-4 returns the fixture values unchanged (string money, exact keys). Runs against a fixtures directory locally and against /runs on the server in compose. Read-only. Fable reviews field-name fidelity.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-026",
+      "title": "Integration-cycle merge routine: Astra merges board/docs commits from claude/cool-sagan-7klcfy into codex/platform-app",
+      "status": "todo",
+      "priority": "normal",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "board",
+      "depends_on": [],
+      "instructions": "During COLLAB-20260921-01 Fable is the sole writer of board/ and allocator of task ids on claude/cool-sagan-7klcfy. Astra sends status requests in its messages; Fable records them. Astra merges (never rebases) claude/cool-sagan-7klcfy into codex/platform-app at least once per working session and before every PR. Code never lands on claude/cool-sagan-7klcfy from Astra; board and docs never land on codex/platform-app except via merge. Ends when T-017 merges and the board lives on main.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-027",
+      "title": "Synthetic live-surface fixture: status.json, metrics.prom, heartbeat, state.json, journal.jsonl for the Live and Overview tabs",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-fable",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [],
+      "instructions": "Generate with the bot's own writers (write_metrics, write_heartbeat, Portfolio::state_to_json, Journal) so field names and encodings are exactly what a paper instance writes, under platform/fixtures/synthetic/paper-ma_synthetic/ with a README. Includes a few journal lines (accepted, fill, cancelled) and a status.json in healthy/armed and a second sample in stale/tripped. Not a running instance.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
+        }
+      ]
+    },
+    {
+      "id": "T-028",
+      "title": "tradebot-research --json-out: persist sweep, walk-forward, Monte Carlo, validate and judge results as JSON in the run directory",
+      "status": "todo",
+      "priority": "normal",
+      "assigned_by": "deandre",
+      "assigned_to": "deandre-fable",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "bot",
+      "depends_on": [],
+      "instructions": "The Research tab needs persisted research output (docs/API.md section 3 gap). Add a --json-out flag (or write research.json beside the run) with the exact struct field names from src/tradebot/research/ (GridResult, WalkForwardResult, MonteCarloResult, GoNoGo checks). One doctest per new writer. Then add GET /runs/{id}/research to docs/API.md. Must keep CI green on gcc/clang Debug/Release.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "reserved in COLLAB-20260921-01 planning round 1"
         }
       ]
     }

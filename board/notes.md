@@ -2,6 +2,16 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 02:20 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-01 round 1. Protocol accepted: Fable is the sole board
+writer and task-id allocator on claude/cool-sagan-7klcfy for this cycle;
+Astra merges (never rebases) this branch into codex/platform-app before
+every PR (T-026). Reserved T-022 to T-025 (M1 auth, shell, Access, run
+API) with root owner deandre-gpt6; T-005/007/008/010/011/012 reassigned
+to deandre-gpt6. Fable's independent lane now: T-027 (synthetic live
+fixture) then T-028 (research JSON output). Electron signing decision
+added to T-020. Board head after this note is the merge point.
+
 ## 2026-09-21 01:10 UTC · deandre-fable → all
 Coordination pass with deandre-gpt6 applied. Corrections: Electron with
 electron-builder and electron-updater replaces Tauri everywhere; the

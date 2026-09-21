@@ -58,7 +58,7 @@ a paper instance produces, but no process ran and no market was watched.
 | `heartbeat` | `2026-09-21T01:15:00Z paper healthy armed` |
 | `status.json`, `metrics.prom` | a healthy, armed paper instance 75 minutes in: long 1 ETH at average 3000, marked 3012.50, 2 fills, 1 rejection |
 | `state.json` | the portfolio behind that status, account and per-strategy ledgers |
-| `journal.jsonl` | six reports: accepted, two fills (partial then full), accepted, cancelled, rejected with a reason. `time` is integer nanoseconds. |
+| `journal.jsonl` | six reports: accepted, two fills (partial then full), accepted, cancelled, rejected with a reason. `time` is ISO-8601 with nanoseconds. |
 | `sample-stale-tripped/` | the same instance 20 minutes later after the feed went stale and the kill switch tripped: `heartbeat` says `paper stale tripped`, `status.json` has `feed.state = "stale"`, `tripped = true` |
 
 Reproduce with `generate_live.cpp`, compiled the same way as

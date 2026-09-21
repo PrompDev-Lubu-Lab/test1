@@ -66,10 +66,14 @@ tab come from here.
 
 ### `GET /instances/{id}/journal?after=<line>`
 
-Lines of `journal.jsonl` from `after` onward, as a JSON array. Each line
-verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
+Lines of `journal.jsonl` from `after` onward, served as `application/x-ndjson`,
+raw bytes, never parsed and re-serialised by the API or the Worker. Each
+line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
 `client_id`, `order_id`, `instrument`, `strategy`, `side`, `order_type`,
-`price`, `time` (**integer nanoseconds since epoch**), `status`,
+`price`, `time` (ISO-8601 with nanoseconds since T-029; journals written
+before 2026-09-21 carry an integer nanoseconds-since-epoch value, which
+the bot still reads and the API passes through unchanged as raw NDJSON
+bytes), `status`,
 `filled`, `remaining`, optional `fill {price, quantity, fee, liquidity, exec_id}`,
 optional `reason`.
 

@@ -598,13 +598,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-03: measured on the account's remote preview (platform/docs/hash-probe-results.json @ codex/platform-app 62cd7bf): native WebCrypto and node:crypto cap PBKDF2 at 100000 iterations; @noble/hashes 2.4.0 PBKDF2-HMAC-SHA256 at 600000 succeeded 3/3 and matched Node's output; round trips 2405/1582/1549 ms (client-observed, not CPU billing)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-07: production KDF purposes now enumerated in the limiter (login, signup, reauth, reset, password) under the shared 10-per-IP and 60-global allowance."
         }
       ]
     },
     {
       "id": "T-022",
       "title": "M1: Worker + D1 accounts (invite, signup, verification, login, reset, roles, avatar, terms) behind Access",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -635,6 +640,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-06: G2 by deandre-fable on PR #2 head 79ec1be (app.mjs, security.mjs, limiter.mjs, store.mjs, avatar.mjs, migration, example config, README, handler/store/limiter tests, avatar probe). Verdict: passes conditionally. Confirmed sound: authorization re-checked inside every write statement (activeSession guards, owner variant), D1 batches atomic with rollback tests, one-use tokens via consume markers, reset/proof races with one winner, last-owner protection, 20-session cap, atomic two-user cap at signup, RS256-only JWT with exact iss/aud and service tokens rejected, one KDF per request enforced by the budget, tokens in URL fragments, audit writes bounded to admitted requests. Findings: (F1, before staging) the IP window (10 per 10 min) is shared between password attempts and authenticated writes (profile, terms, avatar, email, invites, later board edits), so ten writes from one IP block login and recovery from that IP; and the per-user write allowance of 10 per 10 min is far too low for board edits: add a separate 'write' purpose class with its own IP and account windows (about 120 per 10 min), no lockout semantics, and keep the global 60/min for KDF purposes only. (F2, before staging) reserve() runs before verifyAccess() on password routes, so a request with an expired or invalid Access assertion consumes the named account's window and, for login, counts toward the ten-failure lock; verify the assertion first (JWKS is cached), then reserve. (F3, before M1 done) only login reports success to the limiter; signup, verify, reset, reauth, password change, email change and invites report failure on success, so their account windows never clear: set outcomeRecorded on each success path. (F4, before staging) no owner bootstrap exists in code; README defers to an operator transaction: add a seeding script that prints a one-time invite token and inserts its digest (role owner, handle deandre, 24 h) via wrangler d1 execute, so the first owner signs up through the normal flow and binds the Access sub (T-031). (F5, app) the 24 h Access session is shorter than the 7-day app session; after 24 h every call returns 403 access_denied while the cookie is valid: the SPA must treat that code as 'renew Access' (full navigation), not 'logged out'; desktop refreshes the cloudflared token. (F6, nit) CSRF compare is a plain string compare of two hashes; use equalDigest on the bytes. (F7, known limitation) verifyAccess rejects an identity whose email has a non-ASCII local part. (F8, note) every password and recovery route, including authenticated ones (reauth, password, email, invites), requires a Turnstile token whose action equals the last path segment; the UI must match. (F9, note) Electron must send Origin, X-CSRF-Token and the Access assertion header. (F10, low) an R2 object can be orphaned if the Worker dies between put and save; add a lifecycle rule on the avatars/ prefix or a periodic sweep."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-07: G2 re-check by deandre-fable on PR #2 head d452828 (limiter.mjs, app.mjs, security.mjs diffs, scripts/seed-invite.mjs, app.js renewal path). F1 resolved: limiter v2 separates a 'write' class (120 per IP and per user per 10 min, success never clears) and 'recovery' from the KDF class (login/signup/reauth/reset/password share 10 per IP per 10 min and 60 global per minute, per-purpose account windows, lock only on login). F2 resolved with the ingress compromise, confirmed: Origin/body -> /ingress (120 per IP per minute, 600 global, no account state) -> signed Access verification -> named-account reservation -> Turnstile -> one KDF; invalid assertions cannot touch a named account, and the ingress gate bounds verification work. F3 resolved: finish() reports 2xx outcomes for every route. F6 resolved: equalDigest on both CSRF digests. F4 delivered as T-031. F5 handled in the app: 403 access_denied or an Access edge redirect triggers a full-navigation renewal while the app session is retained, and the session stays bound to the same Access sub. No staging blockers remain in code. Two nits, not blocking: (N1) limiterTransition throws 503 on a persisted state whose version is not 2, so a future version bump would wedge the single global DO, including its cleanup alarm; treat an unknown or older version as a fresh state (nothing is deployed yet, so no migration is needed today). (N2) seed-invite refuses to run while an unaccepted invite exists; document the operator recovery for a lost link (expire the row, then re-run) in the README. Status: review until real Access, Turnstile, email and browser acceptance (ACCEPTANCE rows 1 to 6) run in staging."
         }
       ]
     },
@@ -879,7 +889,7 @@
     {
       "id": "T-031",
       "title": "Owner bootstrap: seeding script for the first invite (G2 F4)",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -893,6 +903,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-06 from G2 finding F4"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-07: delivered on d452828: scripts/seed-invite.mjs inserts only a 24 h owner invite digest into an empty account database, verifies the exact row, prints the one-use link once to an interactive terminal, refuses existing users or active invites; three SQLite tests. Not run against any real database. Reviewed by deandre-fable; boundaries accepted."
         }
       ]
     }

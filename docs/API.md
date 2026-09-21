@@ -15,10 +15,20 @@ The Worker proxies every path below under the same names, after
 checking the session and role. The run API itself has no auth and no
 public exposure.
 
-Encodings, everywhere: money and quantities are **decimal strings**
-(exact fixed-point), counts and fractions are numbers, times are ISO-8601
-UTC strings except where a file uses nanoseconds (noted). Durations are
-the bot's human strings (`"1m30s"`) where the file has them.
+Encodings, decided at G3 (COLLAB-20260921-04):
+
+- **JSON files** (`summary.json`, `metrics.json`, `status.json`,
+  `state.json`, `validation.json`, `drift.json`) are served with the
+  types the bot wrote: money and quantities are decimal strings, counts
+  and fractions are numbers, times are ISO-8601 UTC strings, durations
+  are the bot's human strings where the file has them.
+- **CSV-derived rows** (`equity`, `fills`, `orders`, `metrics`,
+  `round_trips`, and `runs/index.csv`) are served with **every cell as
+  the source string**, including counts and fractions. The API makes no
+  typing decision for CSV; the client converts for plotting only and
+  keeps the source string for tables and tooltips.
+- **Journal lines** are raw bytes.
+- The only derived field anywhere is `heartbeat.age_seconds`.
 
 ## 1. Instances (running bots)
 
@@ -64,11 +74,14 @@ gateway (testnet/live only) { sent, send_failures, cancels_sent, stream_events, 
 `strategies` (array of `{id, ledger}`). Positions and cash for the Live
 tab come from here.
 
-### `GET /instances/{id}/journal?after=<line>`
+### `GET /instances/{id}/journal?after=<line>&limit=<n>`
 
-Lines of `journal.jsonl` from `after` onward, served as `application/x-ndjson`,
-raw bytes, never parsed and re-serialised by the API or the Worker. Each
-line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
+Lines of `journal.jsonl` from line index `after` (0-based, default 0),
+at most `limit` (default and maximum 10000), served as
+`application/x-ndjson`, raw bytes, never parsed and re-serialised by the
+API or the Worker. An incomplete final line (the bot mid-append) is not
+published. Response headers `X-Next-After` (the index to pass next) and
+`X-Has-More`. CSV routes paginate the same way. Each line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
 `client_id`, `order_id`, `instrument`, `strategy`, `side`, `order_type`,
 `price`, `time` (ISO-8601 with nanoseconds since T-029; journals written
 before 2026-09-21 carry an integer nanoseconds-since-epoch value, which
@@ -91,14 +104,19 @@ look like `<label>_<from>_<to>_<8 hex>`.
 
 ### `GET /runs`
 
-`runs/index.csv` as JSON if present, else a listing built from
-`summary.json` files:
+The `summary.json` object of **every** run directory, verbatim, as an
+array, whether or not `runs/index.csv` exists. (G3 finding: an index-only
+listing hid every run that `tradebot-backtest` or `validate` wrote
+without a sweep, because only sweeps append to the index.) Clients
+distinguish runs from instances by the directory name and by the
+presence of a `heartbeat` in `/instances`. `max_drawdown` on a summary is
+money; the fraction is `max_drawdown_fraction`. Round trips are not in a
+summary and are shown as unavailable until `metrics.json` is fetched.
 
-```json
-[{ "recorded_at": "...", "run_id": "...", "label": "...", "from": "...", "to": "...", "seed": 1,
-   "total_return": 0.053, "sharpe": 1.2, "max_drawdown": 0.0026, "round_trips": 3,
-   "benchmark_return": -0.0017, "params": "fast=4;slow=12" }]
-```
+### `GET /runs/index`
+
+`runs/index.csv` as rows (every cell a string), or `404` when the file
+does not exist. Research metadata only; never the run list.
 
 ### `GET /runs/{id}`
 
@@ -128,9 +146,10 @@ open_quantity}`.
 ### `GET /runs/{id}/equity`
 
 `equity.csv` as an array of objects with the CSV's own column names:
-`time, equity, cash, realized_pnl_net, unrealized_pnl, fees, position, mark`.
-Optional `?every=N` returns every Nth row for long runs; the first and
-last rows are always included.
+`time, equity, cash, realized_pnl_net, unrealized_pnl, fees, position, mark`,
+every value a string. Optional `?every=N` returns every Nth row for long
+runs; the first and last rows are always included. `after` and `limit`
+paginate as for the journal.
 
 ### `GET /runs/{id}/fills`
 
@@ -242,7 +261,12 @@ manage users and the allowlist.
 
 ## 7. Errors
 
-`404` for an unknown instance or run, `409` on a board conflict that
-could not be merged (with both versions in the body), `503` when the
-tunnel to the server is down (the board and accounts keep working). Error
-bodies are `{ "error": "<short code>", "detail": "<sentence>" }`.
+`400` for a bad id, path or query, `404` for an unknown instance, run or
+artifact, `405` for anything but GET and HEAD on the run API, `409` on a
+board conflict that could not be merged (with both versions in the
+body), `413` for an artifact over the read limit, `503` when a source
+file is incomplete or changing (retry) or when the tunnel to the server
+is down (the board and accounts keep working). Error bodies are
+`{ "error": "<short code>", "detail": "<sentence>" }`. Every response
+carries `X-Data-Source: synthetic-fixtures | bot-artifacts` so a preview
+can never be mistaken for the bot.

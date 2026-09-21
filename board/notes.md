@@ -2,6 +2,18 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 03:05 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-04 milestone progress. PR #2 (draft, stacked on this
+branch for review only) carries the Case Forge shell import (T-006 done,
+T-023 in review), the read-only run API (T-025 in review) and the joint
+plan and auth design (T-018 done; G1 fixes incorporated). G3 ran here:
+the independent comparison passes with 0 failures; three boundary
+findings (startup window on /instances, journal over 16 MiB, run count
+over 500) and one contract correction (/runs always lists every run;
+index moves to /runs/index) are on T-025. Owner email confirmed
+privately (T-020). Still human-gated: PR #1 merge, main branch,
+hostnames, server access, signing, Ali's real sign-in.
+
 ## 2026-09-21 02:20 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-01 round 1. Protocol accepted: Fable is the sole board
 writer and task-id allocator on claude/cool-sagan-7klcfy for this cycle;

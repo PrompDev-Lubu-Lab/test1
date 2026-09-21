@@ -293,7 +293,7 @@
     {
       "id": "T-010",
       "title": "Deploy the web app as static assets on the account Worker at app.clawdie.ai (one origin)",
-      "status": "in_progress",
+      "status": "review",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -325,6 +325,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-13: provisioning reported complete: D1 clawdie-platform-accounts with migration 0001 applied once, private avatar and release buckets empty, app-only managed Turnstile widget, Access application per T-024; all feature flags and RUN_ORIGIN off; no accounts, emails, server or installer touched; no mail DNS changes. Private-config dry run passed. Deploy, custom domain and smoke still pending."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: DEPLOYED, NOT USABLE. G4-reviewed f462cc8 is live on the single origin as one Worker: D1 migration 0001, private avatar and release buckets with public URLs disabled, exact-host Turnstile, both secrets, global worker-first static routing, workers.dev and preview URLs off, every optional feature and RUN_ORIGIN off. Worker version id recorded privately by Astra. Evidence: seven unauthenticated live routes redirect to Access; 146 Worker tests including the real RS256 verifier; 14 CI checks green. The ten local workerd requests stopped at the host gate and are not JWT proof. Usability gates still open: no account exists, no email sent, no sign-in, authenticated smoke (T-032 item 12 second half) not run. Status review until the owner has signed in and the authenticated smoke is recorded."
         }
       ]
     },
@@ -377,6 +382,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-11: M1 to M6 rechecked by deandre-fable on PR #2 head b3b1d7c and accepted. M1: installer body piped through FixedLengthStream(object.size) at the edge, bounded stream kept for tests; probe now requires Content-Length and reports exact GET/HEAD sizes. M2: publisherNames documented as the signer's SimpleName (GetNameInfo(SimpleName,false)), thumbprints as uppercase SHA-1 pins distinct from the installer SHA-512. M3: verifier process budget 30 s; the 20 s account receipt unchanged. M4: contract test constructs the pinned NsisUpdater 6.8.9 and checks configOnDisk, getOrCreateDownloadHelper, cacheDir and file without writes. M5: checkout, setup-node and upload-artifact pinned by commit SHA in both jobs. M6: a failed account preflight raises UPDATE_AUTHENTICATION_REQUIRED and shows a distinct sign-in message; a test forbids any updater request without sign-in. Joint source checkpoint closed for M5; remaining: signing (T-020), real Access sign-in in the shell, real installed upgrade (acceptance row 10), minimum-version gate, macOS and Linux."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: unsigned Windows development package rebuilt with the real app and Access origins and updates off; verifier passes, native signature NotSigned. Not installed, published or usable; signing still gates T-012 and acceptance row 10."
         }
       ]
     },
@@ -782,6 +792,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-13: Access application created for the confirmed hostname: 6 h session, HttpOnly SameSite=Lax cookie, no allow policy yet (denies everyone). Bootstrap policy reviewed: an owner-only rule by exact confirmed owner email with one-time PIN is acceptable for deployed smoke and for the owner to see the closed deployment, because that mailbox is not hosted by this system; it must be a single exact-email rule, never a domain rule, never an inbox.clawdie.ai or ali@ address, and it is removed when the GitHub method is live. Member policy for ali: GitHub identity only, as designed. Audience tag name and final session length still to be recorded here."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: DeAndre approved a continuing owner identity: the confirmed owner address via Cloudflare one-time PIN, six-hour sessions, separate app password. Saved rule is exact owner email AND the PIN method; no member, domain or service rule. The owner mailbox is on the Microsoft tenant, not on inbox.clawdie.ai, so the plan rule against codes to a mailbox this system hosts is respected. Member (ali) rule remains GitHub identity only and still waits on the human passkey. Conditions recorded on T-031."
         }
       ]
     },
@@ -1006,6 +1021,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-13: seeding under the one-time PIN identity is NOT approved. Signup binds the Access sub permanently (users.access_sub UNIQUE, no rebind path), so an owner created while signed in by PIN could be locked out when the policy moves to GitHub if the sub differs. Seed only after the owner signs in through the final login method, or after a probe shows the same sub for both methods, or after a reviewed one-row operator rebind procedure is documented and accepted by DeAndre."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: subject-migration concern RESOLVED CONDITIONALLY. Because the owner identity is now continuing, not a bootstrap, seeding under it is acceptable provided: the owner rule and the PIN identity provider are never deleted and re-created (that changes the Access user id and would lock the owner out, there is no rebind path); if the owner is ever moved to GitHub, a reviewed one-row operator rebind must come first. Email bootstrap mode (operator-only --email) reviewed at design level, source pending; concerns to satisfy in the patch: (1) the Cloudflare API token for the one send is created by DeAndre, scoped to email sending only, short-lived, set in the shell by a human and deleted after the run; (2) run from a clean checkout at the reviewed commit hash, with DeAndre present, since the raw token lives in process memory of a process an agent runs; (3) the settings file INVITE_ACCOUNTS must equal the deployed Worker value and the sender must equal the Worker EMAIL_FROM so the same DKIM and allowed-sender list cover both; (4) insert first, send second, no automatic retry, active invite retained on any ambiguous send result, recovery only through the documented expire-exact-digest-row step while no users exist; (5) print a digest prefix for reconciliation, never the token, link or provider error body; (6) the Microsoft tenant treats mail from its own domain arriving from Cloudflare as possible spoofing; aligned DKIM should pass, but if the message does not arrive, check quarantine before any resend, and any tenant allow-list change is a human mail-setting step; (7) the 24 h one-use invite at rest in the mailbox is accepted, matching verify and reset mail. This one approved setup email carries the invitation and doubles as the sender test."
         }
       ]
     },
@@ -1033,6 +1053,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-13: G4 code review on f462cc8 (site.mjs, 15 real-RS256 tests, wrangler.example.jsonc, PRODUCTION-HOSTING.md) PASSES. Checklist items 1-5 and 8-11 verified in source or reported provisioning: /api-only delegation, global worker-first with html/not-found none, Access verified before ASSETS.fetch plus post-fetch expiry recheck, credentials stripped, same-origin guarded redirects, wrapper-set CSP and private no-store, unprefixed routes are static 404s, no SPA fallback, control files and encoded aliases 404. Non-blocking notes: (a) observability stays off by Astra decision; (b) the deployed step-3 check can only show Access denying at the edge, the Worker independence is proven by the tests and a local wrangler dev run, wording to adjust; (c) smoke must load the page in a real browser so encoding passthrough of app.js is exercised; (d) style-src unsafe-inline inherited from the design, later cleanup. Remaining before invite: custom domain attach, deployed smoke (item 12), one test send (item 6). Reviewed by deandre-fable; stays in review until the deployed smoke is recorded."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: deployed with the reviewed config; item 12 first half done (seven unauthenticated routes redirect to Access at the edge). Second half (authenticated root with CSP, /api/config, /api/me, mutation without Origin, unknown path 404, real browser page load) waits for the owner sign-in. Item 6 test send is the invitation email itself."
         }
       ]
     },

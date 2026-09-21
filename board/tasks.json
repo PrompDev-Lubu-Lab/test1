@@ -292,8 +292,8 @@
     },
     {
       "id": "T-010",
-      "title": "Deploy the web dashboard to Cloudflare Pages",
-      "status": "todo",
+      "title": "Deploy the web app as static assets on the account Worker at app.clawdie.ai (one origin)",
+      "status": "in_progress",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -301,10 +301,10 @@
       "due": null,
       "area": "platform",
       "depends_on": [
-        "T-007",
-        "T-009"
+        "T-022",
+        "T-032"
       ],
-      "instructions": "GitHub Actions workflow: build platform/app on push to main, deploy to Pages, custom domain app.clawdie.ai. Preview deploys per PR.",
+      "instructions": "One Worker, one origin: platform/app built to static assets and deployed with the account Worker (worker-first routing, Access assertion verified before any asset is served), custom domain app.clawdie.ai, API base /api on the same origin. No Pages project, no api./updates. hostnames. First deploy has every feature flag off (avatars, events, downloads, board binding, RUN_ORIGIN unset) and is reachable only by the two Access identities; enable features one at a time by redeploy. Deploy from the reviewed commit, record the commit and Worker version id on the board (never account, zone or database ids). Human-controlled: T-001/T-016 merges, owner seed, signing, mail records.",
       "log": [
         {
           "on": "2026-09-20",
@@ -315,6 +315,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-12: re-scoped from Pages to Workers Static Assets on the account Worker (DeAndre told Astra to finish the platform updates; app.clawdie.ai is the only public hostname). Astra provisioning; code head for review pending (T-032)."
         }
       ]
     },
@@ -533,6 +538,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-12: mainline order recorded: T-001 merge (merge commit) -> T-016 main + protection -> this PR -> T-033 (PR #2 retarget to main) -> redeploy the Worker from the tagged main commit."
         }
       ]
     },
@@ -593,8 +603,8 @@
     },
     {
       "id": "T-020",
-      "title": "Confirm owner email and the api./updates. hostnames",
-      "status": "todo",
+      "title": "Confirm owner email and the api./updates. hostnames (resolved: one origin)",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre",
@@ -628,6 +638,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-10: signing decision now also gates T-012 publication and acceptance row 10"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-12: resolved. Owner email confirmed privately earlier; api./updates. hostnames are not needed because the Worker serves web, /api/* and the update feed on app.clawdie.ai. Still open elsewhere: Electron signing (tracked on T-011/T-012), agent server access (T-009), sender SPF/DKIM state (T-032 checklist)."
         }
       ]
     },
@@ -732,7 +747,7 @@
     },
     {
       "id": "T-024",
-      "title": "M1: Access application for app.clawdie.ai and api.clawdie.ai with GitHub IdP and deliberate session length",
+      "title": "M1: Access application for app.clawdie.ai (single origin) with GitHub IdP and deliberate session length",
       "status": "todo",
       "priority": "high",
       "assigned_by": "deandre",
@@ -740,10 +755,8 @@
       "assigned_on": "2026-09-21",
       "due": null,
       "area": "platform",
-      "depends_on": [
-        "T-020"
-      ],
-      "instructions": "Separate Access application from the mailbox one. Rules: the two humans by verified email with required GitHub login method; service tokens for agents. No membership or org changes. Record the audience tag name (not value) and session length on the board.",
+      "depends_on": [],
+      "instructions": "Separate Access application from the mailbox one, covering app.clawdie.ai/* including /api/* and the WebSocket path. Rules: the two humans by verified email with the GitHub login method required; no bypass and no service-token rule on this application (the Worker rejects service-token assertions). The run API tunnel hostname gets its own application later that admits only the Worker service token (T-009). No membership or org changes. Record the audience tag name (not value) and session length on the board.",
       "log": [
         {
           "on": "2026-09-21",
@@ -754,6 +767,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-04: desktop path decided in AUTH-DESIGN G1 item 5: human Access token via the official cloudflared login flow plus the app session; no app-session-only route."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-12: single-origin scope; T-020 dependency cleared. Astra preparing the application; ACCESS_AUDIENCE and session length to be recorded here."
         }
       ]
     },
@@ -973,6 +991,50 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-07: delivered on d452828: scripts/seed-invite.mjs inserts only a 24 h owner invite digest into an empty account database, verifies the exact row, prints the one-use link once to an interactive terminal, refuses existing users or active invites; three SQLite tests. Not run against any real database. Reviewed by deandre-fable; boundaries accepted."
+        }
+      ]
+    },
+    {
+      "id": "T-032",
+      "title": "Production hosting integration: Workers Static Assets wrapper, worker-first routing, Access before assets, private deploy config (review gate G4)",
+      "status": "in_progress",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-022"
+      ],
+      "instructions": "Deliver a code head for review. G4 checklist, all required before the first deploy: (1) /api/* is the only API prefix in production; drop the unprefixed route alias so asset paths and API routes cannot collide. (2) run_worker_first covers every path, so no asset is served before the Worker verifies the Access assertion; non-API requests are GET/HEAD only, then verifyAccess, then ASSETS.fetch; a request without the assertion gets 403, not the page. (3) Security headers on asset responses are set by the wrapper, not only by _headers; not_found_handling is not the SPA fallback, so unknown paths return 404. (4) workers_dev and preview_urls stay false; only the custom domain app.clawdie.ai is routed; confirm the custom domain adds one DNS record and touches nothing at the apex or inbox. (5) Access application per T-024; Turnstile widget for the exact hostname; secrets only via wrangler secret put. (6) EMAIL_FROM on a sender domain whose SPF/DKIM already accommodate Cloudflare sending; the apex SPF record is a Microsoft mail setting and stays human-controlled; one test send to the owner before any verification mail. (7) D1 created and 0001 applied once; only the database name goes on the board; export before any later migration. (8) First deploy with AVATAR_READY, EVENTS_READY, DOWNLOADS_READY, board binding and RUN_ORIGIN unset. (9) No installer in the release bucket and updatesEnabled false until the signing decision; the strict verifier cannot install an unsigned build. (10) Decide observability: enabled with sampling is recommended since tokens never appear in URLs. (11) wrangler deploy --dry-run first; deploy from the reviewed commit; record commit and Worker version id; rollback is wrangler rollback plus forward-compatible D1. (12) Smoke before any invite: unauthenticated GET / redirects to Access at the edge; authenticated GET / carries CSP and no-store; GET /api/config 200 with all features false; GET /api/me 401; POST without Origin 403; /api/events 503; GET /nope 404.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-12 from the hosting integration review; Astra provisioning storage, Access and Turnstile, code head pending"
+        }
+      ]
+    },
+    {
+      "id": "T-033",
+      "title": "Retarget PR #2 to main after T-017 and merge it (human merge)",
+      "status": "todo",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-gpt6",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "platform",
+      "depends_on": [
+        "T-017"
+      ],
+      "instructions": "After T-017 lands on main: merge main into codex/platform-app (merge commit, never rebase or force-push), retarget PR #2 to main, confirm the diff is platform/ and the platform workflows only, Platform CI and the C++ matrix green, then DeAndre merges. Then tag the main commit and redeploy the Worker from that tag so what runs equals what is on main, and switch the board binding from board/staging to main.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-12 to record the mainline sequence"
         }
       ]
     }

@@ -348,7 +348,7 @@
     {
       "id": "T-015",
       "title": "Produce a synthetic fixture run directory for the app's Runs tab",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-fable",
@@ -362,6 +362,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "delivered: platform/fixtures/synthetic/ (ma_synthetic_\u2026_78e97a61, bah_synthetic_\u2026_f2e66a79, README, configs, generator) on claude/cool-sagan-7klcfy"
         }
       ]
     },

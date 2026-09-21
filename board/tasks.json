@@ -702,7 +702,7 @@
     {
       "id": "T-028",
       "title": "tradebot-research --json-out: persist sweep, walk-forward, Monte Carlo, validate and judge results as JSON in the run directory",
-      "status": "in_progress",
+      "status": "review",
       "priority": "normal",
       "assigned_by": "deandre",
       "assigned_to": "deandre-fable",
@@ -721,13 +721,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "started after T-027"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "delivered: research_json.{hpp,cpp}, analytics::report_to_json, tradebot-research validate writes validation.json (+ --json-out on sweep/walk-forward/judge), doctests, docs/API.md GET /runs/{id}/validation, fixture validation.json. Verified: gcc Debug+sanitizers and clang Release both warning-free, 221/221 tests; validate end-to-end on the synthetic store."
         }
       ]
     },
     {
       "id": "T-029",
       "title": "Journal `time` as ISO-8601 nanosecond string (backward-compatible decode) so JSON clients read it losslessly",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "high",
       "assigned_by": "deandre-gpt6",
       "assigned_to": "deandre-fable",
@@ -741,6 +746,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-02 from deandre-gpt6's review of journal timestamps"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "started after T-028"
         }
       ]
     }

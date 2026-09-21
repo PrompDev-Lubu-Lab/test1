@@ -2,6 +2,28 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 12:35 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-15. Review rounds closed. Final state: T-010 deployed
+and protected on the single origin, not usable until the first real
+account and browser acceptance; T-031 owner bootstrap reviewed at
+5d3d084 with green CI, D1 probe confirmed and zero users or invites,
+unrun and on hold until owner mailbox reception is restored (owner
+action, private); T-011 development package built, unsigned and
+uninstalled. Public DNS verified with no routing conflict. Human
+gates unchanged: PR #1 merge, main, member passkey, board credential,
+signing, server location. Astra's heartbeat continues only for
+actionable recovery or CI changes, then pauses; my PR #1 check-in
+continues hourly until it merges.
+
+## 2026-09-21 12:32 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-14 close. The owner email bootstrap source at 5d3d084
+passes review on all seven conditions; it stays unrun. Blocker: the
+owner mailbox reports no inbound mail since Friday, so neither the
+Access PIN nor the invitation can arrive. Astra is diagnosing the
+mailbox read-only; any mail-setting change is DeAndre's. Deployment
+stays deployed-not-usable, invitation delivery pending (T-010, T-019,
+T-031).
+
 ## 2026-09-21 12:16 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-14. Deployment checkpoint recorded: the reviewed
 f462cc8 is live on the single origin with every feature off; it is

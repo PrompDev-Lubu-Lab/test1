@@ -330,6 +330,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-14: DEPLOYED, NOT USABLE. G4-reviewed f462cc8 is live on the single origin as one Worker: D1 migration 0001, private avatar and release buckets with public URLs disabled, exact-host Turnstile, both secrets, global worker-first static routing, workers.dev and preview URLs off, every optional feature and RUN_ORIGIN off. Worker version id recorded privately by Astra. Evidence: seven unauthenticated live routes redirect to Access; 146 Worker tests including the real RS256 verifier; 14 CI checks green. The ten local workerd requests stopped at the host gate and are not JWT proof. Usability gates still open: no account exists, no email sent, no sign-in, authenticated smoke (T-032 item 12 second half) not run. Status review until the owner has signed in and the authenticated smoke is recorded."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-15 final: DEPLOYED and PROTECTED, NOT USABLE. Reviewed f462cc8 live on the single origin with every optional feature off, Access denying at the edge, workers.dev and preview URLs off. Waiting on the first real account (T-031) and the authenticated browser acceptance (T-032 item 12 second half). Review rounds closed."
         }
       ]
     },
@@ -387,6 +392,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-14: unsigned Windows development package rebuilt with the real app and Access origins and updates off; verifier passes, native signature NotSigned. Not installed, published or usable; signing still gates T-012 and acceptance row 10."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-15 final: development package built with the real app and Access origins and updates off; unsigned, uninstalled, unpublished, not usable. Signing remains the human gate for T-012 and acceptance row 10."
         }
       ]
     },
@@ -613,6 +623,16 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "status relayed from deandre-gpt6: Ali confirmed as github.com/lubu-v (id 147233142). DeAndre approved a dedicated GitHub OAuth app under PrompDev for Access; GitHub awaiting DeAndre's confirm step before issuing the secret. Cloudflare GitHub provider form prepared, unsaved; no Access application or grant exists yet. Policy plan: verified GitHub email + required GitHub login method, address taken from Ali's first (denied) sign-in. Production build passes 5 access tests (wrong audience, wrong issuer, expired, non-allowlisted, allowed to Ali's mailbox only) plus 9 delivery/storage tests. Still unverified: real send/receive with headers, Ali's sign-in."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14: owner report relayed by Astra: the owner mailbox on the Microsoft tenant has received no regular mail since Friday 18 September, including the Access one-time PIN. Astra is diagnosing read-only. First things to check, all read-only and human-owned to change: apex MX still points at the Microsoft tenant and Cloudflare Email Routing is not enabled at the zone root (enabling it rewrites the apex MX); the Microsoft message trace for the owner address since Friday; no transport rule, forwarding or the Ali mail contact touching the owner address; quarantine. Any change to mail settings is DeAndre's step. No mailbox content goes on the board. Invitation delivery and deployment usability stay pending."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-15: public DNS independently verified on both authoritative nameservers and two public resolvers: apex mail routes only to the Microsoft tenant, the inbox subdomain only to Cloudflare, the Microsoft MX resolves normally; no DNS routing conflict. Owner mailbox reception needs a separate owner action; details stay private. No mailbox contents, billing details or private identifiers on the board."
         }
       ]
     },
@@ -1031,6 +1051,16 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-14 credential clarification: condition (1) REVISED. No new token is minted. The existing authorized Wrangler session credential, whose scope already includes email sending, may be handed to the reviewed script in a short-lived process environment for one fixed Cloudflare sending endpoint, excluded from the D1 child environment, never printed or saved. Source review will check: only the access token is passed, never the refresh token or the Wrangler config file; the script makes exactly one request to one fixed URL with redirects disabled and uses the credential for nothing else; the environment is never logged; the process exits after the send. If that isolation cannot be shown in the source, fall back to a human-created token scoped to email sending only. Astra compared the deployed version with the private config: APP_ORIGIN, INVITE_ACCOUNTS, EMAIL_FROM, ACCESS_AUDIENCE, database id and remote allowed sender all match; the script will enforce the same equality and print only a digest prefix. No invite or email run has occurred."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-14 source review on 5d3d084 (scripts/seed-invite.mjs, test/bootstrap.test.mjs, README operator usage): PASSES all seven conditions. Verified: token read from one env variable and deleted before any file is read, absent from the D1 child environment, never printed, validated and used once in the Authorization header of a single POST to one fixed sending URL with redirects manual and a 30 s abort; settings equality against the selected private Wrangler JSON for account, origin, sender, the two mappings, sole D1 binding and id, sole allowed sender; insert then exact digest-row confirmation then one send; refused on any account or active invite, unconfirmed on any unreadable result, invite retained on rejected, uncertain, timed-out or malformed provider replies, concurrent contenders share the atomic guard; output is a fixed status plus a 16-hex digest prefix with inbox receipt always reported false; TTY mode unchanged. 17 tests, sanitized-output assertions on every path. Non-blocking notes for the run: (a) the provider request and response shapes are assumed from documentation, a wrong assumption yields rejected or uncertain, never a leak, and then the documented expire-exact-row recovery applies before a second attempt; (b) before the first remote run, probe the remote database read-only with a SELECT through the same wrangler --json path so the output shape is known, otherwise a shape mismatch shows as unconfirmed with the invite already stored; (c) 5d3d084 is the reviewed source for the run, any later change to the script needs re-review. BLOCKED ON MAILBOX: the owner address reports no inbound mail since Friday, including the Access PIN. Do not send the invitation until the owner mailbox receives mail again and the PIN arrives, since both go to the same mailbox and a delivered-but-lost invite forces the recovery procedure. Status stays review, unrun."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-15 final: REVIEWED, UNRUN. All 14 GitHub checks green at the reviewed source 5d3d084. Read-only D1 probe through the exact selected Wrangler config confirmed the JSON output shape (success true with results arrays); production has zero users and zero invites. No email or bootstrap has run. HOLD: the approved setup email and invitation wait until owner mailbox reception is restored, which is a separate owner action handled privately. The exact owner one-time-PIN rule and its identity provider stay intact and must not be deleted or re-created. Review rounds closed; no further source work requested."
         }
       ]
     },

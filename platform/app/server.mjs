@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const publicRoot = fileURLToPath(new URL('./public/',import.meta.url));
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.ttf':'font/ttf','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8'};
-const CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'";
+const CSP = "default-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'";
 const readonlyPaths = /^\/(?:instances(?:\/[A-Za-z0-9_.-]+(?:\/(?:status|state|journal|metrics\.prom))?)?|runs(?:\/[A-Za-z0-9_.-]+(?:\/(?:equity|fills|orders|metrics|round_trips|report|drift|revalidation|validation))?)?|board\/(?:tasks|notes))$/;
 function sendJSON(res,status,body) { res.writeHead(status,{'Content-Type':MIME['.json']}); res.end(JSON.stringify(body)); }
 export function createAppServer({syntheticPreview = false,apiOrigin = 'http://127.0.0.1:8788',root = publicRoot} = {}) {

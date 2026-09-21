@@ -5,17 +5,22 @@ export const AUTH_LIMITS = Object.freeze({
   windowMs: 600_000,
   globalAttempts: 60,
   globalWindowMs: 60_000,
+  writeAttempts: 120,
+  ingressAttempts: 120,
+  ingressGlobalAttempts: 600,
+  ingressWindowMs: 60_000,
   reservationMs: 120_000,
   maxStateBytes: 96 * 1024,
 });
-const STATE_KEY = 'auth-limits:v1';
-const purposes = new Set(['login', 'recovery', 'signup', 'reauth']);
+const STATE_KEY = 'auth-limits:v2';
+const kdfPurposes = new Set(['login', 'signup', 'reauth', 'reset', 'password']);
+const purposes = new Set([...kdfPurposes, 'recovery', 'write']);
 const digestPattern = /^[0-9a-f]{64}$/;
 const reservationPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const encoder = new TextEncoder();
 
 export function createLimiterState() {
-  return { version: 1, clock: 0, global: [], ips: {}, accounts: {}, reservations: {} };
+  return { version: 2, clock: 0, ingress: { global: [], ips: {} }, global: [], ips: {}, accounts: {}, reservations: {} };
 }
 
 function validateFields(command, fields) {
@@ -26,6 +31,12 @@ function validateFields(command, fields) {
 }
 
 function prune(state, now) {
+  state.ingress.global = state.ingress.global.filter(time => time > now - AUTH_LIMITS.ingressWindowMs);
+  for (const [key, times] of Object.entries(state.ingress.ips)) {
+    const recent = times.filter(time => time > now - AUTH_LIMITS.ingressWindowMs);
+    if (recent.length) state.ingress.ips[key] = recent;
+    else delete state.ingress.ips[key];
+  }
   state.global = state.global.filter(time => time > now - AUTH_LIMITS.globalWindowMs);
   for (const [id, reservation] of Object.entries(state.reservations)) {
     if (reservation.at + AUTH_LIMITS.reservationMs <= now) delete state.reservations[id];
@@ -47,10 +58,10 @@ function prune(state, now) {
   return state;
 }
 
-function blocked(retryMs) {
+function blocked(retryMs, reservation = true) {
   return {
     status: 429,
-    result: { allowed: false, reservationId: null, retryAfter: Math.max(1, Math.ceil(retryMs / 1000)) },
+    result: { allowed: false, ...(reservation ? { reservationId: null } : {}), retryAfter: Math.max(1, Math.ceil(retryMs / 1000)) },
   };
 }
 
@@ -59,6 +70,10 @@ function capacityRetry(state, now) {
   for (const times of Object.values(state.ips)) {
     if (times.length) expirations.push(times[0] + AUTH_LIMITS.windowMs);
   }
+  for (const times of Object.values(state.ingress.ips)) {
+    if (times.length) expirations.push(times[0] + AUTH_LIMITS.ingressWindowMs);
+  }
+  if (state.ingress.global.length) expirations.push(state.ingress.global[0] + AUTH_LIMITS.ingressWindowMs);
   for (const entry of Object.values(state.reservations)) expirations.push(entry.at + AUTH_LIMITS.reservationMs);
   return Math.max(1, Math.min(...expirations) - now);
 }
@@ -70,12 +85,36 @@ function capacityRetry(state, now) {
 export function limiterTransition(previous, command, now, newReservationId) {
   if (!Number.isSafeInteger(now) || now < 0) throw new SecurityError('invalid_limiter_clock', 500);
   const state = structuredClone(previous ?? createLimiterState());
-  if (state.version !== 1) throw new SecurityError('limiter_unavailable', 503);
+  if (state.version !== 2) throw new SecurityError('limiter_unavailable', 503);
+  if (!command || typeof command !== 'object' || Array.isArray(command)) throw new SecurityError('invalid_limiter_request', 400);
   now = Math.max(now, state.clock);
   state.clock = now;
   prune(state, now);
 
-  if (command.type === 'cleanup') return { state, status: 200, result: { cleaned: true } };
+  if (command.type === 'cleanup') {
+    validateFields(command, ['type']);
+    return { state, status: 200, result: { cleaned: true } };
+  }
+
+  if (command.type === 'ingress') {
+    validateFields(command, ['type', 'ipKey']);
+    if (typeof command.ipKey !== 'string' || !digestPattern.test(command.ipKey)) throw new SecurityError('invalid_limiter_request', 400);
+    const ipTimes = state.ingress.ips[command.ipKey] ?? [];
+    const delays = [];
+    if (ipTimes.length >= AUTH_LIMITS.ingressAttempts) delays.push(ipTimes[0] + AUTH_LIMITS.ingressWindowMs - now);
+    if (state.ingress.global.length >= AUTH_LIMITS.ingressGlobalAttempts) delays.push(state.ingress.global[0] + AUTH_LIMITS.ingressWindowMs - now);
+    if (delays.length) return { state, ...blocked(Math.max(...delays), false) };
+
+    // Unverified callers only charge short-lived IP/global admission counters.
+    // They cannot select, reserve, fail or lock any named account.
+    const candidate = structuredClone(state);
+    candidate.ingress.global.push(now);
+    candidate.ingress.ips[command.ipKey] = [...ipTimes, now];
+    if (encoder.encode(JSON.stringify(candidate)).byteLength > AUTH_LIMITS.maxStateBytes) {
+      return { state, ...blocked(capacityRetry(state, now), false) };
+    }
+    return { state: candidate, status: 200, result: { allowed: true, retryAfter: 0 } };
+  }
 
   if (command.type === 'reserve') {
     validateFields(command, ['type', 'ipKey', 'accountKey', 'purpose']);
@@ -87,20 +126,23 @@ export function limiterTransition(previous, command, now, newReservationId) {
       throw new SecurityError('invalid_limiter_request', 400);
     }
     const key = `${purpose}:${accountKey}`;
-    const ipTimes = state.ips[ipKey] ?? [];
+    const rateClass = kdfPurposes.has(purpose) ? 'kdf' : purpose;
+    const ipBucket = `${rateClass}:${ipKey}`;
+    const attempts = purpose === 'write' ? AUTH_LIMITS.writeAttempts : AUTH_LIMITS.attempts;
+    const ipTimes = state.ips[ipBucket] ?? [];
     const account = state.accounts[key] ?? { times: [], failures: [], lockedUntil: 0, epoch: newReservationId };
     const delays = [];
-    if (ipTimes.length >= AUTH_LIMITS.attempts) delays.push(ipTimes[0] + AUTH_LIMITS.windowMs - now);
-    if (account.times.length >= AUTH_LIMITS.attempts) delays.push(account.times[0] + AUTH_LIMITS.windowMs - now);
-    if (account.lockedUntil > now) delays.push(account.lockedUntil - now);
-    if (state.global.length >= AUTH_LIMITS.globalAttempts) delays.push(state.global[0] + AUTH_LIMITS.globalWindowMs - now);
+    if (ipTimes.length >= attempts) delays.push(ipTimes[0] + AUTH_LIMITS.windowMs - now);
+    if (account.times.length >= attempts) delays.push(account.times[0] + AUTH_LIMITS.windowMs - now);
+    if (purpose === 'login' && account.lockedUntil > now) delays.push(account.lockedUntil - now);
+    if (rateClass === 'kdf' && state.global.length >= AUTH_LIMITS.globalAttempts) delays.push(state.global[0] + AUTH_LIMITS.globalWindowMs - now);
     if (delays.length) return { state, ...blocked(Math.max(...delays)) };
 
     // Keep the pre-reservation state for an atomic capacity rejection. Do not evict
     // someone else's active limits when a caller rotates account/IP identifiers.
     const candidate = structuredClone(state);
-    candidate.global.push(now);
-    candidate.ips[ipKey] = [...ipTimes, now];
+    if (rateClass === 'kdf') candidate.global.push(now);
+    candidate.ips[ipBucket] = [...ipTimes, now];
     candidate.accounts[key] = { ...account, times: [...account.times, now] };
     candidate.reservations[newReservationId] = { account: key, purpose, at: now, epoch: account.epoch };
     if (encoder.encode(JSON.stringify(candidate)).byteLength > AUTH_LIMITS.maxStateBytes) {
@@ -119,10 +161,10 @@ export function limiterTransition(previous, command, now, newReservationId) {
     if (!reservation) return { state, status: 409, result: { error: 'reservation_unavailable' } };
     delete state.reservations[reservationId];
     const account = state.accounts[reservation.account];
-    // A late success/failure from before a successful login cannot reset or poison
-    // the newly started account window. IP/global reservations are never removed.
+    // A late result cannot reset or poison a newer account epoch. Counted writes
+    // are never cleared by success; IP and KDF-global charges are never removed.
     if (account && account.epoch === reservation.epoch) {
-      if (success) {
+      if (success && reservation.purpose !== 'write') {
         account.times = [];
         account.failures = [];
         account.lockedUntil = 0;
@@ -139,7 +181,8 @@ export function limiterTransition(previous, command, now, newReservationId) {
 }
 
 function hasEntries(state) {
-  return state.global.length > 0 || Object.keys(state.ips).length > 0
+  return state.ingress.global.length > 0 || Object.keys(state.ingress.ips).length > 0
+    || state.global.length > 0 || Object.keys(state.ips).length > 0
     || Object.keys(state.accounts).length > 0 || Object.keys(state.reservations).length > 0;
 }
 
@@ -165,7 +208,7 @@ export class AuthLimiter {
 
   async fetch(request) {
     const url = new URL(request.url);
-    if (url.pathname !== '/reserve' && url.pathname !== '/result') {
+    if (!['/ingress', '/reserve', '/result'].includes(url.pathname)) {
       return Response.json({ error: 'not_found' }, { status: 404 });
     }
     if (request.method !== 'POST') {
@@ -174,7 +217,8 @@ export class AuthLimiter {
     try {
       const body = await readJsonLimited(request, 1024);
       // A client-supplied clock or operation must never reach the pure transition.
-      const fields = url.pathname === '/reserve' ? ['ipKey', 'accountKey', 'purpose'] : ['reservationId', 'success'];
+      const fields = url.pathname === '/ingress' ? ['ipKey']
+        : url.pathname === '/reserve' ? ['ipKey', 'accountKey', 'purpose'] : ['reservationId', 'success'];
       validateFields(body, fields);
       const output = await this.apply({ ...body, type: url.pathname.slice(1) });
       const headers = { 'cache-control': 'no-store' };

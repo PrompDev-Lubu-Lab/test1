@@ -1,13 +1,14 @@
 import { APP_NAME } from '../app/public/config.js';
 import { AccountStore } from './store.mjs';
 import { avatarReady, uploadAvatar } from './avatar.mjs';
-import { createKdfBudget, verifyAccess, verifyTurnstile, randomToken, digestToken, normalizeEmail, readJsonLimited } from './security.mjs';
+import { hexToBytes } from '@noble/hashes/utils.js';
+import { createKdfBudget, verifyAccess, verifyTurnstile, randomToken, digestToken, normalizeEmail, readJsonLimited, equalDigest } from './security.mjs';
 export { AuthLimiter } from './limiter.mjs';
 
 export const TERMS_VERSION = '2026-09-21-v1';
 export const TERMS_TEXT = 'This application displays saved bot outputs and supports project collaboration. It does not place trades, alter risk limits, enable live mode or write run data. Synthetic and historical results do not establish future performance. Live operation requires a separate human decision and server configuration. Use only your invited account and keep private account information out of the shared project board.';
 const COOKIE = '__Host-platform-session';
-const PASSWORD_ROUTES = new Map([['/auth/signup', 'signup'], ['/auth/login', 'login'], ['/auth/reset', 'recovery'], ['/auth/reauth', 'reauth'], ['/me/password', 'reauth']]);
+const PASSWORD_ROUTES = new Map([['/auth/signup', 'signup'], ['/auth/login', 'login'], ['/auth/reset', 'reset'], ['/auth/reauth', 'reauth'], ['/me/password', 'password']]);
 const RECOVERY_ROUTES = new Set(['/auth/forgot', '/auth/resend', '/auth/verify', '/me/email', '/me/email/verify', '/admin/invites']);
 const epoch = () => Math.floor(Date.now() / 1000);
 class HttpError extends Error { constructor(status, code, message) { super(message); Object.assign(this, { status, code }); } }
@@ -15,6 +16,10 @@ const deny = (status, code, text) => { throw new HttpError(status, code, text); 
 const cookieValue = token => `${COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800`;
 const clearCookie = () => `${COOKIE}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
 const publicUser = user => ({ id: user.id, email: user.email, handle: user.handle, display_name: user.display_name, role: user.role, verified: user.verified_at !== null });
+async function userView(store, user) {
+  const avatar = await store.avatar(user.id);
+  return { ...publicUser(user), ...(avatar ? { avatar: { url: `/api/avatars/${encodeURIComponent(user.id)}`, width: 128, height: 128 } } : {}) };
+}
 const passwordRecord = user => user ? ({ scheme: user.password_scheme, iterations: user.password_iterations, salt: user.password_salt, hash: user.password_hash }) : null;
 function reply(value, status = 200, headers = {}) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'", ...headers } });
@@ -50,9 +55,18 @@ async function limiterCall(env, route, body) {
   if (!response.ok) deny(503, 'limiter_unavailable', 'Authentication is temporarily unavailable.');
   return result;
 }
-async function reserve(request, env, email, purpose) {
+function clientIp(request) {
   const ip = request.headers.get('CF-Connecting-IP');
   if (!ip || ip.length > 64 || !/^[0-9a-fA-F:.]+$/.test(ip)) deny(503, 'client_context_missing', 'Trusted client context is unavailable.');
+  return ip;
+}
+async function ingress(request, env) {
+  const ipKey = digestToken(`${env.RATE_KEY_SECRET}:ip:${clientIp(request)}`);
+  const result = await limiterCall(env, '/ingress', { ipKey });
+  if (!result.allowed) deny(429, 'rate_limited', 'Too many attempts. Try again later.');
+}
+async function reserve(request, env, email, purpose) {
+  const ip = clientIp(request);
   const [ipKey, accountKey] = await Promise.all([digestToken(`${env.RATE_KEY_SECRET}:ip:${ip}`), digestToken(`${env.RATE_KEY_SECRET}:account:${email}`)]);
   const result = await limiterCall(env, '/reserve', { ipKey, accountKey, purpose });
   if (!result.allowed || !result.reservationId) deny(429, 'rate_limited', 'Too many attempts. Try again later.');
@@ -72,7 +86,11 @@ export function createHandler({ accessKeys } = {}) {
   return async function fetchHandler(request, env) {
     const store = env.DB ? new AccountStore(env.DB) : null;
     const now = epoch();
-    let reservation = null, outcomeRecorded = false, actor = null, route = '/';
+    let reservation = null, succeeded = false, actor = null, route = '/';
+    const finish = (value, status = 200, headers = {}) => {
+      succeeded = status >= 200 && status < 300;
+      return reply(value, status, headers);
+    };
     try {
       configured(env);
       const url = new URL(request.url);
@@ -95,15 +113,17 @@ export function createHandler({ accessKeys } = {}) {
       let email;
       if (passwordRoute || recoveryRoute) {
         email = normalizeEmail(body.email);
-        reservation = await reserve(request, env, email, PASSWORD_ROUTES.get(route) ?? 'recovery');
+        // Bound external verification without charging an unverified named account.
+        await ingress(request, env);
       }
       const access = await verifyAccess(request, env, accessKeys);
+      if (passwordRoute || recoveryRoute) reservation = await reserve(request, env, email, PASSWORD_ROUTES.get(route) ?? 'recovery');
       if (reservation) await verifyTurnstile(body.turnstile, reservation.ip, env, route.split('/').at(-1));
       const budget = createKdfBudget();
 
       if (request.method === 'GET' && route === '/config') {
         if (typeof env.TURNSTILE_SITE_KEY !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(env.TURNSTILE_SITE_KEY)) deny(503, 'configuration_required', 'Account access has not been configured.');
-        return reply({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), board: false, downloads: false } });
+        return finish({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), board: false, downloads: false } });
       }
 
       if (request.method === 'POST' && route === '/auth/signup') {
@@ -119,13 +139,13 @@ export function createHandler({ accessKeys } = {}) {
         if (!created) deny(409, 'invite_conflict', 'This invitation or identity has already been used.');
         actor = id;
         await sendToken(env, 'verify', email, verification);
-        return reply({ verification_required: true, email_accepted_by_provider: true }, 201);
+        return finish({ verification_required: true, email_accepted_by_provider: true }, 201);
       }
       if (request.method === 'POST' && route === '/auth/verify') {
         const hash = await digestToken(tokenValue(body.token));
         const pending = await store.token(hash, 'verify', access.sub, epoch());
         if (!pending || pending.email !== email || !await store.verifyEmail(hash, access.sub, epoch())) deny(400, 'invalid_token', 'This token is invalid or expired.');
-        return reply({ verified: true });
+        return finish({ verified: true });
       }
       if (request.method === 'POST' && route === '/auth/login') {
         const user = await store.userByEmail(email);
@@ -135,9 +155,8 @@ export function createHandler({ accessKeys } = {}) {
         const token = randomToken(), hash = await digestToken(token), csrf = await digestToken(`csrf:${token}`);
         if (!await store.newSession({ hash, csrfHash: await digestToken(csrf), user, subject: access.sub, accessEmail: access.email, now: epoch() })) deny(401, 'invalid_login', 'Account state changed. Sign in again.');
         actor = user.id;
-        await limiterCall(env, '/result', { reservationId: reservation.id, success: true }); outcomeRecorded = true;
         await store.audit(actor, 'login', 'completed', now);
-        return reply({ user: publicUser(user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION) }, 200, { 'Set-Cookie': cookieValue(token) });
+        return finish({ user: await userView(store,user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION) }, 200, { 'Set-Cookie': cookieValue(token) });
       }
       if (request.method === 'POST' && ['/auth/forgot', '/auth/resend'].includes(route)) {
         const user = await store.userByEmail(email);
@@ -148,7 +167,7 @@ export function createHandler({ accessKeys } = {}) {
           await sendToken(env, purpose, user.email, token);
         }
         await store.audit(null, 'account-email-request', 'accepted', now);
-        return reply({ message: 'If the account is eligible, an email will be sent.' });
+        return finish({ message: 'If the account is eligible, an email will be sent.' });
       }
       if (request.method === 'POST' && route === '/auth/reset') {
         const hash = await digestToken(tokenValue(body.token));
@@ -157,13 +176,13 @@ export function createHandler({ accessKeys } = {}) {
         const record = await budget.hash(body.password);
         if (!await store.setPassword(hash, 'reset', access.sub, null, record, epoch())) deny(400, 'invalid_token', 'This token is invalid or expired.');
         actor = token.user_id;
-        return reply({ reset: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
+        return finish({ reset: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
       }
       if (request.method === 'POST' && route === '/me/email/verify') {
         const hash = await digestToken(tokenValue(body.token));
         const pending = await store.token(hash, 'email-change', access.sub, epoch());
         if (!pending || pending.email !== email || !await store.changeEmail(hash, access.sub, epoch())) deny(400, 'invalid_token', 'This token is invalid, expired or conflicts with an account.');
-        return reply({ changed: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
+        return finish({ changed: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
       }
 
       const rawSession = sessionToken(request), sessionHash = await digestToken(rawSession);
@@ -173,37 +192,38 @@ export function createHandler({ accessKeys } = {}) {
       const guard = { sessionHash, subject: access.sub, version: user.session_version };
       const csrf = await digestToken(`csrf:${rawSession}`);
       const suppliedCsrf = request.headers.get('X-CSRF-Token');
-      if (mutation && (!suppliedCsrf || !/^[a-f0-9]{64}$/.test(suppliedCsrf) || digestToken(suppliedCsrf) !== user.csrf_hash)) deny(403, 'csrf_denied', 'Refresh your session before making this change.');
+      if (mutation && (!suppliedCsrf || !/^[a-f0-9]{64}$/.test(suppliedCsrf) || !/^[a-f0-9]{64}$/.test(user.csrf_hash)
+        || !equalDigest(hexToBytes(digestToken(suppliedCsrf)), hexToBytes(user.csrf_hash)))) deny(403, 'csrf_denied', 'Refresh your session before making this change.');
       // Bound authenticated writes too. Polling reads do not consume this allowance.
       // A valid one-use revocation must remain possible even after login quotas fill.
-      if (mutation && !reservation && !['/auth/logout','/auth/logout-all'].includes(route)) reservation = await reserve(request, env, `user:${user.id}`, 'recovery');
-      if (request.method === 'GET' && route === '/me') return reply({ user: publicUser(user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION) });
-      if (request.method === 'GET' && route === '/terms') return reply({ version: TERMS_VERSION, text: TERMS_TEXT, content_hash: await digestToken(TERMS_TEXT) });
+      if (mutation && !reservation && !['/auth/logout','/auth/logout-all'].includes(route)) reservation = await reserve(request, env, `user:${user.id}`, 'write');
+      if (request.method === 'GET' && route === '/me') return finish({ user: await userView(store,user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION) });
+      if (request.method === 'GET' && route === '/terms') return finish({ version: TERMS_VERSION, text: TERMS_TEXT, content_hash: await digestToken(TERMS_TEXT) });
       if (request.method === 'POST' && route === '/terms/accept') {
         if (body.version !== TERMS_VERSION) deny(409, 'terms_changed', 'Read the current terms before accepting.');
         const acceptance = await store.acceptTerms(user.id, TERMS_VERSION, await digestToken(TERMS_TEXT), epoch(), guard);
         if (!acceptance) deny(401, 'login_required', 'Account state changed. Sign in again.');
         await store.audit(actor, 'terms', 'accepted', now, TERMS_VERSION);
-        return reply(acceptance);
+        return finish(acceptance);
       }
       if (request.method === 'POST' && ['/auth/logout', '/auth/logout-all'].includes(route)) {
         if (!await store.revoke(user.id, sessionHash, route === '/auth/logout-all', epoch(), guard)) deny(401, 'login_required', 'Account state changed. Sign in again.');
         await store.audit(actor, 'logout', 'completed', now);
-        return reply({ signed_out: true }, 200, { 'Set-Cookie': clearCookie() });
+        return finish({ signed_out: true }, 200, { 'Set-Cookie': clearCookie() });
       }
       if (!await store.terms(user.id, TERMS_VERSION)) deny(403, 'terms_required', 'Accept the current terms to enter the workspace.');
       if (request.method === 'PATCH' && route === '/me') {
         if (Object.keys(body).some(key => key !== 'display_name')) deny(400, 'invalid_profile', 'Only the display name can be changed here.');
         if (!await store.profile(user.id, nameValue(body.display_name), epoch(), guard)) deny(401, 'login_required', 'Account state changed. Sign in again.');
         await store.audit(actor, 'profile', 'changed', now);
-        return reply({ user: publicUser(await store.userById(user.id)) });
+        return finish({ user: await userView(store,await store.userById(user.id)) });
       }
       if (request.method === 'POST' && route === '/auth/reauth') {
         if (email !== user.email || !await budget.verify(body.password, passwordRecord(user))) deny(401, 'invalid_login', 'Check your sign-in details.');
         const proof = randomToken();
         if (!await store.issueToken(await digestToken(proof), user.id, 'password-change', epoch(), 120, { session: sessionHash, subject: access.sub, expectedVersion: user.session_version })) deny(401, 'login_required', 'Account state changed. Sign in again.');
         await store.audit(actor, 'password-reauth', 'completed', now);
-        return reply({ proof, expires_in: 120 });
+        return finish({ proof, expires_in: 120 });
       }
       if (request.method === 'POST' && route === '/me/password') {
         const hash = await digestToken(tokenValue(body.proof));
@@ -211,7 +231,7 @@ export function createHandler({ accessKeys } = {}) {
         if (!proof || proof.user_id !== user.id || email !== user.email) deny(400, 'invalid_token', 'Confirm your current password again.');
         const record = await budget.hash(body.password);
         if (!await store.setPassword(hash, 'password-change', access.sub, sessionHash, record, epoch())) deny(400, 'invalid_token', 'Confirm your current password again.');
-        return reply({ changed: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
+        return finish({ changed: true, sessions_revoked: true }, 200, { 'Set-Cookie': clearCookie() });
       }
       if (request.method === 'POST' && route === '/me/email') {
         if (email !== user.email) deny(400, 'account_mismatch', 'Use your current account address.');
@@ -220,13 +240,13 @@ export function createHandler({ accessKeys } = {}) {
         if (!await store.issueToken(await digestToken(token), user.id, 'email-change', epoch(), 86400, { email: newEmail, session: sessionHash, subject: access.sub, expectedVersion: user.session_version })) deny(401, 'login_required', 'Account state changed. Sign in again.');
         await sendToken(env, 'email-change', newEmail, token);
         await store.audit(actor, 'email-change', 'requested', now);
-        return reply({ verification_required: true });
+        return finish({ verification_required: true });
       }
 
       if (route.startsWith('/admin/')) {
         if (user.role !== 'owner') deny(403, 'owner_required', 'Only the owner can perform this action.');
-        if (request.method === 'GET' && route === '/admin/users') return reply(await store.userList(user.id, epoch(), guard));
-        if (request.method === 'GET' && route === '/admin/audit') return reply(await store.auditList(user.id, epoch(), guard));
+        if (request.method === 'GET' && route === '/admin/users') return finish(await store.userList(user.id, epoch(), guard));
+        if (request.method === 'GET' && route === '/admin/audit') return finish(await store.auditList(user.id, epoch(), guard));
         if (request.method === 'POST' && route === '/admin/invites') {
           const inviteEmail = normalizeEmail(body.email);
           const allowed = JSON.parse(env.INVITE_ACCOUNTS ?? '[]');
@@ -235,16 +255,16 @@ export function createHandler({ accessKeys } = {}) {
           const token = randomToken();
           if (!await store.createInvite(await digestToken(token), inviteEmail, account.handle, body.role, user.id, epoch(), guard)) deny(403, 'owner_required', 'Only the owner can issue invitations.');
           await sendToken(env, 'invite', inviteEmail, token);
-          return reply({ invited: true, email_accepted_by_provider: true }, 201);
+          return finish({ invited: true, email_accepted_by_provider: true }, 201);
         }
         if (request.method === 'PATCH' && /^\/admin\/users\/[A-Za-z0-9-]{1,80}$/.test(route)) {
           if (!['owner', 'member'].includes(body.role) || typeof body.disabled !== 'boolean' || !Number.isSafeInteger(body.expected_version) || body.expected_version < 0 || Object.keys(body).some(key => !['role', 'disabled', 'expected_version'].includes(key))) deny(400, 'invalid_user_change', 'Supply the role, disabled state and expected version.');
           if (!await store.updateUser(user.id, route.split('/').at(-1), body, epoch(), guard)) deny(409, 'owner_or_user_conflict', 'The account changed or the final owner would be removed. Refresh before trying again.');
-          return reply({ updated: true, old_sessions_revoked: true });
+          return finish({ updated: true, old_sessions_revoked: true });
         }
         deny(503, 'admin_feature_pending', 'This administration capability is not enabled.');
       }
-      if (route === '/me/avatar' && request.method === 'PUT') return reply(await uploadAvatar(request,env,store,user,guard));
+      if (route === '/me/avatar' && request.method === 'PUT') return finish(await uploadAvatar(request,env,store,user,guard));
       if (route.startsWith('/avatars/') && request.method === 'GET') {
         const target=route.slice('/avatars/'.length);
         if(!/^[A-Za-z0-9-]{1,80}$/.test(target) || !env.AVATARS) deny(404,'not_found','Avatar unavailable.');
@@ -275,7 +295,7 @@ export function createHandler({ accessKeys } = {}) {
       if (store && reservation) try { await store.audit(actor, route.startsWith('/auth/') ? 'authentication' : 'request', 'denied', now, null, code); } catch { /* Never reveal failed SQL or request contents. */ }
       return reply({ error: code, detail: status === 503 ? 'This capability is temporarily unavailable or not configured.' : error.message }, status, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
     } finally {
-      if (reservation && !outcomeRecorded) try { await limiterCall(env, '/result', { reservationId: reservation.id, success: false }); } catch { /* Reservation remains counted if reporting fails. */ }
+      if (reservation) try { await limiterCall(env, '/result', { reservationId: reservation.id, success: succeeded }); } catch { /* Reservation remains counted if reporting fails. */ }
     }
   };
 }

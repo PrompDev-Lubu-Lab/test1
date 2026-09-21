@@ -21,3 +21,7 @@ Sent PR #2 at 269f9cf for independent G3 review. Fable compared fixture JSON val
 ### COLLAB-20260921-05
 
 Delivered 155cf5c. Fable independently passed 12 API tests and comparisons on fixtures, starting instance and indexed 501-run roots. T-025 done; G3 signed off at board 3b03f1c, merged. He approved journal WebSocket `{kind,instance,bytes}` invalidation; implemented and covered by the large-journal regression. Linux and Windows platform CI both pass. Authentication core now 60 local tests with real signatures/SQLite; remote Images compatibility verified on synthetic PNG/WebP, preview stopped. G2 delivery is next; browser account UI is in progress.
+
+### COLLAB-20260921-06
+
+Fable reviewed authentication/avatars at `79ec1be` and returned conditional G2 approval at `982d72e`, merged. F1 separate write/auth limits, F2 verify Access before account charging, F3 report successful outcomes, F4 owner bootstrap, F5 Access renewal UX and F6 constant-time CSRF are addressed in the next review head. The revised Worker passes 76 tests; the account UI/static app passes 19 tests, 17 syntax checks and all 13 imported asset hashes. The owner script was tested with actual SQLite, and no real invitation was seeded. T-030 permits an isolated `board/staging` branch for the Git-backed board adapter; Fable remains canonical board writer until the mainline planning merge. T-031 tracks first-owner setup. No credentials, staging deployment or real accounts were activated.

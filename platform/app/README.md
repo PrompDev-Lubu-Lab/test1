@@ -3,7 +3,9 @@
 This is the T-006 / T-023 presentation foundation: the same plain HTML, CSS and
 JavaScript interface for a browser and an isolated Electron host. It has the
 eight requested tabs, an Account / Connect / Terms entry flow, and a clearly
-labelled synthetic development environment.
+labelled synthetic development environment. The browser also includes real
+account forms for the platform Worker; source preparation does not enable a
+production account service.
 
 ## Run locally
 
@@ -46,13 +48,47 @@ routing, bounded pagination, metadata headers and byte-exact legacy NDJSON. Two
 presentation tests check summary versus index drawdown semantics and validated
 fraction-string display without changing original source values. The build
 copies the public interface into `dist/` and writes a closed runtime config;
-it is not a deployment, installer or signed release.
+it is not a deployment, installer or signed release. Account tests cover fragment
+scrubbing, cookie/CSRF requests, challenge actions, credential flows, unavailable
+services, password policy, raw avatar uploads, safe avatar URLs and the separate
+403 Access-renewal and 401 session-expiry paths.
 
 The server supplies CSP, no-store, frame denial and no-referrer headers. A
 production Worker serving the static build must supply equivalent headers and
 the real account gate; merely uploading `dist` does not implement accounts.
 Inline styles are allowed for the reused scene's geometry. Inline scripts are
-not allowed.
+not allowed. `public/_headers` provides equivalent static-host headers. The only
+external authentication script/frame origin allowed is `challenges.cloudflare.com`.
+
+## Browser accounts
+
+The browser probes `GET /api/config`, protected by the Worker's signed Cloudflare
+Access check. Only a configured account service and public Turnstile site key
+enable account forms. It then checks `GET /api/me`. Missing configuration leaves
+the gate closed; the local development server still permits only read-only preview
+routes. Deploy the static files and account Worker together on the same origin.
+
+`public/account-client.js` owns allowlisted same-origin requests and transient CSRF.
+`public/turnstile.js` creates a fresh real explicit widget for each challenged
+action; its action is the final API path segment. `public/account-ui.js` renders
+invited signup, verification, sign-in, reset, current server terms and acceptance,
+display-name changes, email change, password change using a 120-second reauth
+proof, and session/all-session sign-out. Emailed token fragments are scrubbed
+before rendering or third-party script loading, retained only in memory, and
+require the account email to be entered. Credentials, proofs and tokens are never
+written to browser storage. No account success is simulated.
+
+A 403 `access_denied`, an opaque Access edge redirect, or an HTTP redirect shows **Renew secure access**, which performs a full
+same-origin reload and does not log out the app session. A 401 `login_required`
+clears the transient session and asks for app sign-in. After Access renewal,
+reopen an emailed link if its token was being held in the previous page.
+
+Profile-picture upload appears only when `config.features.avatars` is true. It
+sends PNG/JPEG/WebP bytes of at most 2 MiB with their actual MIME type and CSRF.
+The Worker checks and re-encodes the image; only its validated, same-origin
+128×128 response URL is displayed. File inputs are cleared after each attempt;
+photos are never stored locally. `/me` supplies only validated current-user avatar metadata, so a later sign-in restores the authenticated image without exposing its private R2 object key. Optional board/download features
+remain unavailable unless their implementation and readiness are supplied.
 
 ## Electron source
 
@@ -126,6 +162,8 @@ directories, native case services or runtime credentials were imported.
 Browser verification is owned by the coordinating agent. Check all tabs,
 ordinary desktop and 804×619 content, compact mobile, keyboard-only entry,
 actual terms scrolling, day/night and reduced-motion layout, missing API
-responses, exact source values and run switching. Then add real accounts and
-authenticated Worker reads under the separate Worker task before enabling any
-production access. Packaging and signed updates are separate release tasks.
+responses, exact source values and run switching. Test real Turnstile, emailed
+links, Access renewal, account sessions, terms, profile changes and picture uploads
+against the configured Worker before production enablement. Browser QA was not
+completed in this source task: Chrome blocked the local preview URL. Native account
+sign-in/token refresh, packaging and signed updates are separate release tasks.

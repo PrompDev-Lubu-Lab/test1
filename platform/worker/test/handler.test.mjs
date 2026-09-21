@@ -21,8 +21,8 @@ function harness(t) {
     DB:db, EMAIL_FROM:'no-reply@example.test', EMAIL:{send:async value => {events.push('email'); mail.push(value); return {id:'captured'};}},
     INVITE_ACCOUNTS:JSON.stringify([{email:'owner@example.test',handle:'deandre'},{email:'member@example.test',handle:'ali'}]),
     AUTH_LIMITER:{idFromName:name=>{assert.equal(name,'global-auth-v1'); return name;},get:()=>({fetch:async(url,options)=>{
-      const route=new URL(url).pathname, command=JSON.parse(options.body); events.push(route==='/reserve'?'reserve':'outcome');
-      const output=limiterTransition(state,{type:route==='/reserve'?'reserve':'result',...command},Date.now(),crypto.randomUUID()); state=output.state;
+      const route=new URL(url).pathname, command=JSON.parse(options.body); events.push(route.slice(1)==='result'?'outcome':route.slice(1));
+      const output=limiterTransition(state,{type:route.slice(1),...command},Date.now(),crypto.randomUUID()); state=output.state;
       return Response.json(output.result,{status:output.status});
     }})}
   };
@@ -56,7 +56,7 @@ function harness(t) {
     assert.equal(response.status,200,await response.clone().text()); return response.json();
   }
   function mailed(kind) {const message=mail.at(-1); const link=message.text.match(/https:\/\/\S+/)[0]; return new URL(link).hash.slice(kind.length+2);}
-  return {db,events,mail,env,call,jwt,seed,login,accept,mailed};
+  return {db,events,mail,env,call,jwt,seed,login,accept,mailed,get state(){return state;}};
 }
 
 test('unconfigured and invalid transport fail closed without email, KDF admission or audit amplification',async t=>{
@@ -72,7 +72,7 @@ test('signup binds the signed subject despite differing email; verification is r
   await h.db.prepare('INSERT INTO invites(token_hash,email,handle,role,expires_at,created_at) VALUES(?,?,?,?,?,?)').bind(digestToken(invite),'owner@example.test','deandre','owner',now()+600,now()).run();
   const signup=await h.call('/auth/signup',{method:'POST',body:{email:'owner@example.test',display_name:'Owner',password,invite,turnstile:'signup'}});
   assert.equal(signup.status,201,await signup.clone().text()); assert.equal(signup.headers.get('Set-Cookie'),null);
-  assert.deepEqual(h.events.slice(0,3),['reserve','access','turnstile']);
+  assert.deepEqual(h.events.slice(0,4),['ingress','access','reserve','turnstile']);
   const user=await h.db.prepare('SELECT * FROM users').first(); assert.equal(user.access_sub,'owner-sub'); assert.notEqual(user.email,user.access_email);
   assert.equal((await h.call('/auth/login',{method:'POST',body:{email:user.email,password,turnstile:'login'}})).status,401);
   const token=h.mailed('verify');
@@ -125,4 +125,39 @@ test('changed email requests use the current account allowance, not a caller-sel
   const h=harness(t); await h.seed(); const session=await h.login(); await h.accept(session);
   const bad=await h.call('/me/email',{...session,method:'POST',body:{email:'rotated@example.test',new_email:'destination@example.test',turnstile:'email'}}); assert.equal(bad.status,400); assert.equal(h.mail.length,0);
   const good=await h.call('/me/email',{...session,method:'POST',body:{email:'owner@example.test',new_email:'new-owner@example.test',turnstile:'email'}}); assert.equal(good.status,200); assert.equal(h.mail[0].to,'new-owner@example.test');
+});
+
+test('invalid Access assertions cannot charge or lock a named account',async t=>{
+  const h=harness(t); await h.seed();
+  for(let i=0;i<12;i++) assert.equal((await h.call('/auth/login',{method:'POST',token:'invalid.assertion.token',sourceIp:'198.51.100.11',body:{email:'owner@example.test',password,turnstile:'login'}})).status,403);
+  assert.deepEqual(h.state.accounts,{}); assert.equal(h.state.global.length,0);
+  assert.equal(h.events.includes('reserve'),false); assert.equal(h.events.includes('turnstile'),false);
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM audit_events').first()).n,0);
+  const response=await h.call('/auth/login',{method:'POST',sourceIp:'198.51.100.11',body:{email:'owner@example.test',password,turnstile:'login'}});
+  assert.equal(response.status,200);
+});
+
+test('ordinary successful edits neither exhaust login nor clear their own write allowance',async t=>{
+  const h=harness(t); await h.seed(); const session=await h.login(); await h.accept(session);
+  for(let i=0;i<12;i++) assert.equal((await h.call('/me',{...session,sourceIp:'198.51.100.20',method:'PATCH',body:{display_name:`Owner ${i}`}})).status,200);
+  const writes=Object.entries(h.state.accounts).filter(([key])=>key.startsWith('write:'));
+  assert.equal(writes.length,1); assert.equal(writes[0][1].times.length,13);
+  assert.equal((await h.call('/auth/login',{sourceIp:'198.51.100.20',method:'POST',body:{email:'owner@example.test',password,turnstile:'login'}})).status,200);
+  assert.equal((await h.call('/me',{...session,method:'PATCH',csrf:'a'.repeat(64),body:{display_name:'Invalid CSRF'}})).status,403);
+});
+
+test('successful recovery and reauthentication report success to their own account windows',async t=>{
+  const h=harness(t); await h.seed(); const session=await h.login(); await h.accept(session);
+  assert.equal((await h.call('/auth/forgot',{method:'POST',body:{email:'owner@example.test',turnstile:'forgot'}})).status,200);
+  assert.equal(Object.entries(h.state.accounts).filter(([key])=>key.startsWith('recovery:')).length,0);
+  assert.equal((await h.call('/auth/reauth',{...session,method:'POST',body:{email:'owner@example.test',password,turnstile:'reauth'}})).status,200);
+  assert.equal(Object.entries(h.state.accounts).filter(([key])=>key.startsWith('reauth:')).length,0);
+});
+
+test('a resumed session receives only its authenticated avatar URL, never the private object key',async t=>{
+  const h=harness(t), user=await h.seed(); const session=await h.login();
+  await h.db.prepare('INSERT INTO avatars(user_id,object_key,mime_type,width,height,content_hash,updated_at) VALUES(?,?,?,?,?,?,?)').bind(user.id,'avatars/private-synthetic-key.webp','image/webp',128,128,'b'.repeat(64),now()).run();
+  const result=await (await h.call('/me',session)).json();
+  assert.deepEqual(result.user.avatar,{url:`/api/avatars/${user.id}`,width:128,height:128});
+  assert.equal(JSON.stringify(result).includes('private-synthetic-key'),false);
 });

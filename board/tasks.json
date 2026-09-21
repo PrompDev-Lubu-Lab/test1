@@ -210,13 +210,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-05: journal WebSocket event contract approved: {kind:'journal', instance, bytes} as an invalidation hint with the file size at observation and no line count; clients fetch from their saved X-Next-Offset and restart at 0 when bytes is below it. Recorded in docs/API.md section 4."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-08: M3 event transport reviewed by deandre-fable (events.mjs, LIVE-EVENTS.md, workerd probe results): hint-only bridge with Origin, session and terms checks, 15 s bounded rechecks, hard expiry at min(Access, session, 5 min) with distinct close codes, read-only 1008, handshake timer cancelled after 101. No findings. The bot's /events contract is unchanged. Heartbeat age advances on a monotonic clock; real paper-stop (acceptance 8) still pending."
         }
       ]
     },
     {
       "id": "T-008",
       "title": "Implement the Tasks and Notes tabs on top of board/",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -250,6 +255,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-06: now depends on T-030 (adapter) and T-023 (shell); T-005 dependency satisfied by T-025"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-08: board-ui.js delivered on d1d7579 (drafts survive refresh and 409, explicit conflict review, cleared on account switch); not yet reviewed in depth; waits on T-030 fixes and the staging round trip"
         }
       ]
     },
@@ -321,7 +331,7 @@
       "depends_on": [
         "T-007"
       ],
-      "instructions": "Electron with electron-builder and electron-updater, reused from Case Forge. Generic provider pointed at https://updates.clawdie.ai (proposed) serving per-platform latest.yml. Code-signing and updater keys only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux. Session token via Electron safeStorage.",
+      "instructions": "Electron with electron-builder and electron-updater, reused from Case Forge. Generic provider pointed at https://updates.clawdie.ai (proposed) serving per-platform latest.yml. Code-signing and updater keys only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux. Session token via Electron safeStorage. Desktop path decided in COLLAB-20260921-08 (supersedes the cloudflared-token item in AUTH-DESIGN G1 item 5): the Electron shell loads the deployed web app from the approved HTTPS origin in a hardened BrowserWindow with a persistent partition. Access login, Turnstile, the __Host- cookie, CSRF and Origin then behave exactly as in a browser; no service credential, token store or PKCE flow ships in the installer. Hardening: contextIsolation on, sandbox on, nodeIntegration off, no preload API beyond the updater and window controls, will-navigate and setWindowOpenHandler limited to the app origin, the Access team domain and GitHub's login pages, all permission requests denied, external links opened in the system browser. The shell adds window chrome, the Downloads tab, notifications and an offline notice. Updates: electron-updater generic provider on the updates hostname with explicit user acceptance before install; unsigned dev builds labelled until signing is decided (T-020); rollback keeps the previous installer and the feed can pin or withdraw a version; revocation of an old shell via a minimum-version field on /config answered with 426.",
       "log": [
         {
           "on": "2026-09-20",
@@ -337,6 +347,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-08: desktop arrangement recorded; Windows-first"
         }
       ]
     },
@@ -869,7 +884,7 @@
     {
       "id": "T-030",
       "title": "GitHub board adapter in the Worker: read/write board/tasks.json and board/notes.md with expected-SHA conflict checks and session-derived handles",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-gpt6",
       "assigned_to": "deandre-gpt6",
@@ -883,6 +898,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-06 from deandre-gpt6's M4 proposal; approved with the staging-branch protocol"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-08: reviewed by deandre-fable on PR #2 head d1d7579 (board.mjs, app.mjs wiring, BOARD-ADAPTER.md, 23 adapter tests). Verdict: passes with two fixes before the board/staging round trip. Conforms to T-030 and board/README.md: fixed paths, operator-only repo/branch, staging gate forces board/staging, fine-grained token as a secret, expected-SHA with one re-read retry, append-only logs, max-plus-one id reallocation on retry, human-only actors from the verified session, assigned_by/assigned_on reset on reassignment, dependency gate before advancing, dropped requires a reason, replay by operation id and payload digest, session re-check before every PUT. Fixes: (B1, must) a new note is prepended above the file's '# Notes' preamble; insert it after the preamble, before the first '## ' heading, or append when none exists (board/README.md now states this). (B2, must) POST /board/* bodies share the 8 KiB JSON limit, but an update carries changes plus base for a 6000-byte instructions field and exceeds it; raise the board body limit to 32 KiB or compare base by digest. (B3, nit) the incoming instructions limit of 6000 bytes blocks editing long existing tasks in the app; 16 KiB is safer. README updated in Fable's lane: log lines may carry operation_id and operation_hash; app notes carry one HTML-comment marker line. Real staging round trip (acceptance 9) still pending the token."
         }
       ]
     },

@@ -62,7 +62,10 @@ before using a new handle.
   hosting), `research` (strategy work), `ops` (running it), `board`.
 - `depends_on`: task ids that must be `done` first.
 - `instructions`: enough for a fresh agent with no other context.
-- `log`: append-only; every status change gets a line.
+- `log`: append-only; every status change gets a line. Lines written
+  through the app carry two extra server-owned fields, `operation_id`
+  (a UUID) and `operation_hash`, used to make an uncertain retry
+  idempotent. Agents editing in git omit them.
 
 ## Protocol for agents
 
@@ -97,6 +100,11 @@ scope: fill `assigned_by` with your own handle and say why in
 ## 2026-09-20 14:05 UTC · deandre-fable → all
 Text of the note. Reference tasks as T-007 and commits by short hash.
 ```
+
+A note written through the app has one extra line right after the
+heading, an HTML comment `<!-- platform-board-operation: <uuid> <handle>
+<hash> -->`, which readers ignore and which makes a retry idempotent.
+New notes go after the file's preamble, before the first `## ` heading.
 
 Recipient is `all`, a handle, or a comma-separated list of handles. A
 note that asks someone to do something should also be a task; the note

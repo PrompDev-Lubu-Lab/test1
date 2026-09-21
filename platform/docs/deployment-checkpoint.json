@@ -1,9 +1,9 @@
 {
   "checked_at": "2026-09-21T14:26:37.677024+00:00",
-  "coordination_updated_at": "2026-09-21T14:26:37.677024+00:00",
+  "coordination_updated_at": "2026-09-21T14:46:06.159802+00:00",
   "source_commit": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
   "worker_version": "a5b1c69b-f46d-420f-a689-f5a2a42b5e59",
-  "runtime_status": "Onboarding repair deployed and active100%; real owner signup and authenticated acceptance awaiting human retry",
+  "runtime_status": "Onboarding code remains7051615 at its verified deployed version; Fable bot source fix integrated on feature branch only; real signup remains pending",
   "peer_review": "COLLAB-20260921-20 passed core b2021bd; validated frontend feedback/footer follow-up at7051615",
   "worker_tests": {
     "passed": 176,
@@ -85,9 +85,9 @@
     "published": false
   },
   "coordination": {
-    "final_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
+    "final_board_head": "f995276be72920cb82ab7e8053de93fdca8994b8",
     "review_rounds_closed": true,
-    "pending_reply": "Round21 deployment evidence and bot CI finding",
+    "pending_reply": null,
     "real_workflow_acceptance": "All eleven rows remain Pending",
     "onboarding_design_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d"
   },
@@ -107,5 +107,29 @@
     "app_tests_passed_at_core": 94,
     "ui_followup_tests_passed": 31,
     "runtime_deployed": true
+  },
+  "bot_source_followup": {
+    "task": "T-035",
+    "source_commit": "1b03b7bbf6502d7c0f88bc177704506ad25158a6",
+    "board_commit": "f995276be72920cb82ab7e8053de93fdca8994b8",
+    "merge_commit": "540045a13d23db54168ca5080e3af8423581d88c",
+    "finding": "A late fill revived a terminal cancelled state; a stale cancellation could overwrite filled. First terminal state now remains, while late fills still update quantities and fees.",
+    "review": "Root read the exact five-file incoming diff and both deterministic regressions; no root C++ edits",
+    "peer_validation": [
+      "gcc Debug ASan/UBSan full suite",
+      "clang Debug ASan/UBSan full suite",
+      "gcc Release full suite",
+      "clang Debug without sanitizers full suite",
+      "30 focused gateway repeats under each sanitizer compiler"
+    ],
+    "independent_ci": {
+      "head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+      "checks": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "status": "Integrated into platform feature branch; combined CI pending; T-035 remains in review until mainline integration",
+    "bot_deployed": false,
+    "pr1_merged": false
   }
 }

@@ -1,17 +1,17 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T14:26:37.677024+00:00",
-  "phase": "onboarding-deployed-human-retry-and-bot-review-pending",
+  "updated_at": "2026-09-21T14:46:06.159802+00:00",
+  "phase": "reviewed-bot-fix-integrated-awaiting-ci",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
+  "last_merged_board_head": "f995276be72920cb82ab7e8053de93fdca8994b8",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
   "last_sent_round": "COLLAB-20260921-21",
-  "last_processed_reply": "Fable passed source b2021bd with no blockers at board70607d0; two small frontend follow-ups complete",
-  "pending_reply": "Round21 deployment evidence and bot cancellation-test finding",
+  "last_processed_reply": "Round21 complete: Fable reproduced and fixed the gateway race; all requested compiler evidence supplied and5 independent CI checks green",
+  "pending_reply": null,
   "peer_review_closed": true,
-  "peer_followup_policy": "Send the tested onboarding source for final review; no acknowledgement-only messages",
+  "peer_followup_policy": "Collect combined-head CI; send one actionable outcome update to Fable if useful, no acknowledgement-only loop",
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
   "human_gates": [
@@ -56,10 +56,10 @@
   },
   "real_workflow_acceptance": "All eleven rows remain Pending",
   "independent_followups": [
-    "Collect Fable round21 bot-CI finding and canonical board update",
-    "Verify real owner signup and authenticated workflow after user completes password and verification",
-    "Preserve original invitation with no automatic resend",
-    "Minimum-version compatibility and other native platforms remain later scope"
+    "Collect combined-head CI after the reviewed Fable source integration",
+    "Verify real owner signup only after user completes the pending invitation/password handoff",
+    "Preserve original invitation and existing identity settings; no automatic resend",
+    "Mainline merge, server authority, signing and mailbox GitHub handoff remain human gates"
   ],
   "onboarding_repair": {
     "board_task": "T-034",
@@ -96,5 +96,29 @@
       "failure_url": "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35611369353/job/106371042037",
       "finding": "Binance gateway cancellation assertion at tests/gateway/binance_gateway_test.cpp:144; status2 vs cancelled5; cause unconfirmed; C++ unchanged by onboarding fix"
     }
+  },
+  "bot_ci_followup": {
+    "task": "T-035",
+    "source_commit": "1b03b7bbf6502d7c0f88bc177704506ad25158a6",
+    "board_commit": "f995276be72920cb82ab7e8053de93fdca8994b8",
+    "merge_commit": "540045a13d23db54168ca5080e3af8423581d88c",
+    "finding": "A late fill revived a terminal cancelled state; a stale cancellation could overwrite filled. First terminal state now remains, while late fills still update quantities and fees.",
+    "review": "Root read the exact five-file incoming diff and both deterministic regressions; no root C++ edits",
+    "peer_validation": [
+      "gcc Debug ASan/UBSan full suite",
+      "clang Debug ASan/UBSan full suite",
+      "gcc Release full suite",
+      "clang Debug without sanitizers full suite",
+      "30 focused gateway repeats under each sanitizer compiler"
+    ],
+    "independent_ci": {
+      "head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+      "checks": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "status": "Integrated into platform feature branch; combined CI pending; T-035 remains in review until mainline integration",
+    "bot_deployed": false,
+    "pr1_merged": false
   }
 }

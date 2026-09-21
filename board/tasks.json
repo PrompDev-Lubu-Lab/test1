@@ -657,7 +657,7 @@
     {
       "id": "T-027",
       "title": "Synthetic live-surface fixture: status.json, metrics.prom, heartbeat, state.json, journal.jsonl for the Live and Overview tabs",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-fable",
@@ -671,13 +671,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "delivered: platform/fixtures/synthetic/paper-ma_synthetic/ (heartbeat, status.json, metrics.prom, state.json, journal.jsonl, sample-stale-tripped/) plus generate_live.cpp; README updated"
         }
       ]
     },
     {
       "id": "T-028",
       "title": "tradebot-research --json-out: persist sweep, walk-forward, Monte Carlo, validate and judge results as JSON in the run directory",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "normal",
       "assigned_by": "deandre",
       "assigned_to": "deandre-fable",
@@ -691,6 +696,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "started after T-027"
         }
       ]
     }

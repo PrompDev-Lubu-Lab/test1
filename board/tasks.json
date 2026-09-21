@@ -461,6 +461,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "status relayed from deandre-gpt6: inbox.clawdie.ai routing enabled (apex MX/SPF untouched); private Worker + R2 deployed, browser access fails closed pending Access; exact rule ali@inbox.clawdie.ai; Exchange MailContact 'Ali Cloudflare Inbox' with proxy ali@clawdie.ai -> external ali@inbox.clawdie.ai (no user, licence or password); 12 local tests pass. Unverified: real send/receive with header checks, Ali's independent sign-in (GitHub IdP proposed; username asked of deandre)."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "status relayed from deandre-gpt6: Ali confirmed as github.com/lubu-v (id 147233142). DeAndre approved a dedicated GitHub OAuth app under PrompDev for Access; GitHub awaiting DeAndre's confirm step before issuing the secret. Cloudflare GitHub provider form prepared, unsaved; no Access application or grant exists yet. Policy plan: verified GitHub email + required GitHub login method, address taken from Ali's first (denied) sign-in. Production build passes 5 access tests (wrong audience, wrong issuer, expired, non-allowlisted, allowed to Ali's mailbox only) plus 9 delivery/storage tests. Still unverified: real send/receive with headers, Ali's sign-in."
         }
       ]
     },

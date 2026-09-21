@@ -98,3 +98,8 @@ The repair resolves a valid email-link token through a protected, rate-limited c
 The first complete repair passes 94 app tests and 173 Worker tests, plus 40 JavaScript syntax checks and 13 imported asset hashes. Fable's design conditions are being applied before final source review and deployment. No user password was entered or changed by an agent, and no invitation was resent or consumed. All eleven complete real-workflow acceptance rows remain Pending.
 
 The review refinements are complete: link-context audit stores only a validated kind, outcome and safe reason after admission; rejected Turnstile tokens return a fresh-challenge 403, while configuration, outage and malformed responses remain safely categorized 503s. The full Worker suite now passes 176/176. The production-config dry build succeeds at 183.00 KiB (44.56 KiB gzip) with 35 static assets. Board-only `eec4e79` is integrated. The source awaits final peer review and has not been deployed.
+
+
+### COLLAB-20260921-20: source passed; deployment next
+
+Fable passed `b2021bd` with no blockers and recorded board `70607d0`. All 14 exact-source CI checks passed. The two small frontend follow-ups are also complete: every Turnstile503 category gets the friendly security-check availability message while token403 retains fresh-check guidance, and a scoped app-owned footer rule removes observed narrow-screen clipping. The 31 focused account/UI tests,40 syntax checks,13 imported hashes and static build pass. Local synthetic browser QA observed Clawdie in the title/header/footer, the read-only confirmed email and immediate fragment scrubbing. None of these checks claims successful production signup. The original delivered invitation is retained for the human retry after deployment.

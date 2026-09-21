@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createAccountClient} from '../public/account-client.js';
+import {AccountError,createAccountClient} from '../public/account-client.js';
 import {createAccountUI} from '../public/account-ui.js';
 import {APP_NAME} from '../public/config.js';
 
 const token='x'.repeat(43),email='invited@example.test';
 // Event/markup harness only: these checks do not claim browser or Turnstile QA.
-function harness(t,{link=null,respond}={}) {
+function harness(t,{link=null,respond,challengeError}={}) {
   const previousDocument=globalThis.document,previousFormData=globalThis.FormData;
   const listeners=new Map(),view={innerHTML:''},calls=[],challenges=[];
   globalThis.document={addEventListener(kind,handler){listeners.set(kind,handler);},removeEventListener(kind,handler){if(listeners.get(kind)===handler)listeners.delete(kind);}};
@@ -20,7 +20,7 @@ function harness(t,{link=null,respond}={}) {
     if(url==='/api/me')return Response.json({error:'login_required',detail:'Sign in again.'},{status:401});
     throw new Error('Unexpected local test request');
   }});
-  const ui=createAccountUI({root,incomingLink:link,client,turnstileFactory:()=>({cancel(){},async challenge(action){challenges.push(action);return `synthetic-${action}`;}})});
+  const ui=createAccountUI({root,incomingLink:link,client,turnstileFactory:()=>({cancel(){},async challenge(action){challenges.push(action);if(challengeError)throw challengeError;return `synthetic-${action}`;}})});
   t.after(()=>{ui.dispose();if(previousDocument===undefined)delete globalThis.document;else globalThis.document=previousDocument;globalThis.FormData=previousFormData;});
   return {ui,calls,challenges,html:()=>view.innerHTML,listeners,
     input(value){listeners.get('input')({target:{owned:true,name:'email',value,readOnly:false}});},
@@ -100,9 +100,23 @@ test('a delayed context response cannot replace a newer email link identity',asy
 });
 
 test('a Turnstile service failure explains availability, clears passwords and preserves the typed address',async t=>{
-  const h=harness(t,{respond:async url=>url==='/api/auth/login'?Response.json({error:'turnstile_unavailable',detail:'This capability is temporarily unavailable or not configured.'},{status:503}):null});
-  await h.ui.start();const result=await h.submit('login',{email:'typed@example.test',password:'synthetic login password'});
-  assert.match(result.feedback.textContent,/Cloudflare security check is temporarily unavailable/);
-  assert.equal(result.controls.find(control=>control.type==='password').value,'');
-  h.ui.show('login');assert.match(h.html(),/value="typed@example\.test"/);assert.equal(h.ui.getUser(),undefined);
+  for(const code of ['turnstile_unavailable','turnstile_provider_configuration','turnstile_provider_http_503','turnstile_timeout'])await t.test(code,async t=>{
+    const h=harness(t,{respond:async url=>url==='/api/auth/login'?Response.json({error:code,detail:'This capability is temporarily unavailable or not configured.'},{status:503}):null});
+    await h.ui.start();const result=await h.submit('login',{email:'typed@example.test',password:'synthetic login password'});
+    assert.match(result.feedback.textContent,/Cloudflare security check is temporarily unavailable/);
+    assert.equal(result.controls.find(control=>control.type==='password').value,'');
+    h.ui.show('login');assert.match(h.html(),/value="typed@example\.test"/);assert.equal(h.ui.getUser(),undefined);
+  });
+  await t.test('client-side widget load failure retains its friendly message',async t=>{
+    const h=harness(t,{challengeError:new AccountError('turnstile_unavailable','The security check could not load.')});
+    await h.ui.start();const result=await h.submit('login',{email:'typed@example.test',password:'synthetic login password'});
+    assert.match(result.feedback.textContent,/Cloudflare security check is temporarily unavailable/);
+    assert.equal(h.calls.some(call=>call.url==='/api/auth/login'),false);
+  });
+  await t.test('a rejected token retains the fresh-check instruction',async t=>{
+    const detail='Complete a fresh security check and submit again.';
+    const h=harness(t,{respond:async url=>url==='/api/auth/login'?Response.json({error:'turnstile_failed',detail},{status:403}):null});
+    await h.ui.start();const result=await h.submit('login',{email:'typed@example.test',password:'synthetic login password'});
+    assert.equal(result.feedback.textContent,detail);
+  });
 });

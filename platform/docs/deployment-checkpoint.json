@@ -1,6 +1,6 @@
 {
   "checked_at": "2026-09-21T12:17:11.802038+00:00",
-  "coordination_updated_at": "2026-09-21T14:08:30.512177+00:00",
+  "coordination_updated_at": "2026-09-21T14:19:05.886709+00:00",
   "source_commit": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
   "worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
   "runtime_status": "Runtime code unchanged; encrypted Turnstile binding reapplied; onboarding source repair awaiting review and deployment",
@@ -78,9 +78,9 @@
     "published": false
   },
   "coordination": {
-    "final_board_head": "49dae954cfc67817ed272fec3eaef360a4805ce1",
-    "review_rounds_closed": false,
-    "pending_reply": "Tested onboarding source review to follow",
+    "final_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
+    "review_rounds_closed": true,
+    "pending_reply": null,
     "real_workflow_acceptance": "All eleven rows remain Pending",
     "onboarding_design_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d"
   },
@@ -90,5 +90,15 @@
     "same_widget": true,
     "source_changed": false,
     "live_authentication_verified": false
+  },
+  "onboarding_source_review": {
+    "source": "b2021bd4104c479900d22387984fdb2363873664",
+    "round": "COLLAB-20260921-20",
+    "verdict": "pass; no blockers",
+    "ci_checks_passed": 14,
+    "worker_tests_passed": 176,
+    "app_tests_passed_at_core": 94,
+    "ui_followup_tests_passed": 31,
+    "runtime_deployed": false
   }
 }

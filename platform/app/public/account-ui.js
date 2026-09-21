@@ -107,7 +107,7 @@ export function createAccountUI({root,incomingLink=null,onShowGate=()=>{},onAuth
   function publicMessage(error) {
     if(!(error instanceof AccountError))return 'This action could not be completed. No success has been confirmed.';
     const wait=error.retryAfter?` Try again in ${Math.ceil(error.retryAfter)} seconds.`:'';
-    if(error.code==='turnstile_unavailable')return `The Cloudflare security check is temporarily unavailable. This request could not be completed.${wait}`;
+    if(error.code==='turnstile_unavailable'||(error.status===503&&typeof error.code==='string'&&error.code.startsWith('turnstile_')))return `The Cloudflare security check is temporarily unavailable. This request could not be completed.${wait}`;
     return `${error.message}${wait}`;
   }
   function mountProfile(target,message='',tone='info') {

@@ -1,16 +1,16 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T14:08:30.512177+00:00",
-  "phase": "owner-onboarding-repair-in-progress",
+  "updated_at": "2026-09-21T14:19:05.886709+00:00",
+  "phase": "reviewed-onboarding-repair-ready-to-deploy",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d",
+  "last_merged_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-19",
-  "last_processed_reply": "Round 19 design accepted; T-034 records the real onboarding regression at eec4e79",
+  "last_sent_round": "COLLAB-20260921-20",
+  "last_processed_reply": "Fable passed source b2021bd with no blockers at board70607d0; two small frontend follow-ups complete",
   "pending_reply": null,
-  "peer_review_closed": false,
+  "peer_review_closed": true,
   "peer_followup_policy": "Send the tested onboarding source for final review; no acknowledgement-only messages",
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
@@ -36,7 +36,7 @@
     "desktop_published": false,
     "owner_invite_receipt_verified": true
   },
-  "reviewed_source_head": "ea30244ebe044bc4fd096e0c79e477996807bf49",
+  "reviewed_source_head": "b2021bd4104c479900d22387984fdb2363873664",
   "deployed_source_head": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
   "deployed_worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
   "bootstrap_review": {
@@ -57,14 +57,14 @@
   },
   "real_workflow_acceptance": "All eleven rows remain Pending",
   "independent_followups": [
-    "Finish bounded diagnostics and context audit; run complete checks",
-    "Obtain source review, deploy the repair and verify live protection",
-    "User reopens the existing invitation, chooses password and completes real signup/verification/terms",
-    "Minimum-version compatibility and macOS/Linux native delivery remain later scope"
+    "Deploy reviewed repair and validated UI follow-up; verify protected edge and active version",
+    "User reopens the original invitation and completes real signup, verification, sign-in and terms",
+    "Collect exact final-source CI and send one deployment evidence note to Fable",
+    "Minimum-version compatibility and other native platforms remain later scope"
   ],
   "onboarding_repair": {
     "board_task": "T-034",
-    "status": "Complete tested source; final peer review and deployment pending",
+    "status": "Peer-reviewed source plus validated UI wording/footer follow-up; deployment pending",
     "observed_failure": "Invitation button completed Access but reached bare sign-in; admitted security check returned turnstile_unavailable",
     "context_design": "Protected read-only token lookup pre-fills the intended address; fragment scrubbed immediately and retained only in page memory",
     "recovery": "Reopen the same original email link in the same browser after Access, once the repair is deployed",
@@ -81,6 +81,9 @@
       "kib": 183.0,
       "gzip_kib": 44.56,
       "static_files": 35
-    }
+    },
+    "core_ci_checks_passed": 14,
+    "frontend_followup_tests_passed": 31,
+    "frontend_followup": "Friendly message for every Turnstile503 category and a scoped footer row override after local narrow-width QA"
   }
 }

@@ -1,14 +1,14 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T06:01:02.475302+00:00",
-  "phase": "desktop-review-followups-complete",
+  "updated_at": "2026-09-21T06:06:05.052237+00:00",
+  "phase": "source-reviewed-awaiting-activation",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "0511a17",
+  "last_merged_board_head": "041e59d",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-10",
-  "last_processed_reply": "COLLAB-20260921-10 / M5 approved for staging; six follow-ups applied",
+  "last_sent_round": "COLLAB-20260921-11",
+  "last_processed_reply": "COLLAB-20260921-11 / all six follow-ups accepted; joint source checkpoint closed",
   "pending_reply": null,
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
@@ -27,5 +27,10 @@
     "mailbox_real_signin_verified": false,
     "mailbox_real_delivery_verified": false,
     "unsigned_windows_package_built": true
-  }
+  },
+  "reviewed_source_head": "b3b1d7c40dab067b05f6efb512dd846fd730a0d9",
+  "independent_followups": [
+    "Read final bot/compiler CI at the reviewed source head once complete",
+    "Minimum-version compatibility policy and macOS/Linux native delivery remain explicit later scope"
+  ]
 }

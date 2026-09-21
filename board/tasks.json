@@ -335,6 +335,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15 final: DEPLOYED and PROTECTED, NOT USABLE. Reviewed f462cc8 live on the single origin with every optional feature off, Access denying at the edge, workers.dev and preview URLs off. Waiting on the first real account (T-031) and the authenticated browser acceptance (T-032 item 12 second half). Review rounds closed."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: first-owner invitation delivered (T-031); usability now waits on DeAndre completing signup, then the authenticated browser acceptance (T-032 item 12 second half). Runtime source unchanged at f462cc8."
         }
       ]
     },
@@ -633,6 +638,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15: public DNS independently verified on both authoritative nameservers and two public resolvers: apex mail routes only to the Microsoft tenant, the inbox subdomain only to Cloudflare, the Microsoft MX resolves normally; no DNS routing conflict. Owner mailbox reception needs a separate owner action; details stay private. No mailbox contents, billing details or private identifiers on the board."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: Astra reports owner inbox reception independently verified by a newly received service message; the round-15 reception hold on the invitation is lifted. Root cause and any mail-setting change stay private and human-owned; no mailbox content on the board."
         }
       ]
     },
@@ -750,6 +760,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-07: G2 re-check by deandre-fable on PR #2 head d452828 (limiter.mjs, app.mjs, security.mjs diffs, scripts/seed-invite.mjs, app.js renewal path). F1 resolved: limiter v2 separates a 'write' class (120 per IP and per user per 10 min, success never clears) and 'recovery' from the KDF class (login/signup/reauth/reset/password share 10 per IP per 10 min and 60 global per minute, per-purpose account windows, lock only on login). F2 resolved with the ingress compromise, confirmed: Origin/body -> /ingress (120 per IP per minute, 600 global, no account state) -> signed Access verification -> named-account reservation -> Turnstile -> one KDF; invalid assertions cannot touch a named account, and the ingress gate bounds verification work. F3 resolved: finish() reports 2xx outcomes for every route. F6 resolved: equalDigest on both CSRF digests. F4 delivered as T-031. F5 handled in the app: 403 access_denied or an Access edge redirect triggers a full-navigation renewal while the app session is retained, and the session stays bound to the same Access sub. No staging blockers remain in code. Two nits, not blocking: (N1) limiterTransition throws 503 on a persisted state whose version is not 2, so a future version bump would wedge the single global DO, including its cleanup alarm; treat an unknown or older version as a fresh state (nothing is deployed yet, so no migration is needed today). (N2) seed-invite refuses to run while an unaccepted invite exists; document the operator recovery for a lost link (expire the row, then re-run) in the README. Status: review until real Access, Turnstile, email and browser acceptance (ACCEPTANCE rows 1 to 6) run in staging."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: first real invitation delivered to the owner; real signup, verification, session and terms flow remain unverified until DeAndre completes them. Member (ali) access still waits on the human passkey."
         }
       ]
     },
@@ -1061,6 +1076,41 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15 final: REVIEWED, UNRUN. All 14 GitHub checks green at the reviewed source 5d3d084. Read-only D1 probe through the exact selected Wrangler config confirmed the JSON output shape (success true with results arrays); production has zero users and zero invites. No email or bootstrap has run. HOLD: the approved setup email and invitation wait until owner mailbox reception is restored, which is a separate owner action handled privately. The exact owner one-time-PIN rule and its identity provider stay intact and must not be deleted or re-created. Review rounds closed; no further source work requested."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: STATE CORRECTION. A real remote attempt at 5d3d084 inserted one owner invite digest and then returned bootstrap_unconfirmed with send_attempted false, because a remote wrangler --file import returns execution totals, not selected rows. Production now holds zero users and one unaccepted, unsent orphan invite (24 h expiry from that attempt). No email was sent and no raw token exists anywhere."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: fix review at 199e086 PASSES, no blocking findings. The guarded insert runs once through --file; a separate read-only --command query for that attempt's exact digest, the shape the round-15 probe verified, is the only thing that can confirm email, handle, role, expiry and digest before link display or the one send. Checked: race safety (the single-statement guard stays atomic, a contender that loses gets zero confirmation rows and bootstrap_refused, import totals with rows written 0 resolve the same way); result parsing (import must be a non-empty all-success array, the confirmation must be exactly one matching row, anything else is unconfirmed); fail-closed (import throw or bad shape never reads or sends, confirmation throw, bad shape or field mismatch never sends, temp digest-only file removed on every path, no retry, rerun refused while the invite is active); secrets (token absent from SQL, file, command argv and both Wrangler child environments, only the digest reaches argv, injection seam is test-only). 21 tests cover these. Worker runtime unchanged. 199e086 is the reviewed source for the run; any later script change needs re-review."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: RECOVERY APPROVED as proposed, operator-run and never added to the script: one UPDATE that sets the orphan's expires_at to its own created_at, matched by the full digest from the failed attempt's prefix plus handle deandre, role owner, the owner email, accepted_at IS NULL, expires_at still in the future, and NOT EXISTS users; run it through the same --remote --command --json path and require exactly one change; then a SELECT showing zero unaccepted unexpired invites and zero users; then the fixed CLI once. Expire, never delete. The no-write alternative is to wait for the orphan's natural 24 h expiry. THE SEND STAYS ON HOLD: the fixed CLI run sends the invitation, so it waits for owner mailbox reception to be restored per T-019, unless DeAndre lifts that hold explicitly. The expiry step itself may run now."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: STATE. First orphan expired per the round-16 procedure (exactly one change, then zero users and zero active invites). A second attempt at 199e086 inserted a second orphan and stopped before any email: the installed Wrangler 4.135 prints progress text before JSON on remote --file even with --json, so strict parsing rejected it after the insert. Zero users, one unaccepted unsent orphan, send never attempted."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: transport fix at ea30244 PASSES, no blocking findings. Both the guarded INSERT and the separate exact-digest SELECT now go through short --command calls, no temporary file, child log level pinned to log so D1 JSON is printed, strict JSON parsing kept with no substring extraction, both children exclude the email token, only the digest and fixed account metadata reach argv, 23 tests including real child-process argv, environment and parser tests that reject progress-prefixed, empty, malformed and non-zero-exit output without send or retry. The exported executor was run twice with SELECT 1 against the real database and installed Wrangler with exact success. Non-blocking: (a) the multi-line INSERT has not itself crossed the real argv path yet, only SELECT 1 has; the failure mode is a parse error, so unconfirmed with nothing inserted, which is safe; (b) the owner address is visible in the child argv for the child lifetime on the operator machine, acceptable there. ea30244 is the reviewed source for the run; run exactly that head."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-17: RECOVERY APPROVED for the second orphan with the round-16 conditions unchanged: one operator UPDATE setting expires_at to created_at, matched by the full digest from the failed attempt prefix plus handle deandre, role owner, owner email, accepted_at IS NULL, expires_at in the future, NOT EXISTS users; same --remote --command --json path; exactly one change; then SELECT showing zero unaccepted unexpired invites and zero users; then the reviewed CLI at ea30244 once. Expire, never delete; expired rows stay. The mail hold is lifted per T-019, so this run is the approved single setup email. Password, terms and signup stay human-owned."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: DELIVERED. At the reviewed source ea30244 the second unsent orphan was expired under every approved guard (exactly one changed row, then zero users and zero active invites confirmed). The reviewed CLI then ran once: exact new invite confirmed, exactly one email request, provider reported queued, and a separate mailbox metadata read confirmed the setup invitation arrived from the configured sender at 13:41:47 UTC. One email attempt in total; the two earlier guarded failures attempted none. The two earlier invite rows remain as expired history; the new invite is active for 24 hours. No token or message body was printed or committed. PENDING HUMAN STEP: DeAndre completes the Access PIN sign-in, chooses the app password and accepts the terms; that signup binds the continuing owner identity. Real signup and session are not yet verified."
         }
       ]
     },

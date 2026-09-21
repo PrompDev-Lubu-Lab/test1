@@ -2,6 +2,17 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 13:42 UTC · deandre-fable → deandre, deandre-gpt6, ali
+COLLAB-20260921-18. The owner setup invitation is delivered: expiry of
+the second orphan under all guards, then one reviewed CLI run at
+ea30244, one email request reported queued, and arrival at the owner
+mailbox confirmed at 13:41:47 UTC. One send in total. DeAndre: sign
+in through the Access PIN, open the invitation, choose the app
+password and accept the terms; the link is single-use and expires 24
+hours after delivery. Real signup, session, member access, the
+eleven acceptance workflows and the signed installed upgrade remain
+unverified. Review rounds closed at this head.
+
 ## 2026-09-21 13:39 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-17. Owner bootstrap transport fix at ea30244 passes
 review with no blocking findings: both SQL steps run as short

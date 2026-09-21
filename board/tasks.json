@@ -335,6 +335,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15 final: DEPLOYED and PROTECTED, NOT USABLE. Reviewed f462cc8 live on the single origin with every optional feature off, Access denying at the edge, workers.dev and preview URLs off. Waiting on the first real account (T-031) and the authenticated browser acceptance (T-032 item 12 second half). Review rounds closed."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: first-owner invitation delivered (T-031); usability now waits on DeAndre completing signup, then the authenticated browser acceptance (T-032 item 12 second half). Runtime source unchanged at f462cc8."
         }
       ]
     },
@@ -755,6 +760,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-07: G2 re-check by deandre-fable on PR #2 head d452828 (limiter.mjs, app.mjs, security.mjs diffs, scripts/seed-invite.mjs, app.js renewal path). F1 resolved: limiter v2 separates a 'write' class (120 per IP and per user per 10 min, success never clears) and 'recovery' from the KDF class (login/signup/reauth/reset/password share 10 per IP per 10 min and 60 global per minute, per-purpose account windows, lock only on login). F2 resolved with the ingress compromise, confirmed: Origin/body -> /ingress (120 per IP per minute, 600 global, no account state) -> signed Access verification -> named-account reservation -> Turnstile -> one KDF; invalid assertions cannot touch a named account, and the ingress gate bounds verification work. F3 resolved: finish() reports 2xx outcomes for every route. F6 resolved: equalDigest on both CSRF digests. F4 delivered as T-031. F5 handled in the app: 403 access_denied or an Access edge redirect triggers a full-navigation renewal while the app session is retained, and the session stays bound to the same Access sub. No staging blockers remain in code. Two nits, not blocking: (N1) limiterTransition throws 503 on a persisted state whose version is not 2, so a future version bump would wedge the single global DO, including its cleanup alarm; treat an unknown or older version as a fresh state (nothing is deployed yet, so no migration is needed today). (N2) seed-invite refuses to run while an unaccepted invite exists; document the operator recovery for a lost link (expire the row, then re-run) in the README. Status: review until real Access, Turnstile, email and browser acceptance (ACCEPTANCE rows 1 to 6) run in staging."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: first real invitation delivered to the owner; real signup, verification, session and terms flow remain unverified until DeAndre completes them. Member (ali) access still waits on the human passkey."
         }
       ]
     },
@@ -1096,6 +1106,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-17: RECOVERY APPROVED for the second orphan with the round-16 conditions unchanged: one operator UPDATE setting expires_at to created_at, matched by the full digest from the failed attempt prefix plus handle deandre, role owner, owner email, accepted_at IS NULL, expires_at in the future, NOT EXISTS users; same --remote --command --json path; exactly one change; then SELECT showing zero unaccepted unexpired invites and zero users; then the reviewed CLI at ea30244 once. Expire, never delete; expired rows stay. The mail hold is lifted per T-019, so this run is the approved single setup email. Password, terms and signup stay human-owned."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-18: DELIVERED. At the reviewed source ea30244 the second unsent orphan was expired under every approved guard (exactly one changed row, then zero users and zero active invites confirmed). The reviewed CLI then ran once: exact new invite confirmed, exactly one email request, provider reported queued, and a separate mailbox metadata read confirmed the setup invitation arrived from the configured sender at 13:41:47 UTC. One email attempt in total; the two earlier guarded failures attempted none. The two earlier invite rows remain as expired history; the new invite is active for 24 hours. No token or message body was printed or committed. PENDING HUMAN STEP: DeAndre completes the Access PIN sign-in, chooses the app password and accepts the terms; that signup binds the continuing owner identity. Real signup and session are not yet verified."
         }
       ]
     },

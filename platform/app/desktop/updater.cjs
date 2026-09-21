@@ -56,8 +56,9 @@ async function createDesktopUpdater({app,appSession,settings,dialog,window,chang
       if(disposed || !transport.isCurrent(receipt) || resolve(helper.file ?? '')!==resolve(paths[0]))throw new Error('Installer or account state changed.');
       await launchInstaller(paths[0]);
       app.quit();
-    } catch {
-      if(!disposed)await dialog.showMessageBox(window,{type:'warning',message:'The update could not be verified or downloaded.',detail:'The current version is unchanged. Check your connection and sign in again, then use Check for updates. A release with an unapproved signature cannot be installed.'});
+    } catch (error) {
+      const authentication=error?.code==='UPDATE_AUTHENTICATION_REQUIRED';
+      if(!disposed)await dialog.showMessageBox(window,{type:'warning',message:authentication?'Your sign-in could not be confirmed.':'The update could not be verified or downloaded.',detail:authentication?'Check your connection and sign in to the app, then use Check for updates. The current version is unchanged.':'The current version is unchanged. Check your connection and try again. A release with an unapproved signature cannot be installed.'});
     } finally {if(timer)clearInterval(timer);transport.invalidate();cancellation=null;expectedRelease=null;busy=false;if(!disposed)changed(false);}
   }
   return {enabled:true,check,dispose(){disposed=true;transport.dispose();}};

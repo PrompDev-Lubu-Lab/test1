@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-21T05:42:15.196Z",
+  "checked_at": "2026-09-21T05:59:53.617Z",
   "scope": "Local workerd with a real Miniflare R2 binding and synthetic release bytes. Explicit harness authorization only; no real Access, D1 sessions, accounts, production R2, public deployment, signing or updater installation was tested.",
   "node": "v24.19.0",
   "miniflare": "5.20260918.0-alpha",
@@ -37,8 +37,8 @@
   "content_length": {
     "installer_get": {
       "expected": 131109,
-      "observed": null,
-      "preserved": false
+      "observed": 131109,
+      "preserved": true
     },
     "installer_head": {
       "expected": 131109,

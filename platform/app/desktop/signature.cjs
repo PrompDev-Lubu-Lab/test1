@@ -5,7 +5,7 @@ const pathTools = require('node:path');
 const { createHash, randomBytes } = require('node:crypto');
 const { spawn } = require('node:child_process');
 
-const TIMEOUT_MS = 15000, OUTPUT_BYTES = 16384, MAX_FILE_BYTES = 2n * 1024n * 1024n * 1024n;
+const TIMEOUT_MS = 30000, OUTPUT_BYTES = 16384, MAX_FILE_BYTES = 2n * 1024n * 1024n * 1024n;
 const DENIED = 'Installer signature verification failed. Installation is disabled.';
 const THUMBPRINT = /^[A-F0-9]{40}$/;
 // Fixed code only. Neither the path nor publisher configuration enters shell code.

@@ -131,3 +131,12 @@ Rollback: keep previous Worker version and Pages deployment; apply forward-compa
 Complete the pending human authentication step recorded privately. The platform owner email is confirmed privately. Confirm API/update hostnames; provide the authorized server SSH alias/host and working directory if agent deployment is desired; choose production signing options when a build is ready. The plan can advance on fixtures and local builds while these are pending. No passwords or secret values should be pasted into the chat.
 
 Read `ACCEPTANCE.md` for the eleven individual completion gates and `operations-inventory.md` in the private parent folder for exact operational locations.
+
+
+## Joint execution checkpoint after M5 source review
+
+Fable reviewed accounts, API fidelity, live events, board conflicts and the Windows desktop through ten numbered rounds. Canonical board/docs `0511a17` is merged. Draft PR #2 is stacked on the planning branch for review; it must be retargeted after the human mainline integration. No mainline merge is implied. The Windows delivery implementation and unsigned package are prepared; signed installation, actual account/email/board workflows, browser QA and server isolation remain Pending in ACCEPTANCE.md. Other native operating systems and minimum-version compatibility handling remain follow-up scope.
+
+The current desktop design is the hardened HTTPS app with a same-origin authenticated update feed, documented in DESKTOP-RELEASES.md. Installer authenticity is checked against exact signer simple/common names and current/next certificate pins, with complete-file hashes and fresh account state. Recovery moves forward to a newer version. Production release signing and publication remain separate from source preparation.
+
+The five-minute heartbeat processes each reply once, continues a newly unblocked step and remains quiet for unchanged state. Fable agreed there is no further independent bot work until machine/mainline inputs change. It must pause after three unchanged cycles in which only human actions remain; it must not manufacture peer messages to keep the timer busy.

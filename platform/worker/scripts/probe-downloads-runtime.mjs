@@ -59,7 +59,7 @@ function safeHeaders(response, type) {
 }
 function observedLength(response, expected) {
   const actual = response.headers.get('Content-Length');
-  if (actual !== null) assert.equal(actual, String(expected));
+  assert.equal(actual, String(expected));
   return { expected, observed: actual === null ? null : Number(actual), preserved: actual === String(expected) };
 }
 

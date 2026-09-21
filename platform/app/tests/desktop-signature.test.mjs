@@ -106,7 +106,7 @@ test('the fixed verifier command carries a hostile-looking filename only through
     calls++;
     assert.equal(request.windowsHide, true);
     assert.equal(request.shell, false);
-    assert.equal(request.timeoutMs, 15000);
+    assert.equal(request.timeoutMs, 30000);
     assert.equal(request.maxOutputBytes, 16384);
     assert.ok(request.signal instanceof AbortSignal);
     assert.match(request.executable, /^[A-Za-z]:\\Windows\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i);
@@ -231,7 +231,7 @@ test('missing tools, nonzero exit status and malformed executor outcomes never u
     async () => ({ code: 0, stdout: { status: 'Valid' }, stderr: '' })]) await denied({ ...config, execute });
 });
 
-test('an executor that hangs is aborted at fifteen seconds and the file handle is released', async t => {
+test('an executor that hangs is aborted at thirty seconds and the file handle is released', async t => {
   const { config, file } = await fixture(t);
   let signal, started;
   const entered = new Promise(resolve => { started = resolve; });
@@ -240,7 +240,9 @@ test('an executor that hangs is aborted at fifteen seconds and the file handle i
     signal = request.signal; started(); return new Promise(() => {});
   } });
   await entered;
-  t.mock.timers.tick(15000);
+  t.mock.timers.tick(29999);
+  assert.equal(signal.aborted, false);
+  t.mock.timers.tick(1);
   assert.equal(typeof await result, 'string');
   assert.equal(signal.aborted, true);
   t.mock.timers.reset();

@@ -54,7 +54,7 @@ function createUpdateTransport({appSession,updateSession,settings,onInvalidated=
     if(!initial && (!active || active.fingerprint!==after.fingerprint || active.userId!==result.user.id)) throw new Error(CLOSED);
     active={fingerprint:after.fingerprint,userId:result.user.id,expiresAt:Math.min(after.expiresAt,result.authentication_expires_at*1000)};
     return {userId:result.user.id,revision,validUntil:Math.min(Date.now()+20000,active.expiresAt)};
-    } catch {invalidate(seen);throw new Error(CLOSED);}
+    } catch {invalidate(seen);throw Object.assign(new Error(CLOSED),{code:'UPDATE_AUTHENTICATION_REQUIRED'});}
   }
   return {
     begin:async()=>{invalidate();return authenticate({initial:true});},

@@ -236,5 +236,10 @@ export async function serveRelease(request, env, options) {
     await authorize(options);
     return new Response(bytes, { headers: responseHeaders(object, path) });
   }
-  return new Response(installerStream(object), { headers: responseHeaders(object, path) });
+  const bounded = installerStream(object);
+  // workerd derives Content-Length from the body, ignoring a manually set header.
+  // Keep the bounded Node test stream and use the native fixed-length body at the edge.
+  const body = typeof FixedLengthStream === 'function'
+    ? bounded.pipeThrough(new FixedLengthStream(object.size)) : bounded;
+  return new Response(body, { headers: responseHeaders(object, path) });
 }

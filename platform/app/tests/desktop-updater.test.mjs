@@ -8,9 +8,9 @@ const require=createRequire(import.meta.url);
 const {createDesktopUpdater}=require('../desktop/updater.cjs');
 const {validateSettings}=require('../desktop/policy.cjs');
 const settings=validateSettings({schema:1,channel:'production',appOrigin:'https://workspace.example.com',accessOrigin:'https://example.cloudflareaccess.com',externalOrigins:[],updatesEnabled:true,publisherNames:['Example Publisher'],certificateThumbprints:['A'.repeat(40)]});
-async function fixture({verify,answers=[1,1],config={}}={}) {
-  const record=[];
-  const jar=new EventEmitter();jar.get=async()=>['CF_Authorization','__Host-platform-session'].map(name=>({name,value:'synthetic',domain:'workspace.example.com',hostOnly:true,path:'/',secure:true,httpOnly:true}));
+async function fixture({verify,answers=[1,1],config={},signedIn=true}={}) {
+  const record=[],messages=[];
+  const jar=new EventEmitter();jar.get=async()=>(signedIn?['CF_Authorization','__Host-platform-session']:[]).map(name=>({name,value:'synthetic',domain:'workspace.example.com',hostOnly:true,path:'/',secure:true,httpOnly:true}));
   const appSession={cookies:jar,fetch:async()=>{record.push('session');return Response.json({user:{id:'owner',role:'owner',verified:true},terms_required:false,authentication_expires_at:Math.floor(Date.now()/1000)+60});}};
   const native=new EventEmitter();const cacheDir=join(process.env.LOCALAPPDATA||join(homedir(),'AppData','Local'),settings.cacheName),file=join(cacheDir,'pending','clawdie-platform-0.1.1-win-x64.exe');
   native.configOnDisk={value:Promise.resolve({provider:'generic',url:settings.feedUrl,publisherName:settings.publisherNames,updaterCacheDirName:settings.cacheName,...config})};
@@ -22,8 +22,8 @@ async function fixture({verify,answers=[1,1],config={}}={}) {
   native.quitAndInstall=()=>{throw new Error('Forbidden native fallback path.');};
   const app={isPackaged:true,getVersion:()=> '0.1.0',quit:()=>record.push('quit')};
   let confirmations=0;
-  const updater=await createDesktopUpdater({app,appSession,settings,platform:'win32',makeUpdater:()=>native,window:{},dialog:{showMessageBox:async(_window,options)=>{if(options.type==='question')return {response:answers[confirmations++]??0};record.push('warning');return {response:0};}},verifyInstaller:async policy=>{record.push('verify');assert.equal(policy.expectedSha512,sha512);assert.equal(policy.expectedSize,42);assert.equal(policy.path,file);return verify?verify({jar,record}):null;},launchInstaller:async path=>{assert.equal(path,file);record.push('launch');}});
-  return {updater,native,record,jar};
+  const updater=await createDesktopUpdater({app,appSession,settings,platform:'win32',makeUpdater:()=>native,window:{},dialog:{showMessageBox:async(_window,options)=>{messages.push(options);if(options.type==='question')return {response:answers[confirmations++]??0};record.push('warning');return {response:0};}},verifyInstaller:async policy=>{record.push('verify');assert.equal(policy.expectedSha512,sha512);assert.equal(policy.expectedSize,42);assert.equal(policy.path,file);return verify?verify({jar,record}):null;},launchInstaller:async path=>{assert.equal(path,file);record.push('launch');}});
+  return {updater,native,record,jar,messages};
 }
 test('cached installers still require two bound verifications and a current session before a fixed launch',async()=>{
   const f=await fixture();await f.updater.check();
@@ -40,4 +40,29 @@ test('invalid signatures, changed sessions and declined installation cannot laun
 });
 test('declining a download avoids cache access and signature work',async()=>{
   const f=await fixture({answers:[0]});await f.updater.check();assert.equal(f.record.includes('cached-download'),false);assert.equal(f.record.includes('verify'),false);f.updater.dispose();
+});
+
+test('a missing sign-in explains the account step before any updater request',async()=>{
+  const f=await fixture({signedIn:false});
+  f.native.checkForUpdates=async()=>assert.fail('A signed-out user must not query the feed.');
+  await f.updater.check();
+  assert.equal(f.messages.length,1);assert.equal(f.messages[0].message,'Your sign-in could not be confirmed.');
+  assert.equal(f.record.includes('cached-download'),false);assert.equal(f.record.includes('launch'),false);f.updater.dispose();
+});
+
+test('the pinned native updater preserves the config, cache directory and downloaded file contract',async()=>{
+  assert.equal(require('electron-updater/package.json').version,'6.8.9');
+  const {NsisUpdater}=require('electron-updater/out/NsisUpdater');
+  const baseCachePath=join(homedir(),'synthetic-cache-contract');
+  // Supplied app adapter avoids an Electron process; no file, cache or network write occurs.
+  const native=new NsisUpdater(undefined,{version:'0.1.0',name:'synthetic',baseCachePath});
+  assert.ok(native.configOnDisk);assert.equal(typeof native.getOrCreateDownloadHelper,'function');
+  native.configOnDisk={value:Promise.resolve({updaterCacheDirName:settings.cacheName})};
+  native.logger=null;
+  const helper=await native.getOrCreateDownloadHelper();
+  assert.equal(helper.cacheDir,join(baseCachePath,settings.cacheName));
+  assert.equal(helper.file,null);assert.equal(await native.getOrCreateDownloadHelper(),helper);
+  const file=join(helper.cacheDir,'pending','clawdie-platform-0.1.1-win-x64.exe');
+  await helper.setDownloadedFile(file,null,{version:'0.1.1'},{info:{sha512:Buffer.alloc(64).toString('base64')}},'clawdie-platform-0.1.1-win-x64.exe',false);
+  assert.equal(helper.file,file);
 });

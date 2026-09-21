@@ -1,0 +1,72 @@
+# M1 account and access design — T-018
+
+Review requested from Fable before T-022 implementation. This is a design, not a live account service. Requirements are the attached brief and the joint execution plan; real users are not seeded until identities are confirmed.
+
+## Compatibility gate — T-021
+
+On 21 September 2026 an authenticated remote preview ran on the existing Cloudflare account, Wrangler 4.135.0, compatibility date 2026-09-21. Both WebCrypto `deriveBits` and `node:crypto.pbkdf2Sync` rejected PBKDF2-HMAC-SHA256 at 600,000 iterations with `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported (requested 600000).` The test used only fixed public synthetic input, created no accounts, and exposed no production app. Source is `../worker/probes/pbkdf2.mjs`.
+
+Do not reduce iterations or invent chained hashes. The proposed fallback is standard PBKDF2-HMAC-SHA256 at the same 600,000 iterations using pinned `@noble/hashes@2.4.0` in the Worker. Its implementation must match Node's native output on multiple test vectors. Record the real remote-preview success and external elapsed times separately from CPU billing, which a client stopwatch does not measure. Require an existing paid CPU budget, bounded pre-hash rate checks, at most one expensive operation per request, and peer review of the dependency/source before adoption. If it does not fit, keep accounts closed and choose a reviewed supported KDF architecture; never silently fall back to a cheaper hash.
+
+Primary references: [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/), [Workers Node crypto](https://developers.cloudflare.com/workers/runtime-apis/nodejs/crypto/), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [noble-hashes source and security notes](https://github.com/paulmillr/noble-hashes). A project audit history is not proof that every later package version or this application has been audited.
+
+Remote fallback result at 02:21 UTC: all three 600,000-iteration requests succeeded and exactly matched Node's native PBKDF2 result. Client round trips were 2,405 ms, 1,582 ms and 1,549 ms. These bound the single request's total latency in this test, not a billed-CPU measurement or a load test. See `hash-probe-results.json`. The authenticated preview was stopped after testing. This resolves runtime compatibility; security implementation review and concurrency/rate tests remain required.
+
+## Identity and entry points
+
+Two layers are required: Cloudflare Access and the app's email/password account. Match the signed Access identity to the D1 user's separately verified identity binding; do not trust an unsigned `Cf-Access-Authenticated-User-Email` header. Validate signature through the team's JWKS, exact issuer, application audience, expiry and not-before. Cache keys with bounded lifetime and fail closed when unavailable. Reject non-human/service identities at human account routes. Proposed Access session: 24 hours; app sessions: seven days with explicit revocation. Neither extends the other.
+
+The member's invitation address is recorded privately; the GitHub-verified sign-in address may differ. Do not force them to match before observing his real verified GitHub identity. Store the reviewed binding between Access `sub`/email and app user, with an owner-controlled setup audit record. Do not grant access to a GitHub username alone or use repository commits to infer email. Owner seed email is pending. An exact two-person allowlist remains separate from Cloudflare account membership.
+
+Pages is the static frontend. Route same-origin `/api/*` on `app.example.test` to the Worker; it then exposes the contract paths after that prefix. Protect the custom and default preview hosts. Proposed separate API hostname uses an explicit approved desktop/service flow, no wildcard credentialed CORS. All mutations require an exact Origin and CSRF token bound to the app session; login/signup/reset also require exact origin, JSON content type and a valid Turnstile token. Reject cross-origin redirects and never proxy arbitrary URLs from a connection form.
+
+Browser session cookie: `__Host-platform-session`, Secure, HttpOnly, SameSite=Strict, Path=/, no Domain, seven-day Max-Age. Store only a SHA-256 token digest in D1, not the bearer. Rotate after login and privilege-sensitive account changes. D1 session version and revoked/expiry checks on every API request prevent a stale JWT role or cached session surviving a reset. Access identity must match the session's binding.
+
+Electron starts login in the external browser. It must exchange a one-use short-lived authorization code with state and PKCE, then keep its scoped app session in OS-backed safeStorage; fail closed on insecure plaintext backends. Bind any loopback callback to loopback only, validate state, and never ship Access service credentials in the installer. This flow requires a real end-to-end Access session test before shipping; local preview does not simulate success.
+
+## Storage model (D1)
+
+| Table | Fields / invariants |
+| --- | --- |
+| `users` | UUID id; unique normalized invite email; display name; owner/member CHECK; password scheme/version/salt/hash/iterations; verified_at; disabled_at; session_version; Access subject/email binding; created/updated times. Exactly two active allowed identities at initial setup. |
+| `invites` | Digest of 32-byte random token; normalized email and role fixed by owner; issuer; expiry; accepted_at. No plaintext token in storage. |
+| `sessions` | Token digest, user FK, version, created/expires/revoked timestamps, CSRF digest, bound Access subject; no passwords. |
+| `verification_tokens` | Digest, user, purpose (verify/reset/email-change), pending email if applicable, expires/used timestamps. Purpose-specific endpoints prevent substitution. |
+| `terms_acceptances` | User, immutable terms version, accepted_at, content hash; unique user/version. |
+| `avatars` | User, random private object key, MIME, width=128, height=128, content hash, updated_at. |
+| `audit_events` | Append-only id/time, actor (or unauthenticated), action, outcome, safe object identifier, coarse reason; no passwords/tokens/mail bodies/raw request payloads. |
+| `settings` | Approved API origin and sender/terms version; owner-only changes; no arbitrary origin URL from members. |
+
+Use prepared statements and D1 batches/transactions for one-use tokens, account changes and revocation. Condition every mutation on unused, unexpired tokens and current account state within the same transaction; simultaneous redemption must produce one winner. Do not update a password in one transaction and revoke sessions in an unrelated best-effort step. Never remove/disable/demote the final active owner. Prevent stale updates with an expected version.
+
+## Passwords, email and abuse limits
+
+Passwords: minimum 12 characters, maximum 128 Unicode code points and 512 UTF-8 bytes, no silent trim or normalization, no arbitrary composition rules. Use a fresh cryptographically random 16-byte salt per password, 32-byte PBKDF2 result and stored scheme/iteration count. Constant-time fixed-length comparison. Reject overlong bodies before expensive work. Compare against a dummy hash for unknown users after the same rate checks to reduce enumeration differences.
+
+Rate limits must be globally atomic, not per-isolate memory counters. Use a dedicated auth Durable Object with transactional sliding-window reservations, keyed by a keyed digest of trusted Cloudflare IP and normalized account identifier; ten attempts per ten minutes, before hashing. A tenth failed password locks the account for ten minutes; combine per-account and per-IP limits. Turnstile tokens are server-verified, single-use, exact hostname/action. Bound reset/signup/email-send attempts independently to avoid mail floods. IP identity comes only from Cloudflare's trusted request context, not client-supplied forwarding headers. Auth must fail closed if the limiter is unavailable.
+
+Verification: 32-byte random token, digest in D1, 24-hour expiry, single-use. Password reset: 30-minute expiry and single-use; generic responses regardless of account existence. Email change verifies the new address, retains the current binding until accepted, and revokes sessions after completion. Password change requires the old password and a valid session, then revokes all other sessions. Sign-out-everywhere increments session version and revokes every session.
+
+Use the available Cloudflare Email Sending binding with an exact allowed sender on the configured sending domain, text and escaped HTML bodies, approved fixed base URL, no external redirect parameter. Send provider acceptance and delivered mail are separate states. Do not mark email verified because the provider accepted it. Tokens appear only in the intended emailed link and transient browser request; do not log full URLs. Staging uses a controlled recipient/captured transport until the real user performs the workflow.
+
+## API and permissions
+
+| Route (all under `/api`) | Who | Result |
+| --- | --- | --- |
+| `POST /auth/signup` | Allowed Access identity + matching invitation | Create unverified account, issue verification email; no session |
+| `POST /auth/verify` | Allowed Access identity + token | Atomically verify, consume token; explicit login follows |
+| `POST /auth/login` | Allowed Access identity + verified account | Rate/Turnstile/hash checks, new session + CSRF token |
+| `POST /auth/logout`, `/auth/logout-all` | Current session | Revoke one/all; clear cookie |
+| `POST /auth/forgot`, `/auth/reset` | Allowed Access identity | Generic request response; reset token consumption revokes sessions |
+| `GET /me`, `PATCH /me` | Current verified session | Own safe profile; validated display name only |
+| `POST /me/password`, `/me/email`, `/me/email/verify` | Current session / corresponding token | Old password/new email verification, audit and session revocation |
+| `PUT /me/avatar`, `GET /avatars/:user` | Current session | Decode/validate/resize to 128 square; private authenticated read |
+| `GET /terms`, `POST /terms/accept` | Current verified session | Read current version; save immutable server timestamp receipt |
+| `/runs`, `/instances`, `/events`, `/board/*` | Current session + current terms | Contract read routes; board writes allowed to owner/member |
+| `/admin/invites`, `/admin/users/:id`, `/admin/settings`, `/admin/audit` | Current owner + current terms | Allowlist/invite/role/settings/audit; final-owner and actor checks |
+
+Unknown routes and unsupported methods fail closed. Return safe errors and no-store headers. Owner-only checks are repeated in each handler, not just hidden controls. Avatars accept a maximum 2 MiB request, validate actual decoded PNG/JPEG/WebP content and pixel limits, strip metadata, resize server-side and re-encode; filename/content-type alone proves nothing. An unconfigured safe decoder disables uploads rather than trusting client-side resize. Files and audit events are private and subject to deletion/retention choices recorded before production.
+
+## Review and test gates
+
+G1: Fable reviews this design, real hashing compatibility evidence, lossless numeric contract and same-origin/desktop limitations. G2: independently review implemented handler-level authorization, atomic token use, rate reservations, session revocation, invite bounds, file decoding and signed Access validation. Unit/integration tests must use real signatures and deliberately wrong issuer/audience/expiry/member identities, not only mocked authorization booleans. Then conduct the eleven acceptance checks with their correct environments. Until configuration and real identities are verified, production account routes deny access.

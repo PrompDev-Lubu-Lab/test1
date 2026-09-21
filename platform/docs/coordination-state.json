@@ -1,0 +1,17 @@
+{
+  "cycle": "COLLAB-20260921",
+  "updated_at": "2026-09-21T02:10:54Z",
+  "phase": "design-and-fixture-implementation",
+  "platform_branch": "codex/platform-app",
+  "board_branch": "claude/cool-sagan-7klcfy",
+  "last_merged_board_head": "142e8e0",
+  "board_writer": "deandre-fable",
+  "platform_writer": "deandre-gpt6",
+  "last_sent_round": "COLLAB-20260921-02",
+  "last_processed_reply": "COLLAB-20260921-01 / Message 29",
+  "pending_reply": "COLLAB-20260921-02",
+  "heartbeat_minutes": 5,
+  "unchanged_human_blocked_cycles": 0,
+  "human_gates": ["Pending human authentication step", "Owner seed email and API/update hostname decisions", "Server location and deployment authority", "PR #1 merge and main branch", "Signing credentials and memberships"],
+  "claims": {"live_trading": false, "real_market_backtest": false, "platform_deployed": false, "mailbox_real_signin_verified": false, "mailbox_real_delivery_verified": false}
+}

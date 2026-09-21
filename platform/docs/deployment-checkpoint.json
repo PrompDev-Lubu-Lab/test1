@@ -128,8 +128,24 @@
       "passed": 5,
       "failed": 0
     },
-    "status": "Integrated into platform feature branch; combined CI pending; T-035 remains in review until mainline integration",
+    "status": "Integrated feature-branch source passes all 14 CI checks; production bot unchanged",
     "bot_deployed": false,
-    "pr1_merged": false
+    "pr1_merged": false,
+    "integrated_ci": {
+      "head": "fb78fcf0598e2002ff0f3b26c851b557990a7bee",
+      "checks": 14,
+      "passed": 14,
+      "failed": 0,
+      "pending": 0,
+      "verified_at": "2026-09-21T14:55:44.850080+00:00",
+      "evidence": "Exact-commit GitHub check-runs API; all 14 completed successfully",
+      "runs": [
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397065",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397118",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402392",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402407"
+      ]
+    },
+    "evidence_board_commit": "f27fe3f2253fdcc84338d15dfa45746c5697679e"
   }
 }

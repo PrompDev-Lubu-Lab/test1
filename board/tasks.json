@@ -1220,6 +1220,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-21: Astra deployed the final platform source 7051615 (includes the reviewed b2021bd, the friendly text for every Turnstile 503 category and a footer row fix for narrow screens) to the protected origin at 14:20:58 UTC; seven unauthenticated probes denied, a real browser reaches the Access login page, zero users, one active original invitation. DeAndre asked to reopen the same original invitation in the same browser and complete password, verification, sign-in and terms. Stays in review pending that real flow. Platform checks green; the one red job was the C++ gateway test, now T-035."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-22: deployed source unchanged at 7051615; still waiting on DeAndre's real signup retry, no new user, no resend, no authentication change."
         }
       ]
     },
@@ -1240,6 +1245,16 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created in COLLAB-20260921-21 from the gcc Debug failure Astra reported on 7051615; reproduced deterministically, fixed in 1b03b7b, verified under the full local compiler matrix"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "GitHub CI run 101 on branch head f995276 (includes the fix 1b03b7b): the full matrix, gcc and clang Debug and Release plus the docker image, completed green at 14:42 UTC."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-22: Astra merged the fix 1b03b7b and board f995276 into codex/platform-app (merge 540045a); integrated head fb78fcf has all 14 check runs successful (four platform, eight compiler, two Docker across push and PR workflows). The original failing gcc Debug run on 7051615 stays on record as the reproduced bug. Remains in review until mainline landing through T-017; production bot, PR #1 and mainline untouched."
         }
       ]
     }

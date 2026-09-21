@@ -1,17 +1,17 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T14:46:06.159802+00:00",
-  "phase": "reviewed-bot-fix-integrated-awaiting-ci",
+  "updated_at": "2026-09-21T14:58:28.828380+00:00",
+  "phase": "reviewed-bot-fix-integrated-ci-passed-human-gates",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+  "last_merged_board_head": "f27fe3f2253fdcc84338d15dfa45746c5697679e",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-21",
-  "last_processed_reply": "Round21 complete: Fable reproduced and fixed the gateway race; all requested compiler evidence supplied and5 independent CI checks green",
+  "last_sent_round": "COLLAB-20260921-22",
+  "last_processed_reply": "Round22 completed at Message39; canonical board f27fe3f records all 14 checks at integrated source fb78fcf",
   "pending_reply": null,
   "peer_review_closed": true,
-  "peer_followup_policy": "Collect combined-head CI; send one actionable outcome update to Fable if useful, no acknowledgement-only loop",
+  "peer_followup_policy": "Round22 closed with canonical evidence. No acknowledgement-only messages; resume only for a meaningful change.",
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
   "human_gates": [
@@ -55,12 +55,7 @@
     "evidence": "Read-only D1 after deployment: no new authentication audit beyond the original failure"
   },
   "real_workflow_acceptance": "All eleven rows remain Pending",
-  "independent_followups": [
-    "Collect combined-head CI after the reviewed Fable source integration",
-    "Verify real owner signup only after user completes the pending invitation/password handoff",
-    "Preserve original invitation and existing identity settings; no automatic resend",
-    "Mainline merge, server authority, signing and mailbox GitHub handoff remain human gates"
-  ],
+  "independent_followups": [],
   "onboarding_repair": {
     "board_task": "T-034",
     "status": "Deployed; original invitation remains active; user retry requested",
@@ -117,8 +112,24 @@
       "passed": 5,
       "failed": 0
     },
-    "status": "Integrated into platform feature branch; combined CI pending; T-035 remains in review until mainline integration",
+    "status": "Reviewed source integrated into platform feature branch; all 14 combined CI checks passed; T-035 remains in review until mainline integration",
     "bot_deployed": false,
-    "pr1_merged": false
+    "pr1_merged": false,
+    "integrated_ci": {
+      "head": "fb78fcf0598e2002ff0f3b26c851b557990a7bee",
+      "checks": 14,
+      "passed": 14,
+      "failed": 0,
+      "pending": 0,
+      "verified_at": "2026-09-21T14:55:44.850080+00:00",
+      "evidence": "Exact-commit GitHub check-runs API; all 14 completed successfully",
+      "runs": [
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397065",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397118",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402392",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402407"
+      ]
+    },
+    "evidence_board_commit": "f27fe3f2253fdcc84338d15dfa45746c5697679e"
   }
 }

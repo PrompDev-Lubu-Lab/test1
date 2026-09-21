@@ -1,21 +1,28 @@
 {
-  "checked_at": "2026-09-21T12:17:11.802038+00:00",
-  "coordination_updated_at": "2026-09-21T14:19:05.886709+00:00",
-  "source_commit": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
-  "worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
-  "runtime_status": "Runtime code unchanged; encrypted Turnstile binding reapplied; onboarding source repair awaiting review and deployment",
-  "peer_review": "COLLAB-20260921-13 G4 pass",
+  "checked_at": "2026-09-21T14:26:37.677024+00:00",
+  "coordination_updated_at": "2026-09-21T14:26:37.677024+00:00",
+  "source_commit": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+  "worker_version": "a5b1c69b-f46d-420f-a689-f5a2a42b5e59",
+  "runtime_status": "Onboarding repair deployed and active100%; real owner signup and authenticated acceptance awaiting human retry",
+  "peer_review": "COLLAB-20260921-20 passed core b2021bd; validated frontend feedback/footer follow-up at7051615",
   "worker_tests": {
-    "passed": 146,
+    "passed": 176,
     "failed": 0
   },
   "ci_checks": {
-    "passed": 14,
-    "failed": 0
+    "head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+    "checks": 14,
+    "passed": 13,
+    "pending": 0,
+    "failed": 1,
+    "platform_checks_passed": 4,
+    "failed_check": "gcc / Debug",
+    "failure_url": "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35611369353/job/106371042037",
+    "finding": "Binance gateway cancellation assertion at tests/gateway/binance_gateway_test.cpp:144; status2 vs cancelled5; cause unconfirmed; C++ unchanged by onboarding fix"
   },
   "bundle": {
-    "kib": 179.1,
-    "gzip_kib": 43.77,
+    "kib": 183.0,
+    "gzip_kib": 44.56,
     "static_files": 35
   },
   "provisioning": {
@@ -39,12 +46,13 @@
     "signed_assertion_verifier": "real RS256 unit/integration tests",
     "workers_dev_disabled": true,
     "preview_urls_disabled": true,
-    "authenticated_browser": "User reached the protected sign-in page; complete authenticated application acceptance pending",
-    "account_signup": "Blocked by T-034 onboarding regression; no app user created at last read",
+    "authenticated_browser": "Fresh Chrome reached expected Cloudflare Access email-code login; signed-in app acceptance pending",
+    "account_signup": "Repair deployed; same original invitation awaits human retry",
     "real_email_delivery": "Owner setup invitation receipt verified at 2026-09-21T13:41:47Z; application verification/reset workflows remain pending",
     "server_connection": "pending",
     "signed_installed_upgrade": "pending",
-    "managed_dns_record": true
+    "managed_dns_record": true,
+    "unauthenticated_http_result": "403 on all seven read-only probes; no bodies or protected assets exposed"
   },
   "claims": {
     "deployed": true,
@@ -65,11 +73,10 @@
   },
   "last_reported_account_state": {
     "users": 0,
-    "invites": 3,
+    "verified_users": 0,
     "active_invites": 1,
-    "expired_unaccepted_invites": 2,
-    "checked_at": "2026-09-21T13:45:22Z",
-    "evidence": "Read-only D1 audit after failed user attempt; turnstile_unavailable, no user created"
+    "checked_at": "2026-09-21T14:22:12.717035+00:00",
+    "evidence": "Read-only D1 after deployment: no new authentication audit beyond the original failure"
   },
   "desktop": {
     "development_package_built": true,
@@ -80,7 +87,7 @@
   "coordination": {
     "final_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
     "review_rounds_closed": true,
-    "pending_reply": null,
+    "pending_reply": "Round21 deployment evidence and bot CI finding",
     "real_workflow_acceptance": "All eleven rows remain Pending",
     "onboarding_design_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d"
   },
@@ -99,6 +106,6 @@
     "worker_tests_passed": 176,
     "app_tests_passed_at_core": 94,
     "ui_followup_tests_passed": 31,
-    "runtime_deployed": false
+    "runtime_deployed": true
   }
 }

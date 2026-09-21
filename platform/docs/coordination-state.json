@@ -1,15 +1,15 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T14:19:05.886709+00:00",
-  "phase": "reviewed-onboarding-repair-ready-to-deploy",
+  "updated_at": "2026-09-21T14:26:37.677024+00:00",
+  "phase": "onboarding-deployed-human-retry-and-bot-review-pending",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
   "last_merged_board_head": "70607d0e7f4fcfbc6427c124275a6219f02ba5cf",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-20",
+  "last_sent_round": "COLLAB-20260921-21",
   "last_processed_reply": "Fable passed source b2021bd with no blockers at board70607d0; two small frontend follow-ups complete",
-  "pending_reply": null,
+  "pending_reply": "Round21 deployment evidence and bot cancellation-test finding",
   "peer_review_closed": true,
   "peer_followup_policy": "Send the tested onboarding source for final review; no acknowledgement-only messages",
   "heartbeat_minutes": 5,
@@ -37,8 +37,8 @@
     "owner_invite_receipt_verified": true
   },
   "reviewed_source_head": "b2021bd4104c479900d22387984fdb2363873664",
-  "deployed_source_head": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
-  "deployed_worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
+  "deployed_source_head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+  "deployed_worker_version": "a5b1c69b-f46d-420f-a689-f5a2a42b5e59",
   "bootstrap_review": {
     "round": "COLLAB-20260921-17",
     "board_head": "bde928f",
@@ -49,22 +49,21 @@
   },
   "last_reported_account_state": {
     "users": 0,
-    "invites": 3,
+    "verified_users": 0,
     "active_invites": 1,
-    "expired_unaccepted_invites": 2,
-    "checked_at": "2026-09-21T13:45:22Z",
-    "evidence": "Read-only D1 audit after user attempt: no user created; admitted turnstile_unavailable failure"
+    "checked_at": "2026-09-21T14:22:12.717035+00:00",
+    "evidence": "Read-only D1 after deployment: no new authentication audit beyond the original failure"
   },
   "real_workflow_acceptance": "All eleven rows remain Pending",
   "independent_followups": [
-    "Deploy reviewed repair and validated UI follow-up; verify protected edge and active version",
-    "User reopens the original invitation and completes real signup, verification, sign-in and terms",
-    "Collect exact final-source CI and send one deployment evidence note to Fable",
+    "Collect Fable round21 bot-CI finding and canonical board update",
+    "Verify real owner signup and authenticated workflow after user completes password and verification",
+    "Preserve original invitation with no automatic resend",
     "Minimum-version compatibility and other native platforms remain later scope"
   ],
   "onboarding_repair": {
     "board_task": "T-034",
-    "status": "Peer-reviewed source plus validated UI wording/footer follow-up; deployment pending",
+    "status": "Deployed; original invitation remains active; user retry requested",
     "observed_failure": "Invitation button completed Access but reached bare sign-in; admitted security check returned turnstile_unavailable",
     "context_design": "Protected read-only token lookup pre-fills the intended address; fragment scrubbed immediately and retained only in page memory",
     "recovery": "Reopen the same original email link in the same browser after Access, once the repair is deployed",
@@ -84,6 +83,18 @@
     },
     "core_ci_checks_passed": 14,
     "frontend_followup_tests_passed": 31,
-    "frontend_followup": "Friendly message for every Turnstile503 category and a scoped footer row override after local narrow-width QA"
+    "frontend_followup": "Friendly message for every Turnstile503 category and a scoped footer row override after local narrow-width QA",
+    "frontend_visual_qa": "Synthetic Chrome355x767 and1242x818 passed; no live account acceptance claim",
+    "final_source_ci": {
+      "head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+      "checks": 14,
+      "passed": 13,
+      "pending": 0,
+      "failed": 1,
+      "platform_checks_passed": 4,
+      "failed_check": "gcc / Debug",
+      "failure_url": "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35611369353/job/106371042037",
+      "finding": "Binance gateway cancellation assertion at tests/gateway/binance_gateway_test.cpp:144; status2 vs cancelled5; cause unconfirmed; C++ unchanged by onboarding fix"
+    }
   }
 }

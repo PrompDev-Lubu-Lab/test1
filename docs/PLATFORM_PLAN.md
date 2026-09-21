@@ -316,8 +316,8 @@ static hosting and file distribution.
 
 ```
                   ┌────────────────────── Cloudflare ──────────────────────┐
-  team ──HTTPS──► │ DNS  ·  Access (who may see it)  ·  Pages (web app)    │
-  desktop app ──► │ R2 + updates.clawdie.ai (installers, latest.yml)       │
+  team ──HTTPS──► │ DNS · Access (who may see it) · one Worker: web app,   │
+  desktop app ──► │ /api/* (accounts, board, run proxy, R2 releases)       │
                   └───────────────────────┬────────────────────────────────┘
                                           │ Cloudflare Tunnel (outbound only)
                   ┌───────────────────────▼───────── the server ───────────┐
@@ -332,15 +332,21 @@ static hosting and file distribution.
 ```
 
 Nothing on the server listens on a public port. `cloudflared` opens the
-tunnel outbound; Cloudflare Access sits in front of `api.clawdie.ai` and
-`app.clawdie.ai` and allows the five roster identities: the two humans by
-the verified email their GitHub sign-in asserts, with the GitHub login
-method required (never a one-time code to a mailbox this system hosts),
-and a service token per agent. The bot's own processes
-are unreachable from the internet.
+tunnel outbound; Cloudflare Access sits in front of `app.clawdie.ai`,
+which is one Worker that serves the static web app, `/api/*` and the
+update feed from one origin, and allows the two humans by the verified
+email their GitHub sign-in asserts, with the GitHub login method
+required (never a one-time code to a mailbox this system hosts). The run
+API's tunnel hostname has its own Access application that admits only
+the Worker's service token; it is private operator configuration, not a
+public hostname decision. The bot's own processes are unreachable from
+the internet.
 
-Hostnames: `app.clawdie.ai` is decided. `api.clawdie.ai` and
-`updates.clawdie.ai` are proposed until DeAndre confirms. Access adds a
+Hostnames: `app.clawdie.ai` is the only public hostname (round 12). The
+earlier proposed `api.` and `updates.` names are not needed: the Worker
+answers `/api/*` and `/api/updates/...` on the same origin, which is also
+what keeps the host-only session cookie and CSRF checks simple, and it
+verifies the Access assertion before serving any asset. Access adds a
 second sign-in on top of the app's own accounts; keep it, because it is
 what keeps the API unreachable even if app auth has a bug, and set its
 session length deliberately (long, so the two humans rarely see it).
@@ -357,10 +363,13 @@ session length deliberately (long, so the two humans rarely see it).
    unattended. (T-013)
 4. **Run API.** Add the `api` service; confirm `GET /instances` shows the
    paper instance. (T-005)
-5. **Tunnel and Access.** `cloudflared` service, one tunnel, two
-   hostnames, one Access policy. (T-009)
-6. **Web app on Pages.** Build from `platform/app`, custom domain
-   `app.clawdie.ai`, API base `https://api.clawdie.ai`. (T-010)
+5. **Tunnel and Access.** `cloudflared` service, one tunnel, one private
+   hostname for the run API, one Access policy that admits only the
+   Worker's service token. (T-009)
+6. **Web app on the Worker.** Build `platform/app` to static assets and
+   deploy them with the account Worker: worker-first routing, Access
+   verified before any asset is served, custom domain `app.clawdie.ai`,
+   API base `/api` on the same origin. (T-010, T-032)
 7. **Desktop app and releases.** Electron shell, updater, release workflow
    (section 4.4). (T-011, T-012)
 
@@ -400,7 +409,8 @@ DeAndre's other project has:
 2. GitHub Actions builds installers (macOS arm64 and x64 `.dmg`, Windows
    `.msi`, Linux `.AppImage` and `.deb`), signs them with the updater key
    (private key lives only in GitHub secrets), and uploads them to a
-   Cloudflare R2 bucket served at `updates.clawdie.ai`.
+   private Cloudflare R2 bucket that the Worker streams from under
+   `/api/updates/`.
 3. The workflow writes the `latest.yml` manifests (version, notes,
    per-platform file and checksum) to the same bucket, creates a GitHub Release, and appends a
    note to `board/notes.md` with the download links.
@@ -432,8 +442,8 @@ which uses the operating system's credential store.
 
 ### 4.5 What to decide up front
 
-- **The domain.** Decided: `app.clawdie.ai`. Proposed and awaiting
-  confirmation: `api.clawdie.ai`, `updates.clawdie.ai`.
+- **The domain.** Decided: `app.clawdie.ai`, and it is the only public
+  hostname; no `api.` or `updates.` names (round 12).
 - **Where the existing design lives.** Resolved: Case Forge's source is
   available, and it is Electron with electron-builder and
   electron-updater. Open: fork the Case Forge repository, or extract its
@@ -529,7 +539,7 @@ R2 and referenced by run id on the board.
 | Runs and Live tabs                               | T-007 | T-005, T-006 | any agent |
 | Tasks and Notes tabs                             | T-008 | T-005, T-006 | any agent |
 | Tunnel, Access, DNS                              | T-009 | T-005    | `deandre`       |
-| Pages deploy                                     | T-010 | T-007, T-009 | any agent   |
+| Web app deploy (Worker static assets)            | T-010 | T-022, T-032 | any agent   |
 | Electron app and updater                         | T-011 | T-007    | any agent       |
 | Release pipeline with download link              | T-012 | T-011    | any agent       |
 | Two weeks of paper, consistency check            | T-013 | T-002, T-003 | `deandre-fable` |

@@ -1,0 +1,32 @@
+{
+  "cash": "6997",
+  "dispatched_events": 48210,
+  "drawdown": "5.5",
+  "equity": "10009.5",
+  "feed": {
+    "depth_gaps": 0,
+    "events": 48210,
+    "messages": 51877,
+    "reconnects": 0,
+    "silence": "1.000s",
+    "stale_episodes": 0,
+    "state": "healthy"
+  },
+  "fees": "3",
+  "fills": 2,
+  "halted": false,
+  "journal_appended": 6,
+  "kill_switch_trips": 0,
+  "label": "ma_synthetic",
+  "mark": "3012.5",
+  "mode": "paper",
+  "open_orders": 0,
+  "orders": 3,
+  "peak_equity": "10015",
+  "position": "1",
+  "realized_pnl_net": "-3",
+  "rejected": 1,
+  "time": "2026-09-21T01:15:00.000000000Z",
+  "tripped": false,
+  "uptime": "1.25h"
+}

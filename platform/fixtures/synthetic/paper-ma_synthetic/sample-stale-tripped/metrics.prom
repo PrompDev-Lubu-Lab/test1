@@ -1,0 +1,81 @@
+# HELP tradebot_up 1 while the runtime writes metrics
+# TYPE tradebot_up gauge
+tradebot_up{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_uptime_seconds seconds since the runtime started
+# TYPE tradebot_uptime_seconds gauge
+tradebot_uptime_seconds{mode="paper",label="ma_synthetic"} 5700.000000
+# HELP tradebot_last_update_timestamp_seconds unix time of this snapshot
+# TYPE tradebot_last_update_timestamp_seconds gauge
+tradebot_last_update_timestamp_seconds{mode="paper",label="ma_synthetic"} 1789954500.000000
+# HELP tradebot_equity cash plus market value of positions (quote)
+# TYPE tradebot_equity gauge
+tradebot_equity{mode="paper",label="ma_synthetic"} 10009.5
+# HELP tradebot_cash quote balance
+# TYPE tradebot_cash gauge
+tradebot_cash{mode="paper",label="ma_synthetic"} 6997
+# HELP tradebot_peak_equity highest equity seen
+# TYPE tradebot_peak_equity gauge
+tradebot_peak_equity{mode="paper",label="ma_synthetic"} 10015
+# HELP tradebot_drawdown peak equity minus equity (quote)
+# TYPE tradebot_drawdown gauge
+tradebot_drawdown{mode="paper",label="ma_synthetic"} 5.5
+# HELP tradebot_realized_pnl_net realized profit net of fees
+# TYPE tradebot_realized_pnl_net gauge
+tradebot_realized_pnl_net{mode="paper",label="ma_synthetic"} -3
+# HELP tradebot_fees_total fees paid (quote)
+# TYPE tradebot_fees_total gauge
+tradebot_fees_total{mode="paper",label="ma_synthetic"} 3
+# HELP tradebot_position net position (base)
+# TYPE tradebot_position gauge
+tradebot_position{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_mark_price last mark price
+# TYPE tradebot_mark_price gauge
+tradebot_mark_price{mode="paper",label="ma_synthetic"} 3012.5
+# HELP tradebot_fills_total fills applied to the portfolio
+# TYPE tradebot_fills_total counter
+tradebot_fills_total{mode="paper",label="ma_synthetic"} 2
+# HELP tradebot_orders_total orders submitted by strategies
+# TYPE tradebot_orders_total counter
+tradebot_orders_total{mode="paper",label="ma_synthetic"} 3
+# HELP tradebot_orders_rejected_total orders rejected by the risk gate or the venue
+# TYPE tradebot_orders_rejected_total counter
+tradebot_orders_rejected_total{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_open_orders orders accepted and not yet done
+# TYPE tradebot_open_orders gauge
+tradebot_open_orders{mode="paper",label="ma_synthetic"} 0
+# HELP tradebot_kill_switch_trips_total times the kill switch tripped
+# TYPE tradebot_kill_switch_trips_total counter
+tradebot_kill_switch_trips_total{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_kill_switch_tripped 1 while the kill switch is tripped
+# TYPE tradebot_kill_switch_tripped gauge
+tradebot_kill_switch_tripped{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_halted 1 while the risk gate refuses new orders (shutdown)
+# TYPE tradebot_halted gauge
+tradebot_halted{mode="paper",label="ma_synthetic"} 0
+# HELP tradebot_feed_healthy 1 while market data is flowing
+# TYPE tradebot_feed_healthy gauge
+tradebot_feed_healthy{mode="paper",label="ma_synthetic"} 0
+# HELP tradebot_feed_silence_seconds seconds since the last market-data event
+# TYPE tradebot_feed_silence_seconds gauge
+tradebot_feed_silence_seconds{mode="paper",label="ma_synthetic"} 37.000000
+# HELP tradebot_feed_events_total market-data events seen by the feed monitor
+# TYPE tradebot_feed_events_total counter
+tradebot_feed_events_total{mode="paper",label="ma_synthetic"} 48210
+# HELP tradebot_feed_messages_total raw messages received from the venue
+# TYPE tradebot_feed_messages_total counter
+tradebot_feed_messages_total{mode="paper",label="ma_synthetic"} 51877
+# HELP tradebot_feed_reconnects_total feed reconnections
+# TYPE tradebot_feed_reconnects_total counter
+tradebot_feed_reconnects_total{mode="paper",label="ma_synthetic"} 0
+# HELP tradebot_feed_depth_gaps_total order-book sequence gaps (resynced)
+# TYPE tradebot_feed_depth_gaps_total counter
+tradebot_feed_depth_gaps_total{mode="paper",label="ma_synthetic"} 0
+# HELP tradebot_feed_stale_episodes_total times the feed went stale
+# TYPE tradebot_feed_stale_episodes_total counter
+tradebot_feed_stale_episodes_total{mode="paper",label="ma_synthetic"} 1
+# HELP tradebot_dispatched_events_total events dispatched to the strategy stack
+# TYPE tradebot_dispatched_events_total counter
+tradebot_dispatched_events_total{mode="paper",label="ma_synthetic"} 48210
+# HELP tradebot_journal_reports_total execution reports journaled
+# TYPE tradebot_journal_reports_total counter
+tradebot_journal_reports_total{mode="paper",label="ma_synthetic"} 6

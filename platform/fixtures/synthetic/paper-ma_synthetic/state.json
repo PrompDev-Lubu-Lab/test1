@@ -1,0 +1,43 @@
+{
+  "account": {
+    "cash": "6997",
+    "fees": "3",
+    "positions": [
+      {
+        "average_entry": "3000",
+        "bought": "1",
+        "fees": "3",
+        "fills": 2,
+        "instrument": 1,
+        "quantity": "1",
+        "realized_pnl": "0",
+        "sold": "0"
+      }
+    ],
+    "realized_pnl": "0"
+  },
+  "initial_cash": "10000",
+  "strategies": [
+    {
+      "id": 1,
+      "ledger": {
+        "cash": "-3003",
+        "fees": "3",
+        "positions": [
+          {
+            "average_entry": "3000",
+            "bought": "1",
+            "fees": "3",
+            "fills": 2,
+            "instrument": 1,
+            "quantity": "1",
+            "realized_pnl": "0",
+            "sold": "0"
+          }
+        ],
+        "realized_pnl": "0"
+      }
+    }
+  ],
+  "version": 1
+}

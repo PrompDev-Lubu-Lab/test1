@@ -333,8 +333,10 @@ static hosting and file distribution.
 
 Nothing on the server listens on a public port. `cloudflared` opens the
 tunnel outbound; Cloudflare Access sits in front of `api.clawdie.ai` and
-`app.clawdie.ai` and allows the five roster identities (email one-time-code
-for the humans, service tokens for the agents). The bot's own processes
+`app.clawdie.ai` and allows the five roster identities: the two humans by
+the verified email their GitHub sign-in asserts, with the GitHub login
+method required (never a one-time code to a mailbox this system hosts),
+and a service token per agent. The bot's own processes
 are unreachable from the internet.
 
 Hostnames: `app.clawdie.ai` is decided. `api.clawdie.ai` and

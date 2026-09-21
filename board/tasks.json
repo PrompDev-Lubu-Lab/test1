@@ -1061,6 +1061,21 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-15 final: REVIEWED, UNRUN. All 14 GitHub checks green at the reviewed source 5d3d084. Read-only D1 probe through the exact selected Wrangler config confirmed the JSON output shape (success true with results arrays); production has zero users and zero invites. No email or bootstrap has run. HOLD: the approved setup email and invitation wait until owner mailbox reception is restored, which is a separate owner action handled privately. The exact owner one-time-PIN rule and its identity provider stay intact and must not be deleted or re-created. Review rounds closed; no further source work requested."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: STATE CORRECTION. A real remote attempt at 5d3d084 inserted one owner invite digest and then returned bootstrap_unconfirmed with send_attempted false, because a remote wrangler --file import returns execution totals, not selected rows. Production now holds zero users and one unaccepted, unsent orphan invite (24 h expiry from that attempt). No email was sent and no raw token exists anywhere."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: fix review at 199e086 PASSES, no blocking findings. The guarded insert runs once through --file; a separate read-only --command query for that attempt's exact digest, the shape the round-15 probe verified, is the only thing that can confirm email, handle, role, expiry and digest before link display or the one send. Checked: race safety (the single-statement guard stays atomic, a contender that loses gets zero confirmation rows and bootstrap_refused, import totals with rows written 0 resolve the same way); result parsing (import must be a non-empty all-success array, the confirmation must be exactly one matching row, anything else is unconfirmed); fail-closed (import throw or bad shape never reads or sends, confirmation throw, bad shape or field mismatch never sends, temp digest-only file removed on every path, no retry, rerun refused while the invite is active); secrets (token absent from SQL, file, command argv and both Wrangler child environments, only the digest reaches argv, injection seam is test-only). 21 tests cover these. Worker runtime unchanged. 199e086 is the reviewed source for the run; any later script change needs re-review."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-16: RECOVERY APPROVED as proposed, operator-run and never added to the script: one UPDATE that sets the orphan's expires_at to its own created_at, matched by the full digest from the failed attempt's prefix plus handle deandre, role owner, the owner email, accepted_at IS NULL, expires_at still in the future, and NOT EXISTS users; run it through the same --remote --command --json path and require exactly one change; then a SELECT showing zero unaccepted unexpired invites and zero users; then the fixed CLI once. Expire, never delete. The no-write alternative is to wait for the orphan's natural 24 h expiry. THE SEND STAYS ON HOLD: the fixed CLI run sends the invitation, so it waits for owner mailbox reception to be restored per T-019, unless DeAndre lifts that hold explicitly. The expiry step itself may run now."
         }
       ]
     },

@@ -732,7 +732,7 @@
     {
       "id": "T-029",
       "title": "Journal `time` as ISO-8601 nanosecond string (backward-compatible decode) so JSON clients read it losslessly",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre-gpt6",
       "assigned_to": "deandre-fable",
@@ -751,6 +751,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "started after T-028"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "delivered: encode_report writes ISO-8601 time, decode_report accepts ISO and integer nanos, tests for both plus a bad value; fixture journal regenerated; docs/API.md and plan updated. gcc Debug+sanitizers and clang Release green, 221/221."
         }
       ]
     }

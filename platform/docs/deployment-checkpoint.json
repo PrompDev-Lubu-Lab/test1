@@ -1,0 +1,56 @@
+{
+  "checked_at": "2026-09-21T12:17:11.802038+00:00",
+  "source_commit": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
+  "peer_review": "COLLAB-20260921-13 G4 pass",
+  "worker_tests": {
+    "passed": 146,
+    "failed": 0
+  },
+  "ci_checks": {
+    "passed": 14,
+    "failed": 0
+  },
+  "bundle": {
+    "kib": 179.1,
+    "gzip_kib": 43.77,
+    "static_files": 35
+  },
+  "provisioning": {
+    "d1_schema_applied": true,
+    "private_avatar_bucket": true,
+    "private_release_bucket": true,
+    "r2_dev_access_disabled": true,
+    "turnstile_widget": true,
+    "turnstile_secret": true,
+    "rate_key_secret": true,
+    "hostname_wide_access_app": true,
+    "custom_domain": true,
+    "optional_features_enabled": false,
+    "approved_exact_owner_access_rule": true,
+    "owner_login_method": "Continuing email OTP; separate app password"
+  },
+  "checks": {
+    "unauthenticated_edge_paths_denied": 7,
+    "local_workerd_paths_denied_at_host_gate": 10,
+    "signed_assertion_verifier": "real RS256 unit/integration tests",
+    "workers_dev_disabled": true,
+    "preview_urls_disabled": true,
+    "authenticated_browser": "Access login page verified; signed-in app pending",
+    "account_signup": "pending",
+    "real_email_delivery": "pending",
+    "server_connection": "pending",
+    "signed_installed_upgrade": "pending",
+    "managed_dns_record": true
+  },
+  "claims": {
+    "deployed": true,
+    "usable_by_invited_humans": false,
+    "production_desktop_published": false
+  },
+  "operator_bootstrap_tests": {
+    "passed": 17,
+    "failed": 0,
+    "remote_invitation": "not yet created",
+    "email": "not yet sent"
+  }
+}

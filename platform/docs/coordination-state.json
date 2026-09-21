@@ -1,36 +1,37 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T06:06:05.052237+00:00",
-  "phase": "source-reviewed-awaiting-activation",
+  "updated_at": "2026-09-21T12:27:58.395701+00:00",
+  "phase": "deployed-owner-access-enabled",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "041e59d",
+  "last_merged_board_head": "5598ec5",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-11",
-  "last_processed_reply": "COLLAB-20260921-11 / all six follow-ups accepted; joint source checkpoint closed",
-  "pending_reply": null,
+  "last_sent_round": "COLLAB-20260921-14",
+  "last_processed_reply": "COLLAB-20260921-14 design and credential clarification; source review pending",
+  "pending_reply": "COLLAB-20260921-14 / explicit owner email-bootstrap review",
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
   "human_gates": [
     "Pending human authentication step",
-    "API/update hostname decisions",
     "Server location and deployment authority",
     "PR #1 merge and main branch",
     "Signing credentials and memberships",
-    "Repository-scoped board token and real staging round trip"
+    "Repository-scoped board token and real staging round trip",
+    "Real owner signup/password and authenticated browser acceptance"
   ],
   "claims": {
     "live_trading": false,
     "real_market_backtest": false,
-    "platform_deployed": false,
+    "platform_deployed": true,
     "mailbox_real_signin_verified": false,
     "mailbox_real_delivery_verified": false,
-    "unsigned_windows_package_built": true
+    "unsigned_windows_package_built": true,
+    "platform_user_access_enabled": true
   },
-  "reviewed_source_head": "b3b1d7c40dab067b05f6efb512dd846fd730a0d9",
+  "reviewed_source_head": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
   "independent_followups": [
-    "Read final bot/compiler CI at the reviewed source head once complete",
+    "Record real authenticated browser acceptance after owner access is enabled",
     "Minimum-version compatibility policy and macOS/Linux native delivery remain explicit later scope"
   ]
 }

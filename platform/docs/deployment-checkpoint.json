@@ -1,9 +1,9 @@
 {
   "checked_at": "2026-09-21T12:17:11.802038+00:00",
-  "coordination_updated_at": "2026-09-21T12:53:28Z",
+  "coordination_updated_at": "2026-09-21T14:08:30.512177+00:00",
   "source_commit": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
-  "worker_version": "e8516426-648e-4437-a0f7-983bb4fd7be8",
-  "runtime_status": "Unchanged by coordination close-out; deployed and protected, first real account pending",
+  "worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
+  "runtime_status": "Runtime code unchanged; encrypted Turnstile binding reapplied; onboarding source repair awaiting review and deployment",
   "peer_review": "COLLAB-20260921-13 G4 pass",
   "worker_tests": {
     "passed": 146,
@@ -39,9 +39,9 @@
     "signed_assertion_verifier": "real RS256 unit/integration tests",
     "workers_dev_disabled": true,
     "preview_urls_disabled": true,
-    "authenticated_browser": "Access login page verified; signed-in app pending",
-    "account_signup": "pending",
-    "real_email_delivery": "pending",
+    "authenticated_browser": "User reached the protected sign-in page; complete authenticated application acceptance pending",
+    "account_signup": "Blocked by T-034 onboarding regression; no app user created at last read",
+    "real_email_delivery": "Owner setup invitation receipt verified at 2026-09-21T13:41:47Z; application verification/reset workflows remain pending",
     "server_connection": "pending",
     "signed_installed_upgrade": "pending",
     "managed_dns_record": true
@@ -52,18 +52,24 @@
     "production_desktop_published": false
   },
   "operator_bootstrap_tests": {
-    "source_commit": "5d3d084f260856f62de7231ac0d4a8e659011244",
-    "passed": 17,
+    "source_commit": "ea30244ebe044bc4fd096e0c79e477996807bf49",
+    "passed": 23,
     "failed": 0,
-    "peer_review": "COLLAB-20260921-14 accepted all seven conditions at board 536cfd5",
+    "peer_review": "Round 17 passed at board bde928f; outcome recorded in round 18 at49dae95",
     "ci_checks_passed_at_source": 14,
-    "remote_invitation": "not created; reviewed operator bootstrap remains unrun",
-    "email": "not sent; waiting for private mail recovery"
+    "real_transport_probe": "Default production executor and installed Wrangler: two remote SELECT 1 commands passed",
+    "remote_invitation": "Exactly one active invitation; two earlier unconfirmed attempts remain as expired history",
+    "email": "Exactly one request; provider queued; intended inbox receipt independently verified at2026-09-21T13:41:47Z",
+    "invitation_expires_at": "2026-09-22T13:41:27Z",
+    "automatic_retry": false
   },
   "last_reported_account_state": {
     "users": 0,
-    "invites": 0,
-    "evidence": "Read-only D1 probe confirmed in COLLAB-20260921-15; no live recheck during this documentation close-out"
+    "invites": 3,
+    "active_invites": 1,
+    "expired_unaccepted_invites": 2,
+    "checked_at": "2026-09-21T13:45:22Z",
+    "evidence": "Read-only D1 audit after failed user attempt; turnstile_unavailable, no user created"
   },
   "desktop": {
     "development_package_built": true,
@@ -72,9 +78,17 @@
     "published": false
   },
   "coordination": {
-    "final_board_head": "ced19e80c9796711ce0a752c3844de447b35ca76",
-    "review_rounds_closed": true,
-    "pending_reply": null,
-    "real_workflow_acceptance": "All eleven rows remain Pending"
+    "final_board_head": "49dae954cfc67817ed272fec3eaef360a4805ce1",
+    "review_rounds_closed": false,
+    "pending_reply": "Tested onboarding source review to follow",
+    "real_workflow_acceptance": "All eleven rows remain Pending",
+    "onboarding_design_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d"
+  },
+  "configuration_repair": {
+    "checked_at": "2026-09-21T14:05:01Z",
+    "deployed_at": "2026-09-21T13:57:08.172604Z",
+    "same_widget": true,
+    "source_changed": false,
+    "live_authentication_verified": false
   }
 }

@@ -239,6 +239,11 @@ export async function readJsonLimited(request, maxBytes = 8192) {
   }
 }
 
+const turnstileTokenErrors = new Set(['missing-input-response', 'invalid-input-response', 'timeout-or-duplicate']);
+const turnstileConfigurationErrors = new Set(['missing-input-secret', 'invalid-input-secret']);
+const turnstileProviderErrors = new Set([...turnstileTokenErrors, ...turnstileConfigurationErrors, 'bad-request', 'internal-error']);
+const turnstileFailed = () => new SecurityError('turnstile_failed', 403, 'The security check could not be verified. Submit again for a fresh check.');
+
 /** Call only after the atomic rate reservation. Provider acceptance is single-use. */
 export async function verifyTurnstile(token, ip, env, action) {
   const secret = env?.TURNSTILE_SECRET;
@@ -251,22 +256,53 @@ export async function verifyTurnstile(token, ip, env, action) {
   if (typeof token !== 'string' || !token || token.length > 2048
     || typeof ip !== 'string' || !/^[0-9a-fA-F:.]{1,45}$/.test(ip)
     || typeof action !== 'string' || !/^[a-zA-Z0-9_-]{1,32}$/.test(action)) {
-    throw new SecurityError('turnstile_failed', 403);
+    throw turnstileFailed();
   }
-  let result;
+  let response, result;
+  const timeout = AbortSignal.timeout(5000);
   try {
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000),
+    response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST', redirect: 'error', signal: timeout,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ secret, response: token, remoteip: ip }),
     });
-    if (!response.ok) throw new Error('provider unavailable');
+  } catch (error) {
+    throw new SecurityError(timeout.aborted || ['TimeoutError','AbortError'].includes(error?.name)
+      ? 'turnstile_timeout' : 'turnstile_network', 503);
+  }
+  const httpFailure = () => new SecurityError(Number.isInteger(response.status) && response.status >= 100 && response.status <= 599
+    ? `turnstile_provider_http_${response.status}` : 'turnstile_provider_invalid_status', 503);
+  // A busy/unavailable provider cannot become a client rejection merely because
+  // an error body happens to contain a token-related code.
+  if (!response.ok && (response.status < 400 || response.status >= 500 || response.status === 429)) {
+    try { await response.body?.cancel(); } catch { /* No provider body is exposed. */ }
+    throw httpFailure();
+  }
+  try {
     result = await readJsonLimited(response, 16_384);
-  } catch {
-    throw new SecurityError('turnstile_unavailable', 503);
+  } catch (error) {
+    try { await response.body?.cancel(); } catch { /* No provider body is exposed. */ }
+    const category = timeout.aborted ? 'turnstile_timeout'
+      : error instanceof SecurityError && error.code === 'json_required' ? 'turnstile_response_media_type'
+      : error instanceof SecurityError && error.code === 'body_too_large' ? 'turnstile_response_too_large'
+      : 'turnstile_response_invalid_json';
+    throw new SecurityError(category, 503);
   }
-  if (result.success !== true || result.hostname !== hostname || result.action !== action) {
-    throw new SecurityError('turnstile_failed', 403);
+  if (typeof result.success !== 'boolean') throw new SecurityError('turnstile_response_invalid_json', 503);
+  const codes = result['error-codes'];
+  if (!result.success) {
+    // Only documented values select a local category; raw provider codes never
+    // become exception text, response fields or audit data.
+    if (!Array.isArray(codes) || codes.length < 1 || codes.length > turnstileProviderErrors.size
+      || codes.some(code => !turnstileProviderErrors.has(code))) throw new SecurityError('turnstile_response_invalid_json', 503);
+    if (codes.some(code => turnstileConfigurationErrors.has(code))) throw new SecurityError('turnstile_provider_configuration', 503);
+    if (codes.includes('internal-error')) throw new SecurityError('turnstile_provider_internal', 503);
+    if (codes.includes('bad-request')) throw new SecurityError('turnstile_provider_request', 503);
+    if (codes.every(code => turnstileTokenErrors.has(code))) throw turnstileFailed();
+    throw new SecurityError('turnstile_response_invalid_json', 503);
   }
+  if (!response.ok) throw httpFailure();
+  if (codes !== undefined && (!Array.isArray(codes) || codes.length !== 0)) throw new SecurityError('turnstile_response_invalid_json', 503);
+  if (result.hostname !== hostname || result.action !== action) throw turnstileFailed();
   return true;
 }

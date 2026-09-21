@@ -74,9 +74,21 @@ action; its action is the final API path segment. `public/account-ui.js` renders
 invited signup, verification, sign-in, reset, current server terms and acceptance,
 display-name changes, email change, password change using a 120-second reauth
 proof, and session/all-session sign-out. Emailed token fragments are scrubbed
-before rendering or third-party script loading, retained only in memory, and
-require the account email to be entered. Credentials, proofs and tokens are never
-written to browser storage. No account success is simulated.
+before rendering or third-party script loading and retained only in memory.
+The protected `POST /api/auth/link-context` request sends the kind and token in
+its JSON body and confirms the corresponding account email before a link form
+is shown. The confirmed address is prefilled and read-only; an Access identity
+email is never substituted for the invitation address. Typed or confirmed email
+is kept only in this page's memory through verification, reset and sign-in views,
+and cleared on sign-out, disposal or a different email link. Credentials, proofs
+and tokens are never written to browser storage. No account success is simulated.
+
+If the initial Cloudflare Access redirect loses an email fragment, the sign-in
+page tells a first-time user to reopen the original invitation in the same
+browser after completing secure access. It does not infer an invitation from
+the Access email, place a token in a query string or treat Access sign-in as app
+account creation. Failed context requests retain a private in-memory retry;
+expired or used links do not reveal an account address.
 
 A 403 `access_denied`, an opaque Access edge redirect, or an HTTP redirect shows **Renew secure access**, which performs a full
 same-origin reload and does not log out the app session. A 401 `login_required`
@@ -112,8 +124,9 @@ credential handling, Codex runtime, case service or updater implementation.
 
 ## Data boundaries
 
-- `public/config.js` owns the single `APP_NAME` display constant. The stable
-  `APP_SLUG` is separate from the working display name.
+- `public/config.js` owns the single `APP_NAME` display constant, currently
+  `Clawdie`. The Worker email text and desktop build name import this same value;
+  a future rename stays a single change. The stable `APP_SLUG` is separate.
 - Overview, Runs, Live and Research read the exact endpoints in `docs/API.md`.
   Missing outputs remain unavailable. Money and quantity fields remain original
   decimal strings in text and tables. The SVG curve uses approximate numeric

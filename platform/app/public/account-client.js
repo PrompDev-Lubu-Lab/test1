@@ -5,6 +5,7 @@ const ROUTES = new Map([
   ['/config',{method:'GET'}],['/me',{method:'GET',session:true}],['/terms',{method:'GET',session:true}],
   ['/board/tasks',{method:'GET',session:true}],['/board/notes',{method:'GET',session:true}],
   ['/downloads',{method:'GET',session:true}],
+  ['/auth/link-context',{method:'POST'}],
   ['/auth/signup',{method:'POST',challenge:true}],['/auth/login',{method:'POST',challenge:true}],
   ['/auth/forgot',{method:'POST',challenge:true}],['/auth/resend',{method:'POST',challenge:true}],
   ['/auth/verify',{method:'POST',challenge:true}],['/auth/reset',{method:'POST',challenge:true}],
@@ -33,6 +34,16 @@ export function validatePassword(password) {
   if (typeof password !== 'string' || password.length > 256) return false;
   const points = [...password];
   return points.length >= 12 && points.length <= 128 && new TextEncoder().encode(password).length <= 512 && !points.some(point => {const value=point.codePointAt(0);return value>=0xd800 && value<=0xdfff;});
+}
+export function parseAccountLinkContext(value,kind) {
+  const email=value?.email,parts=typeof email==='string'?email.split('@'):[];
+  const [local,domain]=parts;
+  if(!LINK_KINDS.has(kind)||value?.kind!==kind||typeof email!=='string'||email!==email.trim().toLowerCase()||email.length>254||parts.length!==2
+    ||!local||local.length>64||!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)||local.startsWith('.')||local.endsWith('.')||local.includes('..')
+    ||!domain||domain.split('.').some(label=>!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) {
+    throw new AccountError('invalid_response','The account service did not confirm the address for this link.');
+  }
+  return Object.freeze({kind,email});
 }
 export function turnstileAction(route) {
   const spec = ROUTES.get(route);
@@ -102,5 +113,11 @@ export function createAccountClient({fetchImpl = globalThis.fetch.bind(globalThi
     if (['/auth/logout','/auth/logout-all','/auth/reset','/me/password','/me/email/verify'].includes(route)) clear();
     return result;
   }
-  return Object.freeze({request,clear,getSession:() => user ? {user,terms_required:termsRequired} : null,async config(){return parseAccountConfig(await request('/config'));}});
+  return Object.freeze({request,clear,getSession:() => user ? {user,terms_required:termsRequired} : null,
+    async config(){return parseAccountConfig(await request('/config'));},
+    async linkContext(link){
+      if(!LINK_KINDS.has(link?.kind)||!TOKEN.test(link?.token||''))throw new AccountError('invalid_token','This link cannot be used.',400);
+      return parseAccountLinkContext(await request('/auth/link-context',{body:{kind:link.kind,token:link.token}}),link.kind);
+    }
+  });
 }

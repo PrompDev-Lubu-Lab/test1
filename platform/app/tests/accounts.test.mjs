@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {consumeTokenFragment,createAccountClient,parseAccountConfig,requiresSecureAccess,turnstileAction,validateAvatarResponse,validatePassword} from '../public/account-client.js';
+import {consumeTokenFragment,createAccountClient,parseAccountConfig,parseAccountLinkContext,requiresSecureAccess,turnstileAction,validateAvatarResponse,validatePassword} from '../public/account-client.js';
 
 const token='x'.repeat(43),csrf='a'.repeat(64);
 const user={id:'test-user',email:'person@example.test',display_name:'Test account',handle:'member-test',role:'member',verified:true};
@@ -31,6 +31,27 @@ test('credential fragments are consumed and scrubbed before use, including malfo
 test('only configured account service enables optional features; missing or false flags stay false',() => {
   assert.deepEqual(parseAccountConfig({account_service:true,turnstile_site_key:'public-test-key',features:{avatars:true,board:'true',downloads:false}}).features,{avatars:true,events:false,board:false,downloads:false});
   for(const value of [{},{account_service:false,turnstile_site_key:'key'},{account_service:true,turnstile_site_key:''}])assert.throws(()=>parseAccountConfig(value),/not available/);
+});
+
+test('protected link context sends credentials only in its body and returns a matching confirmed email',async()=>{
+  for(const kind of ['invite','verify','reset','email-change']) {
+    const {client,calls}=mockClient([{body:{kind,email:user.email}}]);
+    assert.deepEqual(await client.linkContext({kind,token}),{kind,email:user.email});
+    assert.equal(calls[0].url,'/api/auth/link-context');assert.equal(calls[0].options.method,'POST');
+    assert.equal(calls[0].options.credentials,'same-origin');assert.equal(calls[0].options.cache,'no-store');
+    assert.equal(calls[0].options.redirect,'manual');assert.equal(calls[0].options.referrerPolicy,'no-referrer');
+    assert.deepEqual(JSON.parse(calls[0].options.body),{kind,token});
+    assert.equal(calls[0].options.headers['X-CSRF-Token'],undefined);assert.equal(calls[0].options.headers.Authorization,undefined);
+    assert.equal(client.getSession(),null);assert.throws(()=>turnstileAction('/auth/link-context'),/does not use/);
+  }
+});
+
+test('link context rejects malformed credentials and unconfirmed or mismatched response identities',async()=>{
+  const {client,calls}=mockClient([]);
+  for(const link of [null,{kind:'login',token},{kind:'invite',token:'short'}])await assert.rejects(client.linkContext(link),/cannot be used/);
+  assert.equal(calls.length,0);
+  for(const value of [null,{kind:'verify',email:user.email},{kind:'invite',email:' Person@example.test '},{kind:'invite',email:'x<y@example.test'},{kind:'invite',email:'bad..local@example.test'},{kind:'invite',email:'x@-bad.example'}])assert.throws(()=>parseAccountLinkContext(value,'invite'),/did not confirm/);
+  assert.deepEqual(parseAccountLinkContext({kind:'invite',email:"o'owner@example.test",untrusted:'ignored'},'invite'),{kind:'invite',email:"o'owner@example.test"});
 });
 test('same-origin requests use cookies, no redirects and transient CSRF without returning it to view callbacks',async () => {
   const {client,calls}=mockClient([{body:session},{body:{user:{...user,display_name:'Changed'}}}]);

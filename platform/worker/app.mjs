@@ -89,7 +89,7 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
   return async function fetchHandler(request, env) {
     const store = env.DB ? new AccountStore(env.DB) : null;
     const now = epoch();
-    let reservation = null, succeeded = false, actor = null, route = '/';
+    let reservation = null, succeeded = false, actor = null, route = '/', linkContextKind = null;
     const finish = (value, status = 200, headers = {}) => {
       succeeded = status >= 200 && status < 300;
       return reply(value, status, headers);
@@ -114,15 +114,32 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
       }
       const passwordRoute = request.method === 'POST' && PASSWORD_ROUTES.has(route);
       const recoveryRoute = request.method === 'POST' && RECOVERY_ROUTES.has(route);
+      const linkContextRoute = request.method === 'POST' && route === '/auth/link-context';
       let email;
       if (passwordRoute || recoveryRoute) {
         email = normalizeEmail(body.email);
+      }
+      if (passwordRoute || recoveryRoute || linkContextRoute) {
         // Bound external verification without charging an unverified named account.
         await ingress(request, env);
       }
       const access = await verifyAccess(request, env, accessKeys);
       if (passwordRoute || recoveryRoute) reservation = await reserve(request, env, email, PASSWORD_ROUTES.get(route) ?? 'recovery');
-      if (reservation) await verifyTurnstile(body.turnstile, reservation.ip, env, route.split('/').at(-1));
+      if (passwordRoute || recoveryRoute) await verifyTurnstile(body.turnstile, reservation.ip, env, route.split('/').at(-1));
+      if (linkContextRoute) {
+        // The signed subject keys this read-only recovery quota. A caller cannot
+        // charge an account by guessing its email, and no KDF budget is spent.
+        reservation = await reserve(request, env, `link:${access.sub}`, 'recovery');
+        if (Object.keys(body).some(key => !['kind','token'].includes(key))
+          || !['invite','verify','reset','email-change'].includes(body.kind)) deny(400, 'invalid_token', 'This token is invalid or expired.');
+        linkContextKind = body.kind;
+        const hash = digestToken(tokenValue(body.token));
+        const context = body.kind === 'invite' ? await store.inviteContext(hash, epoch())
+          : await store.token(hash, body.kind, access.sub, epoch());
+        if (!context) deny(400, 'invalid_token', 'This token is invalid or expired.');
+        await store.audit(null, 'link-context', 'resolved', epoch(), linkContextKind);
+        return finish({ kind: body.kind, email: context.email });
+      }
       const budget = createKdfBudget();
 
       if (request.method === 'GET' && route === '/config') {
@@ -319,10 +336,15 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
       deny(404, 'not_found', 'Unknown platform route.');
     } catch (error) {
       const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 503;
-      const code = typeof error.code === 'string' && /^[a-z_]{1,60}$/.test(error.code) ? error.code : 'service_unavailable';
+      const code = typeof error.code === 'string' && (/^[a-z_]{1,60}$/.test(error.code)
+        || /^turnstile_provider_http_[1-5][0-9]{2}$/.test(error.code)) ? error.code : 'service_unavailable';
       // Invalid transport/JWT floods and repeated 429s cannot create unbounded D1 writes.
       // Every admitted auth failure is still recorded, including wrong passwords.
-      if (store && reservation) try { await store.audit(actor, route.startsWith('/auth/') ? 'authentication' : 'request', 'denied', now, null, code); } catch { /* Never reveal failed SQL or request contents. */ }
+      if (store && reservation) try {
+        const contextRequest = route === '/auth/link-context';
+        await store.audit(actor, contextRequest ? 'link-context' : route.startsWith('/auth/') ? 'authentication' : 'request',
+          'denied', now, contextRequest ? linkContextKind : null, code);
+      } catch { /* Never reveal failed SQL or request contents. */ }
       return reply({ error: code, detail: status === 503 ? 'This capability is temporarily unavailable or not configured.' : error.message }, status, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
     } finally {
       if (reservation) try { await limiterCall(env, '/result', { reservationId: reservation.id, success: succeeded }); } catch { /* Reservation remains counted if reporting fails. */ }

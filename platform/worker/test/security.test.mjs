@@ -214,7 +214,7 @@ test('Turnstile sends a bounded verification request and requires the exact host
     return Response.json(result);
   });
   assert.equal(await verifyTurnstile('synthetic-token', '192.0.2.1', turnstileEnv, 'login'), true);
-  for (const bad of [{ success: false }, { hostname: 'other.example.test' }, { action: 'signup' }, { success: 'true' }]) {
+  for (const bad of [{ success: false, 'error-codes':['invalid-input-response'] }, { hostname: 'other.example.test' }, { action: 'signup' }]) {
     result = { success: true, hostname: 'app.example.test', action: 'login', ...bad };
     await assert.rejects(verifyTurnstile('synthetic-token', '192.0.2.1', turnstileEnv, 'login'), errorCode('turnstile_failed', 403));
   }
@@ -224,5 +224,82 @@ test('Turnstile configuration and provider failures never enable a bypass', asyn
   await assert.rejects(verifyTurnstile('synthetic-token', '192.0.2.1', {}, 'login'), errorCode('turnstile_unconfigured', 503));
   await assert.rejects(verifyTurnstile('', '192.0.2.1', turnstileEnv, 'login'), errorCode('turnstile_failed', 403));
   t.mock.method(globalThis, 'fetch', async () => new Response('unavailable', { status: 503 }));
-  await assert.rejects(verifyTurnstile('synthetic-token', '192.0.2.1', turnstileEnv, 'login'), errorCode('turnstile_unavailable', 503));
+  await assert.rejects(verifyTurnstile('synthetic-token', '192.0.2.1', turnstileEnv, 'login'), errorCode('turnstile_provider_http_503', 503));
+});
+
+test('Turnstile classifies provider failures without exposing request or response contents', async t => {
+  const privateText = 'private-provider-content-and-synthetic-secret';
+  let respond;
+  t.mock.method(globalThis, 'fetch', async () => respond());
+  const cases = [
+    [() => { throw new Error(privateText); }, 'turnstile_network'],
+    [() => { throw new DOMException(privateText, 'TimeoutError'); }, 'turnstile_timeout'],
+    [() => Response.json({ success:false, 'error-codes':['invalid-input-secret'], private:privateText }, {status:400}), 'turnstile_provider_configuration'],
+    [() => new Response(privateText, {status:429}), 'turnstile_provider_http_429'],
+    [() => new Response(privateText, {headers:{'Content-Type':'text/html'}}), 'turnstile_response_media_type'],
+    [() => new Response(privateText, {headers:{'Content-Type':'application/json'}}), 'turnstile_response_invalid_json'],
+    [() => new Response('[]', {headers:{'Content-Type':'application/json'}}), 'turnstile_response_invalid_json'],
+    [() => Response.json({success:'true',hostname:'app.example.test',action:'login'}), 'turnstile_response_invalid_json'],
+    [() => new Response(new Uint8Array([0xc3,0x28]), {headers:{'Content-Type':'application/json'}}), 'turnstile_response_invalid_json'],
+    [() => Response.json({ value:'x'.repeat(16384) }), 'turnstile_response_too_large'],
+    [() => new Response('{}', {headers:{'Content-Type':'application/json','Content-Length':'16385'}}), 'turnstile_response_too_large'],
+  ];
+  for (const [impl, code] of cases) {
+    respond = impl;
+    await assert.rejects(verifyTurnstile('synthetic-token','192.0.2.1',turnstileEnv,'login'), error => {
+      assert.equal(error.status,503); assert.equal(error.code,code); assert.equal(error.message,code);
+      assert.doesNotMatch(JSON.stringify(error)+String(error), /private-provider|synthetic-secret|synthetic-token|invalid-input-secret/);
+      return true;
+    });
+  }
+});
+
+test('Siteverify JSON Responses use the same bounded parser and rejected bodies are cancelled', async t => {
+  const successful = JSON.stringify({success:true,hostname:'app.example.test',action:'login'});
+  let cancelled = false, failure = false;
+  t.mock.method(globalThis,'fetch',async()=> failure
+    ? new Response(new ReadableStream({cancel(){cancelled=true;}}),{status:503,headers:{'Content-Type':'application/json'}})
+    : new Response(successful,{headers:{'Content-Type':'application/json; charset=utf-8','Content-Length':String(Buffer.byteLength(successful))}}));
+  assert.equal(await verifyTurnstile('synthetic-token','192.0.2.1',turnstileEnv,'login'),true);
+  failure=true;
+  await assert.rejects(verifyTurnstile('synthetic-token','192.0.2.1',turnstileEnv,'login'),errorCode('turnstile_provider_http_503',503));
+  assert.equal(cancelled,true);
+});
+
+test('documented token rejections on both successful and client-error HTTP responses request a fresh challenge',async t=>{
+  let status=200,code='invalid-input-response';
+  t.mock.method(globalThis,'fetch',async()=>Response.json({success:false,'error-codes':[code]},{status}));
+  for(status of [200,400,403,422]) for(code of ['missing-input-response','invalid-input-response','timeout-or-duplicate']) {
+    await assert.rejects(verifyTurnstile('synthetic-token','192.0.2.1',turnstileEnv,'login'),error=>{
+      assert.equal(error.status,403); assert.equal(error.code,'turnstile_failed');
+      assert.match(error.message,/fresh check/); assert.equal(error.message.includes(code),false); return true;
+    });
+  }
+});
+
+test('Turnstile configuration, outage and contradictory responses remain unavailable without raw provider codes',async t=>{
+  let status=400,result;
+  t.mock.method(globalThis,'fetch',async()=>Response.json(result,{status}));
+  const cases=[
+    [200,{success:false,'error-codes':['missing-input-secret']},'turnstile_provider_configuration'],
+    [400,{success:false,'error-codes':['invalid-input-secret','invalid-input-response']},'turnstile_provider_configuration'],
+    [400,{success:false,'error-codes':['bad-request']},'turnstile_provider_request'],
+    [200,{success:false,'error-codes':['internal-error']},'turnstile_provider_internal'],
+    [429,{success:false,'error-codes':['invalid-input-response']},'turnstile_provider_http_429'],
+    [503,{success:false,'error-codes':['timeout-or-duplicate']},'turnstile_provider_http_503'],
+    [400,{success:true,hostname:'app.example.test',action:'login'},'turnstile_provider_http_400'],
+    [400,{success:false,'error-codes':['unknown-private-provider-code']},'turnstile_response_invalid_json'],
+    [400,{success:false,'error-codes':[]},'turnstile_response_invalid_json'],
+    [400,{success:false,'error-codes':'invalid-input-response'},'turnstile_response_invalid_json'],
+    [400,{success:false,'error-codes':Array(8).fill('invalid-input-response')},'turnstile_response_invalid_json'],
+    [200,{success:true,hostname:'app.example.test',action:'login','error-codes':['invalid-input-response']},'turnstile_response_invalid_json'],
+  ];
+  for(const [http,body,code] of cases) {
+    status=http;result=body;
+    await assert.rejects(verifyTurnstile('synthetic-token','192.0.2.1',turnstileEnv,'login'),error=>{
+      assert.equal(error.status,503); assert.equal(error.code,code); assert.equal(error.message,code);
+      assert.doesNotMatch(JSON.stringify(error)+String(error),/unknown-private|invalid-input-secret|missing-input-secret|timeout-or-duplicate|invalid-input-response|bad-request|internal-error/);
+      return true;
+    });
+  }
 });

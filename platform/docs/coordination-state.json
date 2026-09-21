@@ -1,21 +1,20 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T12:53:28Z",
-  "phase": "review-closed-owner-setup-pending",
+  "updated_at": "2026-09-21T14:08:30.512177+00:00",
+  "phase": "owner-onboarding-repair-in-progress",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "ced19e80c9796711ce0a752c3844de447b35ca76",
+  "last_merged_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-15",
-  "last_processed_reply": "COLLAB-20260921-15 closed; round 14 accepted all seven bootstrap conditions at 5d3d084",
+  "last_sent_round": "COLLAB-20260921-19",
+  "last_processed_reply": "Round 19 design accepted; T-034 records the real onboarding regression at eec4e79",
   "pending_reply": null,
-  "peer_review_closed": true,
-  "peer_followup_policy": "No further reply expected; do not send acknowledgement-only messages",
+  "peer_review_closed": false,
+  "peer_followup_policy": "Send the tested onboarding source for final review; no acknowledgement-only messages",
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
   "human_gates": [
-    "Owner invitation delivery after private mail recovery",
     "Pending human authentication step",
     "Server location and deployment authority",
     "PR #1 merge and main branch",
@@ -32,29 +31,56 @@
     "unsigned_windows_package_built": true,
     "platform_user_access_enabled": true,
     "platform_usable_by_invited_humans": false,
-    "owner_invite_sent": false,
+    "owner_invite_sent": true,
     "desktop_installed": false,
-    "desktop_published": false
+    "desktop_published": false,
+    "owner_invite_receipt_verified": true
   },
-  "reviewed_source_head": "5d3d084f260856f62de7231ac0d4a8e659011244",
+  "reviewed_source_head": "ea30244ebe044bc4fd096e0c79e477996807bf49",
   "deployed_source_head": "f462cc83815adf7a7f2266cfb52ed0c840bb0822",
-  "deployed_worker_version": "e8516426-648e-4437-a0f7-983bb4fd7be8",
+  "deployed_worker_version": "12d50efe-c6c6-471c-a916-b583ecbc002e",
   "bootstrap_review": {
-    "round": "COLLAB-20260921-14",
-    "board_head": "536cfd56fccf65d3d453b3a524966287eb94849f",
-    "accepted_conditions": 7,
-    "tests_passed": 17,
+    "round": "COLLAB-20260921-17",
+    "board_head": "bde928f",
+    "tests_passed": 23,
     "ci_checks_passed_at_reviewed_source": 14,
-    "remote_execution": "unrun"
+    "remote_execution": "One confirmed invitation and one email request; provider queued and inbox receipt independently verified",
+    "delivery_evidence_round": "COLLAB-20260921-18"
   },
   "last_reported_account_state": {
     "users": 0,
-    "invites": 0,
-    "evidence": "Read-only D1 probe recorded in COLLAB-20260921-15; not rechecked during this documentation close-out"
+    "invites": 3,
+    "active_invites": 1,
+    "expired_unaccepted_invites": 2,
+    "checked_at": "2026-09-21T13:45:22Z",
+    "evidence": "Read-only D1 audit after user attempt: no user created; admitted turnstile_unavailable failure"
   },
   "real_workflow_acceptance": "All eleven rows remain Pending",
   "independent_followups": [
-    "Complete the approved owner invitation after private mail recovery, then record real signup and authenticated browser acceptance",
-    "Minimum-version compatibility policy and macOS/Linux native delivery remain explicit later scope"
-  ]
+    "Finish bounded diagnostics and context audit; run complete checks",
+    "Obtain source review, deploy the repair and verify live protection",
+    "User reopens the existing invitation, chooses password and completes real signup/verification/terms",
+    "Minimum-version compatibility and macOS/Linux native delivery remain later scope"
+  ],
+  "onboarding_repair": {
+    "board_task": "T-034",
+    "status": "Complete tested source; final peer review and deployment pending",
+    "observed_failure": "Invitation button completed Access but reached bare sign-in; admitted security check returned turnstile_unavailable",
+    "context_design": "Protected read-only token lookup pre-fills the intended address; fragment scrubbed immediately and retained only in page memory",
+    "recovery": "Reopen the same original email link in the same browser after Access, once the repair is deployed",
+    "display_name": "Clawdie working display value in the single APP_NAME constant; a final name can still be changed there",
+    "configuration_repair": "Exact existing widget secret reapplied as encrypted Worker binding; no underlying widget rotation and successful authentication not yet verified",
+    "app_tests_passed": 94,
+    "worker_tests_before_refinement": 173,
+    "invite_retry_or_resend": false,
+    "worker_tests_passed": 176,
+    "worker_tests_failed": 0,
+    "syntax_files": 40,
+    "imported_hashes": 13,
+    "dry_build": {
+      "kib": 183.0,
+      "gzip_kib": 44.56,
+      "static_files": 35
+    }
+  }
 }

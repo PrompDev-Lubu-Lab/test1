@@ -264,3 +264,123 @@ test('session preflight reports the earlier Access and app-session expiry',async
   const sessionExpiry=now()+20;await h.db.prepare('UPDATE sessions SET expires_at=?').bind(sessionExpiry).run();
   assert.equal((await (await h.call('/me',{...session,token})).json()).authentication_expires_at,sessionExpiry);
 });
+
+async function pendingInvite(h) {
+  const token=randomToken();
+  await h.db.prepare('INSERT INTO invites(token_hash,email,handle,role,expires_at,created_at) VALUES(?,?,?,?,?,?)')
+    .bind(digestToken(token),'owner@example.test','deandre','owner',now()+600,now()).run();
+  return token;
+}
+
+test('link context returns only the active invitation email without consuming it or creating an account',async t=>{
+  const h=harness(t),token=await pendingInvite(h);
+  for(let index=0;index<2;index++) {
+    const response=await h.call('/auth/link-context',{method:'POST',body:{kind:'invite',token}});
+    assert.equal(response.status,200,await response.clone().text());
+    assert.deepEqual(await response.json(),{kind:'invite',email:'owner@example.test'});
+    assert.equal(response.headers.get('Cache-Control'),'no-store'); assert.equal(response.headers.has('Set-Cookie'),false);
+  }
+  assert.deepEqual(h.events,['ingress','access','reserve','outcome','ingress','access','reserve','outcome']);
+  assert.deepEqual(h.state.global,[]); assert.equal(h.mail.length,0);
+  for(const table of ['users','sessions','verification_tokens']) assert.equal((await h.db.prepare(`SELECT count(*) AS n FROM ${table}`).first()).n,0);
+  const audit=(await h.db.prepare('SELECT actor_id,action,outcome,object_id,reason FROM audit_events ORDER BY id').all()).results;
+  assert.deepEqual(audit,Array.from({length:2},()=>({actor_id:null,action:'link-context',outcome:'resolved',object_id:'invite',reason:null})));
+  assert.equal(JSON.stringify(audit).includes(token),false); assert.equal(JSON.stringify(audit).includes('owner@example.test'),false);
+  assert.equal((await h.db.prepare('SELECT accepted_at FROM invites').first()).accepted_at,null);
+});
+
+test('credential link context requires exact purpose, current version and signed subject and returns current email',async t=>{
+  const h=harness(t); await h.seed();
+  const user=await h.db.prepare('SELECT * FROM users').first();
+  const tokens={};
+  for(const kind of ['verify','reset','email-change']) {
+    tokens[kind]=randomToken();
+    await h.db.prepare('INSERT INTO verification_tokens(token_hash,user_id,purpose,pending_email,session_hash,user_version,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?)')
+      .bind(digestToken(tokens[kind]),user.id,kind,kind==='email-change'?'new-address@example.test':null,kind==='email-change'?digestToken('synthetic-session'):null,0,now()+600,now()).run();
+    const response=await h.call('/auth/link-context',{method:'POST',body:{kind,token:tokens[kind]}});
+    assert.equal(response.status,200); assert.deepEqual(await response.json(),{kind,email:user.email});
+  }
+  const resolved=(await h.db.prepare("SELECT object_id FROM audit_events WHERE action='link-context' AND outcome='resolved' ORDER BY id").all()).results;
+  assert.deepEqual(resolved.map(row=>row.object_id),['verify','reset','email-change']);
+  const lookup=(kind='reset',subject='owner-sub')=>h.call('/auth/link-context',{method:'POST',subject,body:{kind,token:tokens.reset}});
+  for(const response of [await lookup('reset','member-sub'),await lookup('verify')]) {
+    assert.equal(response.status,400); assert.deepEqual(await response.json(),{error:'invalid_token',detail:'This token is invalid or expired.'});
+  }
+  await h.db.prepare('UPDATE users SET session_version=1').run(); assert.equal((await lookup()).status,400);
+  await h.db.prepare('UPDATE users SET session_version=0,disabled_at=?').bind(now()).run(); assert.equal((await lookup()).status,400);
+  await h.db.prepare('UPDATE users SET disabled_at=NULL').run();
+  await h.db.prepare("UPDATE verification_tokens SET used_at=? WHERE purpose='reset'").bind(now()).run(); assert.equal((await lookup()).status,400);
+  await h.db.prepare("UPDATE verification_tokens SET used_at=NULL,expires_at=? WHERE purpose='reset'").bind(now()-1).run(); assert.equal((await lookup()).status,400);
+  assert.equal((await h.db.prepare("SELECT count(*) AS n FROM verification_tokens WHERE purpose<>'reset' AND used_at IS NOT NULL").first()).n,0);
+  assert.equal(h.mail.length,0); assert.deepEqual(h.state.global,[]);
+});
+
+test('link context rejects stale invitations and caller-selected identities behind Origin and Access gates',async t=>{
+  const h=harness(t),token=await pendingInvite(h),body={kind:'invite',token};
+  for(let index=0;index<20;index++) assert.equal((await h.call('/auth/link-context',{method:'POST',body,headers:{Origin:'https://other.example.test'}})).status,403);
+  assert.equal((await h.call('/auth/link-context',{method:'POST',body,token:'forged-jwt'})).status,403);
+  assert.deepEqual(h.state.accounts,{}); assert.deepEqual(h.state.global,[]);
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM audit_events').first()).n,0);
+  for(const input of [{...body,email:'guessed@example.test'},{...body,kind:'password-change'},{...body,token:'invalid'},{...body,token:randomToken()}]) {
+    const response=await h.call('/auth/link-context',{method:'POST',body:input});
+    assert.equal(response.status,400); assert.deepEqual(await response.json(),{error:'invalid_token',detail:'This token is invalid or expired.'});
+  }
+  await h.db.prepare('UPDATE invites SET accepted_at=?').bind(now()).run();
+  assert.equal((await h.call('/auth/link-context',{method:'POST',body})).status,400);
+  await h.db.prepare('UPDATE invites SET accepted_at=NULL,expires_at=?').bind(now()-1).run();
+  assert.equal((await h.call('/auth/link-context',{method:'POST',body})).status,400);
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM users').first()).n,0);
+  const audit=(await h.db.prepare('SELECT actor_id,action,outcome,object_id,reason FROM audit_events ORDER BY id').all()).results;
+  assert.equal(audit.length,6);
+  for(const row of audit) {
+    assert.equal(row.actor_id,null); assert.equal(row.action,'link-context'); assert.equal(row.outcome,'denied');
+    assert.equal(row.reason,'invalid_token'); assert.ok(row.object_id===null||row.object_id==='invite');
+  }
+  assert.doesNotMatch(JSON.stringify(audit),/guessed@example|owner@example|password-change/);
+  assert.equal(JSON.stringify(audit).includes(token),false);
+});
+
+test('successful link lookups retain the recovery IP budget and do not charge password budgets',async t=>{
+  const h=harness(t),token=await pendingInvite(h);
+  const call=()=>h.call('/auth/link-context',{method:'POST',sourceIp:'198.51.100.20',body:{kind:'invite',token}});
+  for(let index=0;index<10;index++) assert.equal((await call()).status,200);
+  for(let index=0;index<20;index++) {
+    const limited=await call(); assert.equal(limited.status,429); assert.ok(Number(limited.headers.get('Retry-After'))>0);
+  }
+  assert.deepEqual(h.state.global,[]); assert.equal(h.events.includes('turnstile'),false); assert.equal(h.mail.length,0);
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM audit_events').first()).n,10);
+});
+
+test('admitted Turnstile diagnostics reach safe audit reasons without creating accounts or leaking provider content',async t=>{
+  const h=harness(t),token=await pendingInvite(h);
+  const privateText='private-provider-body-with-synthetic-token-and-secret';
+  let respond;
+  t.mock.method(globalThis,'fetch',async()=>respond());
+  for(const [impl,code] of [
+    [()=>Response.json({success:false,'error-codes':['invalid-input-secret'],private:privateText},{status:400}),'turnstile_provider_configuration'],
+    [()=>new Response(privateText,{headers:{'Content-Type':'text/plain'}}),'turnstile_response_media_type'],
+    [()=>{throw new DOMException(privateText,'TimeoutError');},'turnstile_timeout'],
+  ]) {
+    respond=impl;
+    const response=await h.call('/auth/login',{method:'POST',body:{email:'owner@example.test',password,turnstile:'synthetic-only'}});
+    assert.equal(response.status,503); assert.deepEqual(await response.json(),{error:code,detail:'This capability is temporarily unavailable or not configured.'});
+    const audit=await h.db.prepare('SELECT reason FROM audit_events ORDER BY id DESC LIMIT 1').first(); assert.equal(audit.reason,code);
+  }
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM users').first()).n,0);
+  assert.equal((await h.db.prepare('SELECT accepted_at FROM invites WHERE token_hash=?').bind(digestToken(token)).first()).accepted_at,null);
+  assert.equal(h.mail.length,0);
+});
+
+test('HTTP400 token rejections deny signup with a fresh-challenge message and preserve its invitation',async t=>{
+  const h=harness(t),invite=await pendingInvite(h); let providerCode;
+  t.mock.method(globalThis,'fetch',async()=>Response.json({success:false,'error-codes':[providerCode]},{status:400}));
+  for(providerCode of ['missing-input-response','invalid-input-response','timeout-or-duplicate']) {
+    const response=await h.call('/auth/signup',{method:'POST',body:{email:'owner@example.test',display_name:'Owner',password,invite,turnstile:'synthetic-only'}});
+    assert.equal(response.status,403); const body=await response.json(); assert.equal(body.error,'turnstile_failed'); assert.match(body.detail,/fresh check/);
+    assert.equal(JSON.stringify(body).includes(providerCode),false);
+    const audit=await h.db.prepare('SELECT reason FROM audit_events ORDER BY id DESC LIMIT 1').first(); assert.equal(audit.reason,'turnstile_failed');
+  }
+  assert.equal((await h.db.prepare('SELECT count(*) AS n FROM users').first()).n,0);
+  assert.equal((await h.db.prepare('SELECT accepted_at FROM invites').first()).accepted_at,null);
+  assert.equal(h.mail.length,0);
+});

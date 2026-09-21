@@ -36,6 +36,7 @@ export class AccountStore {
   userByEmail(email) { return this.statement('SELECT * FROM users WHERE email = ?', email).first(); }
   userById(id) { return this.statement('SELECT * FROM users WHERE id = ?', id).first(); }
   invite(hash, email, now) { return this.statement('SELECT * FROM invites WHERE token_hash=? AND email=? AND accepted_at IS NULL AND expires_at>?', hash, email, now).first(); }
+  inviteContext(hash, now) { return this.statement('SELECT email FROM invites WHERE token_hash=? AND accepted_at IS NULL AND expires_at>?', hash, now).first(); }
   audit(actor, action, outcome, now, object = null, reason = null) {
     return this.statement('INSERT INTO audit_events(at,actor_id,action,outcome,object_id,reason) VALUES(?,?,?,?,?,?)', now, actor, action, outcome, object, reason).run();
   }

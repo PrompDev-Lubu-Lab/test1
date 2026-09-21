@@ -1,6 +1,6 @@
 # Account Worker
 
-The Worker contains invite-only accounts, verified email, current-role enforcement, signed Cloudflare Access assertions, versioned terms, password recovery and revocable sessions. It is not deployed. Unconfigured bindings fail closed. No exchange credentials, trading endpoint or run-file writes are implemented.
+The Worker contains invite-only accounts, verified email, current-role enforcement, signed Cloudflare Access assertions, versioned terms, password recovery and revocable sessions. The production entry point also serves the protected web assets on the same origin. Deployment and account activation are separate states; consult the current deployment checkpoint. Unconfigured bindings fail closed. No exchange credentials, trading endpoint or run-file writes are implemented.
 
 Run the checks with Node 24 LTS:
 
@@ -17,6 +17,7 @@ The tests use actual RS256 signatures, PBKDF2-HMAC-SHA256 at 600,000 iterations,
 
 | Binding or setting | Purpose |
 | --- | --- |
+| `ASSETS` | Built `../app/dist`; global Worker-first routing is required |
 | `DB` | D1 database, apply `migrations/0001_accounts.sql` once to a new staging database |
 | `AUTH_LIMITER` | SQLite Durable Object `AuthLimiter`; every request uses `global-auth-v1` |
 | `APP_ORIGIN` | Exact HTTPS app origin; Worker also rejects alternate hosts |
@@ -27,7 +28,7 @@ The tests use actual RS256 signatures, PBKDF2-HMAC-SHA256 at 600,000 iterations,
 | `INVITE_ACCOUNTS` | Private JSON list of exactly two approved `{email,handle}` mappings, handles `deandre` and `ali` |
 | `RUN_ORIGIN`, `ORIGIN_CLIENT_ID`, `ORIGIN_CLIENT_SECRET` | Fixed protected Tunnel origin and Worker-only service credentials; never shipped to the client |
 
-Default and preview hosts are disabled. Deployment must protect the app and `/api/*` with the reviewed Access policy and test the Pages/Worker route precedence. The app must not be publicly activated merely because a bundle dry-run passes. No paid service enablement or real email is part of local testing.
+Default and preview hosts are disabled. `site.mjs` delegates only `/api` and `/api/*` to the account handler; every static GET/HEAD requires the same signed human Access assertion. The root resolves explicitly to `/index.html`. Use `assets.run_worker_first=true`, `html_handling=none` and `not_found_handling=none`: selective Worker-first paths or an SPA fallback would break the security or 404 contract. The wrapper strips credentials before the asset binding and adds CSP and private no-store headers to responses. Protect the whole custom hostname with the reviewed Access application and verify the actual edge response before inviting anyone. See `../docs/PRODUCTION-HOSTING.md` for the deployment sequence. No paid service enablement or real email is part of local testing.
 
 ## Token and mutation rules
 
@@ -61,4 +62,4 @@ Limiter upgrades must preserve active counters through an explicit reviewed migr
 
 ## Protected desktop downloads
 
-`DOWNLOADS_READY=verified` and a private `RELEASES` R2 binding enable `/api/downloads` and fixed GET/HEAD paths under `/api/updates/windows/x64/`. Current Access, app session and terms apply. `/api/me` reports `authentication_expires_at` as the earlier Access/session expiry for the native update lease. Read `../docs/DESKTOP-RELEASES.md` for object layout, scope and publication gates. The actual local workerd/R2 probe is recorded in `../docs/downloads-runtime-results.json`; installer GET is streamed without Content-Length, HEAD preserves size, and exact bytes were verified. Full downloads only; range requests return416. No release bucket or platform route has been activated by these source changes.
+`DOWNLOADS_READY=verified` and a private `RELEASES` R2 binding enable `/api/downloads` and fixed GET/HEAD paths under `/api/updates/windows/x64/`. Current Access, app session and terms apply. `/api/me` reports `authentication_expires_at` as the earlier Access/session expiry for the native update lease. Read `../docs/DESKTOP-RELEASES.md` for object layout, scope and publication gates. The actual local workerd/R2 probe is recorded in `../docs/downloads-runtime-results.json`; installer GET uses a fixed-length stream, GET and HEAD preserve exact Content-Length, and exact bytes were verified. Full downloads only; range requests return416. Provisioning a release bucket does not activate downloads or publish a signed installer.

@@ -1,13 +1,20 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "platform-account-api",
-  "main": "app.mjs",
+  "main": "site.mjs",
   "compatibility_date": "2026-09-21",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": false },
   "limits": { "cpu_ms": 10000 },
+  "assets": {
+    "directory": "../app/dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
   "vars": {
     "APP_ORIGIN": "https://app.example.test",
     "ACCESS_TEAM_DOMAIN": "https://team.example.test",
@@ -28,7 +35,10 @@
   "migrations": [{ "tag": "v1-auth-limits", "new_sqlite_classes": ["AuthLimiter"] }],
   "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["no-reply@example.test"] }],
   "triggers": { "crons": ["7,22,37,52 * * * *"] }
-  // Add exact approved routes and Access policy only at deployment.
+  // Build ../app/dist for the exact APP_ORIGIN before deployment.
+  // Every asset must pass through site.mjs; do not use selective worker-first
+  // patterns or a single-page fallback. Unknown asset paths must remain 404.
+  // Add the exact approved custom domain and Access policy at deployment.
   // Real addresses, account/database IDs and secrets belong in private configuration.
   // Images/R2 are intentionally absent until the decoder and binding are verified.
 }

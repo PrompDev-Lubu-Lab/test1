@@ -12,6 +12,15 @@ before the real sample run (board task T-003) is available.
 | `ma_synthetic_2024-03-15_2024-03-17_78e97a61` | `ma_crossover` (15m candles, fast 4, slow 12, quantity 1) | 7 fills, crosses the sine wave several times |
 | `bah_synthetic_2024-03-15_2024-03-17_f2e66a79` | `buy_and_hold` (quantity 1) | 1 fill; the benchmark |
 
+The `ma_synthetic_…` directory also holds `validation.json`, written by
+`tradebot-research validate --config ma_synthetic_validate.conf --out runs
+--samples 200 --train 1d --test 12h --min-trades 3` (the same spec plus a
+`[sweep]` block, so the run id is unchanged). It has every section:
+`monte_carlo`, `costs` (45 points), `stability` (3 points), `regimes`,
+`walk_forward` (2 windows) and `go_no_go`. Its numbers are meaningless as
+research (a sine wave is trivially predictable) and exist only to give the
+Research tab a complete file to render.
+
 Each directory holds the six files every run writes (`config.txt`,
 `equity.csv`, `fills.csv`, `orders.csv`, `metrics.csv`, `summary.json`) plus
 the three `tradebot-analyze` adds (`metrics.json`, `report.txt`,

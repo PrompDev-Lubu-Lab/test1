@@ -1,0 +1,628 @@
+{
+  "costs": {
+    "fraction_positive": 1.0,
+    "max_sharpe": 387.414203160554,
+    "median_sharpe": 330.15004790182815,
+    "min_sharpe": 161.8080715731281,
+    "points": [
+      {
+        "label": "fee=0bps slip=0bps +lat=0ns",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=0bps +lat=100.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=0bps +lat=500.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=5bps +lat=0ns",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=5bps +lat=100.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=5bps +lat=500.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=20bps +lat=0ns",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=20bps +lat=100.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=0bps slip=20bps +lat=500.000ms",
+        "max_drawdown": 0.0021299108050729654,
+        "round_trips": 3,
+        "sharpe": 387.414203160554,
+        "total_return": 0.055093999999999976
+      },
+      {
+        "label": "fee=5bps slip=0bps +lat=0ns",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=0bps +lat=100.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=0bps +lat=500.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=5bps +lat=0ns",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=5bps +lat=100.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=5bps +lat=500.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=20bps +lat=0ns",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=20bps +lat=100.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=5bps slip=20bps +lat=500.000ms",
+        "max_drawdown": 0.0024249881274451823,
+        "round_trips": 3,
+        "sharpe": 363.2092954464337,
+        "total_return": 0.05404794149999992
+      },
+      {
+        "label": "fee=10bps slip=0bps +lat=0ns",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=0bps +lat=100.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=0bps +lat=500.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=5bps +lat=0ns",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=5bps +lat=100.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=5bps +lat=500.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=20bps +lat=0ns",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=20bps +lat=100.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=10bps slip=20bps +lat=500.000ms",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "fee=20bps slip=0bps +lat=0ns",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=0bps +lat=100.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=0bps +lat=500.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=5bps +lat=0ns",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=5bps +lat=100.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=5bps +lat=500.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=20bps +lat=0ns",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=20bps +lat=100.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=20bps slip=20bps +lat=500.000ms",
+        "max_drawdown": 0.00331072848268843,
+        "round_trips": 3,
+        "sharpe": 260.62783903453766,
+        "total_return": 0.05090976599999997
+      },
+      {
+        "label": "fee=40bps slip=0bps +lat=0ns",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=0bps +lat=100.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=0bps +lat=500.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=5bps +lat=0ns",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=5bps +lat=100.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=5bps +lat=500.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=20bps +lat=0ns",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=20bps +lat=100.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      },
+      {
+        "label": "fee=40bps slip=20bps +lat=500.000ms",
+        "max_drawdown": 0.004492903225268408,
+        "round_trips": 3,
+        "sharpe": 161.8080715731281,
+        "total_return": 0.04672553199999996
+      }
+    ]
+  },
+  "go_no_go": {
+    "checks": [
+      {
+        "detail": "cleared",
+        "name": "kill criteria",
+        "pass": true
+      },
+      {
+        "detail": "p05 +4.55%  p50 +4.55%  P(loss) 0%",
+        "name": "monte carlo p05 return > 0",
+        "pass": true
+      },
+      {
+        "detail": "100% of cost scenarios positive, min sharpe 161.81",
+        "name": "survives higher costs",
+        "pass": true
+      },
+      {
+        "detail": "100% of grid positive, median sharpe 330.15",
+        "name": "parameter neighbourhood",
+        "pass": true
+      },
+      {
+        "detail": "OOS +1.51%, 100% windows positive",
+        "name": "walk-forward out-of-sample",
+        "pass": true
+      }
+    ],
+    "go": true
+  },
+  "kill_criteria": {
+    "max_drawdown": 0.25,
+    "min_profit_factor": 1.1,
+    "min_round_trips": 3,
+    "min_sharpe": 0.5,
+    "must_beat_benchmark": true
+  },
+  "monte_carlo": {
+    "drawdown_p50": 0.0,
+    "drawdown_p95": 0.0,
+    "probability_negative": 0.0,
+    "return_p05": 0.04549800000000004,
+    "return_p50": 0.04549800000000004,
+    "return_p95": 0.04549800000000004,
+    "samples": 200,
+    "trips": 3
+  },
+  "regimes": {
+    "high_vol_market": 0.0,
+    "high_vol_return": 0.0,
+    "low_vol_market": 0.0,
+    "low_vol_return": 0.05300188300000008,
+    "segments": [
+      {
+        "from": "2024-03-15T00:00:00.000000000Z",
+        "high_vol": false,
+        "market_return": 0.0,
+        "realized_vol": 0.14923707037783532,
+        "strategy_return": 0.05300188300000008,
+        "to": "2024-03-16T23:59:01.010000000Z"
+      }
+    ]
+  },
+  "report": {
+    "benchmark": {
+      "annualized_return": -0.3420918765618246,
+      "annualized_volatility": 0.14974568795445417,
+      "best_period": 0.00029401741384949,
+      "calmar": -5.302424086708277,
+      "max_drawdown": 0.06451612903225812,
+      "max_drawdown_duration_seconds": 43020.0,
+      "period_seconds": 60.0,
+      "samples": 2880,
+      "sharpe": -2.7202039383811254,
+      "sortino": -3.8284754942047985,
+      "span_seconds": 172681.01,
+      "time_in_market": 1.0,
+      "total_return": -0.0022884202900000927,
+      "worst_period": -0.0007102900000000023
+    },
+    "excess_return": 0.055290303290000176,
+    "returns": {
+      "annualized_return": 12516.624458214625,
+      "annualized_volatility": 0.02856932666383978,
+      "best_period": 8.73975787154535e-05,
+      "calmar": 4601446.146898113,
+      "max_drawdown": 0.0027201501568484554,
+      "max_drawdown_duration_seconds": 28560.0,
+      "period_seconds": 60.0,
+      "samples": 2881,
+      "sharpe": 330.15004790182815,
+      "sortino": 656.340820719706,
+      "span_seconds": 172741.01,
+      "time_in_market": 0.4113155154460257,
+      "total_return": 0.05300188300000008,
+      "worst_period": -0.0004045808908000881
+    },
+    "run_id": "ma_synthetic_2024-03-15_2024-03-17_78e97a61",
+    "trades": {
+      "average_holding_seconds": 21600.0,
+      "average_loss": "0",
+      "average_win": "151.66",
+      "expectancy": "151.66",
+      "fee_drag": 0.001,
+      "fills": 7,
+      "gross_loss": "0",
+      "gross_profit": "454.98",
+      "largest_loss": "0",
+      "largest_win": "151.66",
+      "losses": 0,
+      "net_pnl": "454.98",
+      "open_quantity": "1",
+      "profit_factor": -1.0,
+      "round_trips": 3,
+      "total_fees": "20.92117",
+      "turnover": "20921.17",
+      "win_rate": 1.0,
+      "wins": 3
+    }
+  },
+  "run_id": "ma_synthetic_2024-03-15_2024-03-17_78e97a61",
+  "stability": {
+    "fraction_positive": 1.0,
+    "max_sharpe": 330.15004790182815,
+    "median_sharpe": 330.15004790182815,
+    "min_sharpe": 287.32461659781114,
+    "points": [
+      {
+        "label": "ma_synthetic_fast=3",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "ma_synthetic_fast=4",
+        "max_drawdown": 0.0027201501568484554,
+        "round_trips": 3,
+        "sharpe": 330.15004790182815,
+        "total_return": 0.05300188300000008
+      },
+      {
+        "label": "ma_synthetic_fast=6",
+        "max_drawdown": 0.003569292795167378,
+        "round_trips": 3,
+        "sharpe": 287.32461659781114,
+        "total_return": 0.04696702099999994
+      }
+    ]
+  },
+  "verdict": {
+    "failures": [],
+    "pass": true
+  },
+  "walk_forward": {
+    "oos_mean_sharpe": 252.6894742929968,
+    "oos_positive_fraction": 1.0,
+    "oos_round_trips": 0,
+    "oos_total_return": 0.015064074260077831,
+    "oos_worst_drawdown": 0.0003431170000000039,
+    "windows": [
+      {
+        "chosen_label": "ma_synthetic_fast=3",
+        "chosen_params": {
+          "fast": "3",
+          "interval": "15m",
+          "quantity": "1",
+          "slow": "12"
+        },
+        "in_sample_metric": 304.93663410432214,
+        "out_of_sample": {
+          "benchmark": {
+            "annualized_return": -0.8132957047039198,
+            "annualized_volatility": 0.15125318997146275,
+            "best_period": 0.00029401741384949,
+            "calmar": -12.606083422910746,
+            "max_drawdown": 0.06451612903225812,
+            "max_drawdown_duration_seconds": 32221.01,
+            "period_seconds": 60.0,
+            "samples": 720,
+            "sharpe": -11.004784217946646,
+            "sortino": -15.269421721643909,
+            "span_seconds": 43081.01,
+            "time_in_market": 1.0,
+            "total_return": -0.0022884202900000927,
+            "worst_period": -0.0007102900000000023
+          },
+          "excess_return": 0.009792303290000137,
+          "returns": {
+            "annualized_return": 236.12552918940344,
+            "annualized_volatility": 0.02161302466393147,
+            "best_period": 8.73975787154535e-05,
+            "calmar": 688177.8786518907,
+            "max_drawdown": 0.0003431170000000039,
+            "max_drawdown_duration_seconds": 420.0,
+            "period_seconds": 60.0,
+            "samples": 721,
+            "sharpe": 252.6894742929968,
+            "sortino": 588.9119334588254,
+            "span_seconds": 43141.01,
+            "time_in_market": 0.14563106796116504,
+            "total_return": 0.0075038830000000445,
+            "worst_period": -0.0003431170000000039
+          },
+          "run_id": "ma_synthetic_fast_3_2024-03-16_2024-03-16_60520709",
+          "trades": {
+            "average_holding_seconds": 0.0,
+            "average_loss": "0",
+            "average_win": "0",
+            "expectancy": "0",
+            "fee_drag": 0.001,
+            "fills": 1,
+            "gross_loss": "0",
+            "gross_profit": "0",
+            "largest_loss": "0",
+            "largest_win": "0",
+            "losses": 0,
+            "net_pnl": "0",
+            "open_quantity": "1",
+            "profit_factor": 0.0,
+            "round_trips": 0,
+            "total_fees": "2.92117",
+            "turnover": "2921.17",
+            "win_rate": 0.0,
+            "wins": 0
+          }
+        },
+        "test_to": "2024-03-16T12:00:00.000000000Z",
+        "train_from": "2024-03-15T00:00:00.000000000Z",
+        "train_to": "2024-03-16T00:00:00.000000000Z"
+      },
+      {
+        "chosen_label": "ma_synthetic_fast=3",
+        "chosen_params": {
+          "fast": "3",
+          "interval": "15m",
+          "quantity": "1",
+          "slow": "12"
+        },
+        "in_sample_metric": 304.93663410432214,
+        "out_of_sample": {
+          "benchmark": {
+            "annualized_return": -0.8132957047039198,
+            "annualized_volatility": 0.15125318997146275,
+            "best_period": 0.00029401741384949,
+            "calmar": -12.606083422910746,
+            "max_drawdown": 0.06451612903225812,
+            "max_drawdown_duration_seconds": 32221.01,
+            "period_seconds": 60.0,
+            "samples": 720,
+            "sharpe": -11.004784217946646,
+            "sortino": -15.269421721643909,
+            "span_seconds": 43081.01,
+            "time_in_market": 1.0,
+            "total_return": -0.0022884202900000927,
+            "worst_period": -0.0007102900000000023
+          },
+          "excess_return": 0.009792303290000137,
+          "returns": {
+            "annualized_return": 236.12552918940344,
+            "annualized_volatility": 0.02161302466393147,
+            "best_period": 8.73975787154535e-05,
+            "calmar": 688177.8786518907,
+            "max_drawdown": 0.0003431170000000039,
+            "max_drawdown_duration_seconds": 420.0,
+            "period_seconds": 60.0,
+            "samples": 721,
+            "sharpe": 252.6894742929968,
+            "sortino": 588.9119334588254,
+            "span_seconds": 43141.01,
+            "time_in_market": 0.14563106796116504,
+            "total_return": 0.0075038830000000445,
+            "worst_period": -0.0003431170000000039
+          },
+          "run_id": "ma_synthetic_fast_3_2024-03-16_2024-03-17_10985167",
+          "trades": {
+            "average_holding_seconds": 0.0,
+            "average_loss": "0",
+            "average_win": "0",
+            "expectancy": "0",
+            "fee_drag": 0.001,
+            "fills": 1,
+            "gross_loss": "0",
+            "gross_profit": "0",
+            "largest_loss": "0",
+            "largest_win": "0",
+            "losses": 0,
+            "net_pnl": "0",
+            "open_quantity": "1",
+            "profit_factor": 0.0,
+            "round_trips": 0,
+            "total_fees": "2.92117",
+            "turnover": "2921.17",
+            "win_rate": 0.0,
+            "wins": 0
+          }
+        },
+        "test_to": "2024-03-17T00:00:00.000000000Z",
+        "train_from": "2024-03-15T12:00:00.000000000Z",
+        "train_to": "2024-03-16T12:00:00.000000000Z"
+      }
+    ]
+  }
+}

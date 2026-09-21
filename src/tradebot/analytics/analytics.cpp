@@ -410,6 +410,51 @@ std::string format_report(const PerformanceReport& r) {
     return s;
 }
 
+nlohmann::json report_to_json(const PerformanceReport& r) {
+    auto rm = [](const ReturnMetrics& m) {
+        return nlohmann::json{{"samples", m.samples},
+                              {"span_seconds", m.span.as_seconds()},
+                              {"period_seconds", m.period.as_seconds()},
+                              {"total_return", m.total_return},
+                              {"annualized_return", m.annualized_return},
+                              {"annualized_volatility", m.annualized_volatility},
+                              {"sharpe", m.sharpe},
+                              {"sortino", m.sortino},
+                              {"calmar", m.calmar},
+                              {"max_drawdown", m.max_drawdown},
+                              {"max_drawdown_duration_seconds", m.max_drawdown_duration.as_seconds()},
+                              {"best_period", m.best_period},
+                              {"worst_period", m.worst_period},
+                              {"time_in_market", m.time_in_market}};
+    };
+    const auto& t = r.trades;
+    nlohmann::json j;
+    j["run_id"] = r.run_id;
+    j["returns"] = rm(r.returns);
+    if (r.benchmark) j["benchmark"] = rm(*r.benchmark);
+    j["excess_return"] = r.excess_return;
+    j["trades"] = {{"fills", t.fills},
+                   {"round_trips", t.round_trips},
+                   {"wins", t.wins},
+                   {"losses", t.losses},
+                   {"win_rate", t.win_rate},
+                   {"profit_factor", std::isfinite(t.profit_factor) ? t.profit_factor : -1.0},
+                   {"gross_profit", t.gross_profit.to_string()},
+                   {"gross_loss", t.gross_loss.to_string()},
+                   {"net_pnl", t.net_pnl.to_string()},
+                   {"expectancy", t.expectancy.to_string()},
+                   {"average_win", t.average_win.to_string()},
+                   {"average_loss", t.average_loss.to_string()},
+                   {"largest_win", t.largest_win.to_string()},
+                   {"largest_loss", t.largest_loss.to_string()},
+                   {"average_holding_seconds", t.average_holding.as_seconds()},
+                   {"total_fees", t.total_fees.to_string()},
+                   {"turnover", t.turnover.to_string()},
+                   {"fee_drag", t.fee_drag},
+                   {"open_quantity", t.open_quantity.to_string()}};
+    return j;
+}
+
 Result<void> write_report(const PerformanceReport& r, const fs::path& dir) {
     std::error_code ec;
     fs::create_directories(dir, ec);
@@ -433,47 +478,7 @@ Result<void> write_report(const PerformanceReport& r, const fs::path& dir) {
     {
         std::ofstream out(dir / "metrics.json", std::ios::trunc);
         if (!out) return make_error(ErrorCode::io_error, "cannot write metrics.json");
-        auto rm = [](const ReturnMetrics& m) {
-            return nlohmann::json{{"samples", m.samples},
-                                  {"span_seconds", m.span.as_seconds()},
-                                  {"period_seconds", m.period.as_seconds()},
-                                  {"total_return", m.total_return},
-                                  {"annualized_return", m.annualized_return},
-                                  {"annualized_volatility", m.annualized_volatility},
-                                  {"sharpe", m.sharpe},
-                                  {"sortino", m.sortino},
-                                  {"calmar", m.calmar},
-                                  {"max_drawdown", m.max_drawdown},
-                                  {"max_drawdown_duration_seconds", m.max_drawdown_duration.as_seconds()},
-                                  {"best_period", m.best_period},
-                                  {"worst_period", m.worst_period},
-                                  {"time_in_market", m.time_in_market}};
-        };
-        const auto& t = r.trades;
-        nlohmann::json j;
-        j["run_id"] = r.run_id;
-        j["returns"] = rm(r.returns);
-        if (r.benchmark) j["benchmark"] = rm(*r.benchmark);
-        j["excess_return"] = r.excess_return;
-        j["trades"] = {{"fills", t.fills},
-                       {"round_trips", t.round_trips},
-                       {"wins", t.wins},
-                       {"losses", t.losses},
-                       {"win_rate", t.win_rate},
-                       {"profit_factor", std::isfinite(t.profit_factor) ? t.profit_factor : -1.0},
-                       {"gross_profit", t.gross_profit.to_string()},
-                       {"gross_loss", t.gross_loss.to_string()},
-                       {"net_pnl", t.net_pnl.to_string()},
-                       {"expectancy", t.expectancy.to_string()},
-                       {"average_win", t.average_win.to_string()},
-                       {"average_loss", t.average_loss.to_string()},
-                       {"largest_win", t.largest_win.to_string()},
-                       {"largest_loss", t.largest_loss.to_string()},
-                       {"average_holding_seconds", t.average_holding.as_seconds()},
-                       {"total_fees", t.total_fees.to_string()},
-                       {"turnover", t.turnover.to_string()},
-                       {"fee_drag", t.fee_drag},
-                       {"open_quantity", t.open_quantity.to_string()}};
+        const nlohmann::json j = report_to_json(r);
         out << j.dump(2) << '\n';
     }
     return {};

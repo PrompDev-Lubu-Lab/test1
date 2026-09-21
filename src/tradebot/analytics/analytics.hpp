@@ -11,6 +11,8 @@
 // artifact format.
 
 #include "tradebot/backtest/backtest.hpp"
+
+#include <nlohmann/json.hpp>
 #include "tradebot/core/error.hpp"
 #include "tradebot/core/time.hpp"
 #include "tradebot/portfolio/portfolio.hpp"
@@ -101,6 +103,11 @@ struct PerformanceReport {
                                                  std::span<const backtest::FillRecord> fills);
 
 [[nodiscard]] PerformanceReport analyze(const backtest::BacktestResult& result);
+
+// The metrics.json object for a report: run_id, returns, benchmark (when
+// present), excess_return and trades. Round trips are not included; they
+// have their own CSV. Monetary values are decimal strings.
+[[nodiscard]] nlohmann::json report_to_json(const PerformanceReport& r);
 
 // Reads equity.csv, fills.csv and summary.json from a run directory.
 [[nodiscard]] Result<PerformanceReport> analyze_run_dir(const std::filesystem::path& dir);

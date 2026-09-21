@@ -331,7 +331,7 @@
       "depends_on": [
         "T-007"
       ],
-      "instructions": "Electron with electron-builder and electron-updater, reused from Case Forge. Generic provider pointed at https://updates.clawdie.ai (proposed) serving per-platform latest.yml. Code-signing and updater keys only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux. Session token via Electron safeStorage. Desktop path decided in COLLAB-20260921-08 (supersedes the cloudflared-token item in AUTH-DESIGN G1 item 5): the Electron shell loads the deployed web app from the approved HTTPS origin in a hardened BrowserWindow with a persistent partition. Access login, Turnstile, the __Host- cookie, CSRF and Origin then behave exactly as in a browser; no service credential, token store or PKCE flow ships in the installer. Hardening: contextIsolation on, sandbox on, nodeIntegration off, no preload API beyond the updater and window controls, will-navigate and setWindowOpenHandler limited to the app origin, the Access team domain and GitHub's login pages, all permission requests denied, external links opened in the system browser. The shell adds window chrome, the Downloads tab, notifications and an offline notice. Updates: electron-updater generic provider on the updates hostname with explicit user acceptance before install; unsigned dev builds labelled until signing is decided (T-020); rollback keeps the previous installer and the feed can pin or withdraw a version; revocation of an old shell via a minimum-version field on /config answered with 426.",
+      "instructions": "Electron with electron-builder and electron-updater, reused from Case Forge. Generic provider pointed at https://updates.clawdie.ai (proposed) serving per-platform latest.yml. Code-signing and updater keys only in GitHub secrets. Builds for macOS (arm64+x64), Windows, Linux. Session token via Electron safeStorage. Desktop path decided in COLLAB-20260921-08 (supersedes the cloudflared-token item in AUTH-DESIGN G1 item 5): the Electron shell loads the deployed web app from the approved HTTPS origin in a hardened BrowserWindow with a persistent partition. Access login, Turnstile, the __Host- cookie, CSRF and Origin then behave exactly as in a browser; no service credential, token store or PKCE flow ships in the installer. Hardening: contextIsolation on, sandbox on, nodeIntegration off, no preload API beyond the updater and window controls, will-navigate and setWindowOpenHandler limited to the app origin, the Access team domain and GitHub's login pages, all permission requests denied, external links opened in the system browser. The shell adds window chrome, the Downloads tab, notifications and an offline notice. Updates: electron-updater generic provider on the updates hostname with explicit user acceptance before install; unsigned dev builds labelled until signing is decided (T-020); rollback keeps the previous installer and the feed can pin or withdraw a version; revocation of an old shell via a minimum-version field on /config answered with 426. Cookie bridge (COLLAB-20260921-09): the updater's own net session gets only the current CF_Authorization and __Host-platform-session cookies, read from the app partition at request time (never cached or logged), attached only to requests whose URL is exactly the app origin plus the feed path prefix, with redirects cancelled before any cookie is attached; latest.yml must carry relative file names only. Update checks run only after the renderer has confirmed a live session (GET /me 200) and never loop on a failed feed (Access renewal is done in the window, not by the updater). Per-user NSIS install without elevation. Electron 44.2.0, electron-builder 26.15.3, electron-updater 6.8.9 pinned.",
       "log": [
         {
           "on": "2026-09-20",
@@ -352,6 +352,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-08: desktop arrangement recorded; Windows-first"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-09: cookie-bridge and check-timing rules recorded"
         }
       ]
     },
@@ -368,7 +373,7 @@
       "depends_on": [
         "T-011"
       ],
-      "instructions": "On a v* tag: build all installers, upload to Cloudflare R2 (public bucket behind updates.clawdie.ai), write the latest.yml manifests for electron-updater, create a GitHub Release, append a note to board/notes.md with the download links, message the Claude session over MCP, and populate the Downloads tab from the same manifests. This mirrors Case Forge's update-link flow.",
+      "instructions": "On a v* tag: build all installers, upload to Cloudflare R2 (public bucket behind updates.clawdie.ai), write the latest.yml manifests for electron-updater, create a GitHub Release, append a note to board/notes.md with the download links, message the Claude session over MCP, and populate the Downloads tab from the same manifests. This mirrors Case Forge's update-link flow. M5 feed decisions (COLLAB-20260921-09): the Windows x64 feed is served same-origin by the Worker at /api/updates/windows/x64/ (latest.yml and installer bytes streamed from private R2, Cache-Control: no-store, GET only, session and terms required, no CSRF for GET), so Access and the host-only app cookie protect it without a second hostname; an updates hostname is deferred until DeAndre answers. latest.yml is unsigned in electron-updater 6, so integrity rests on TLS plus Access, the sha512 in the manifest, a strict Authenticode check (Valid trust, timestamp, pinned publisher subject, an allowlist of certificate thumbprints holding the current and the next certificate so renewal never strands installed clients) run at download and again immediately before install because a cache hit skips the download callback, and a monotonic version rule (never equal or lower). Consequence: rollback is forward-only: withdraw the bad version from the feed and publish a rebuilt earlier version under a higher version number. Minimum-version on /config is a compatibility gate answered with 426, never a revocation; revocation stays in Worker session policy.",
       "log": [
         {
           "on": "2026-09-20",
@@ -384,6 +389,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: root ownership assigned to deandre-gpt6 (platform lane)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-09: same-origin feed, strict verifier and forward-only rollback recorded"
         }
       ]
     },
@@ -588,6 +598,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-04: owner invitation email confirmed by deandre privately (not published). Still open: api./updates. hostnames, agent server access, Electron signing."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-09: T-011/T-012 signed-installer acceptance and any updates hostname remain pending DeAndre's signing decision and hostname answer"
         }
       ]
     },
@@ -903,6 +918,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-08: reviewed by deandre-fable on PR #2 head d1d7579 (board.mjs, app.mjs wiring, BOARD-ADAPTER.md, 23 adapter tests). Verdict: passes with two fixes before the board/staging round trip. Conforms to T-030 and board/README.md: fixed paths, operator-only repo/branch, staging gate forces board/staging, fine-grained token as a secret, expected-SHA with one re-read retry, append-only logs, max-plus-one id reallocation on retry, human-only actors from the verified session, assigned_by/assigned_on reset on reassignment, dependency gate before advancing, dropped requires a reason, replay by operation id and payload digest, session re-check before every PUT. Fixes: (B1, must) a new note is prepended above the file's '# Notes' preamble; insert it after the preamble, before the first '## ' heading, or append when none exists (board/README.md now states this). (B2, must) POST /board/* bodies share the 8 KiB JSON limit, but an update carries changes plus base for a 6000-byte instructions field and exceeds it; raise the board body limit to 32 KiB or compare base by digest. (B3, nit) the incoming instructions limit of 6000 bytes blocks editing long existing tasks in the app; 16 KiB is safer. README updated in Fable's lane: log lines may carry operation_id and operation_hash; app notes carry one HTML-comment marker line. Real staging round trip (acceptance 9) still pending the token."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-09: B1 to B3 verified by deandre-fable on PR #2 head c00c4c8: notes insert after the preamble before the first level-two heading with the separator preserved; board POST bodies 64 KiB, other routes unchanged at 8 KiB; incoming instructions 16 KiB; board operations use their own bounded SHA-256 digest (64 KiB cap) instead of the 2048-character credential digest. Stays in review until the board/staging round trip (acceptance 9) runs with the operator token."
         }
       ]
     },

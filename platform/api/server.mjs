@@ -67,7 +67,7 @@ export async function createReadApi({ root, synthetic = false, now = Date.now, p
   if (!(await lstat(base)).isDirectory()) throw new Error('RUNS_ROOT must be a directory.');
   let port = 0, lastSnapshot = null, polling = false;
 
-  async function read(id, file, optional = false) {
+  async function withArtifact(id, file, consume, optional = false) {
     if (id && (!ID.test(id) || id === '.' || id === '..')) return fail(400, 'invalid_id', 'Invalid run or instance identifier.');
     let handle;
     try {
@@ -81,12 +81,7 @@ export async function createReadApi({ root, synthetic = false, now = Date.now, p
       handle = await open(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
       const opened = await handle.stat();
       if (!opened.isFile() || opened.dev !== info.dev || opened.ino !== info.ino) return fail(503, 'source_changed', 'The source changed during reading. Retry shortly.');
-      if (opened.size > maxFileBytes) return fail(413, 'artifact_too_large', 'This artifact exceeds the configured read limit.');
-      // Read a bounded buffer even if an append-only file grows after stat().
-      const bytes = Buffer.alloc(Math.min(maxFileBytes + 1, opened.size + 1));
-      const result = await handle.read(bytes, 0, bytes.length, 0);
-      if (result.bytesRead > maxFileBytes) return fail(413, 'artifact_too_large', 'This artifact exceeds the configured read limit.');
-      return bytes.subarray(0, result.bytesRead).toString('utf8');
+      return await consume(handle, opened);
     } catch (error) {
       if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
         if (optional) return null;
@@ -96,10 +91,59 @@ export async function createReadApi({ root, synthetic = false, now = Date.now, p
     } finally { await handle?.close(); }
   }
 
+  async function read(id, file, optional = false) {
+    return withArtifact(id, file, async (handle, opened) => {
+      if (opened.size > maxFileBytes) return fail(413, 'artifact_too_large', 'This artifact exceeds the configured read limit.');
+      const bytes = Buffer.alloc(Math.min(maxFileBytes + 1, opened.size + 1));
+      const result = await handle.read(bytes, 0, bytes.length, 0);
+      if (result.bytesRead > maxFileBytes) return fail(413, 'artifact_too_large', 'This artifact exceeds the configured read limit.');
+      return bytes.subarray(0, result.bytesRead).toString('utf8');
+    }, optional);
+  }
+
+  async function journalPage(id, params) {
+    const after = boundedInteger(params, 'after', 0, 1000000000);
+    const offset = boundedInteger(params, 'offset', 0, Number.MAX_SAFE_INTEGER);
+    const limit = boundedInteger(params, 'limit', MAX_ROWS, MAX_ROWS);
+    if (!limit || (params.has('offset') && params.has('after'))) return fail(400, 'invalid_query', 'Use a positive limit and either a line or byte cursor.');
+    return withArtifact(id, 'journal.jsonl', async (handle, opened) => {
+      if (offset > opened.size) return fail(409, 'source_changed', 'The journal has rotated. Restart its cursor.');
+      if (offset) {
+        const previous = Buffer.alloc(1); await handle.read(previous, 0, 1, offset - 1);
+        if (previous[0] !== 10) return fail(400, 'invalid_query', 'The byte cursor must follow a complete line.');
+      }
+      let position = offset, carry = Buffer.alloc(0), skipped = 0, outputSize = 0, nextOffset = offset;
+      const selected = [], chunk = Buffer.alloc(65536);
+      while (position < opened.size) {
+        // Memory and work are bounded independently of the journal's total size.
+        if (position - offset >= 256 * 1024 * 1024) return fail(413, 'cursor_required', 'Use the returned byte cursor for deep journal pages.');
+        const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, opened.size - position), position);
+        if (!bytesRead) break;
+        position += bytesRead;
+        carry = Buffer.concat([carry, chunk.subarray(0, bytesRead)]);
+        let consumed = 0, end;
+        while ((end = carry.indexOf(10, consumed)) !== -1) {
+          const line = carry.subarray(consumed, end + 1);
+          const lineEnd = position - carry.length + end + 1;
+          consumed = end + 1;
+          if (skipped < after) { skipped++; nextOffset = lineEnd; continue; }
+          if (selected.length === limit) return { body: Buffer.concat(selected), next: after + selected.length, nextOffset, hasMore: true };
+          outputSize += line.length;
+          if (line.length > 1024 * 1024 || outputSize > maxFileBytes) return fail(413, 'artifact_too_large', 'The journal page exceeds the bounded response size.');
+          rawJson(line.toString('utf8')); selected.push(Buffer.from(line)); nextOffset = lineEnd;
+        }
+        carry = Buffer.from(carry.subarray(consumed));
+        if (carry.length > 1024 * 1024) return fail(413, 'artifact_too_large', 'A journal line exceeds the supported size.');
+      }
+      // An unfinished trailing line is intentionally omitted; its cursor is retained.
+      return { body: Buffer.concat(selected), next: after + selected.length, nextOffset, hasMore: false };
+    });
+  }
+
   async function ids() {
     const entries = await readdir(base, { withFileTypes: true });
     const directories = entries.filter(entry => entry.isDirectory() && !entry.isSymbolicLink() && ID.test(entry.name));
-    if (directories.length > 500) return fail(413, 'too_many_runs', 'The configured root exceeds the supported run count.');
+    if (directories.length > 5000) return fail(413, 'too_many_runs', 'The configured root exceeds 5000 directories; archive older roots.');
     return directories.map(entry => entry.name).sort();
   }
 
@@ -121,47 +165,51 @@ export async function createReadApi({ root, synthetic = false, now = Date.now, p
       if (parts.some(part => part === '.' || part === '..')) return fail(400, 'invalid_path', 'Invalid artifact path.');
       const [kind, id, artifact] = parts;
       if (parts.length > 3 || !['runs', 'instances'].includes(kind)) return fail(404, 'not_found', 'Unknown read API route.');
-      const permitted = artifact === 'journal' ? ['after', 'limit'] : artifact === 'equity' ? ['every', 'after', 'limit'] : artifact === 'metrics' ? ['name', 'after', 'limit'] : artifact in CSV_FILES ? ['after', 'limit'] : [];
+      const permitted = !id || (kind === 'runs' && id === 'index' && !artifact) ? ['after','limit'] : artifact === 'journal' ? ['after', 'offset', 'limit'] : artifact === 'equity' ? ['every', 'after', 'limit'] : artifact === 'metrics' ? ['name', 'after', 'limit'] : artifact in CSV_FILES ? ['after', 'limit'] : [];
       for (const key of url.searchParams.keys()) if (!permitted.includes(key) || url.searchParams.getAll(key).length !== 1) return fail(400, 'invalid_query', 'Unsupported or duplicate query parameter.');
       if (id && !ID.test(id)) return fail(400, 'invalid_id', 'Invalid run or instance identifier.');
 
       if (!id) {
-        if (kind === 'runs') {
-          const index = await read('', 'index.csv', true);
-          if (index !== null) return respond(res, 200, json(parseCsv(index)), undefined, {}, head);
-          const summaries = [];
-          for (const entry of await ids()) {
+        const directories = await ids(), selected = [];
+        const after = boundedInteger(url.searchParams, 'after', 0, 5000), limit = boundedInteger(url.searchParams, 'limit', 500, 500);
+        if (!limit) return fail(400, 'invalid_query', 'The limit must be positive.');
+        let matches = 0, size = 0, more = false;
+        for (const entry of directories) {
+          let item;
+          if (kind === 'runs') {
             const summary = await read(entry, 'summary.json', true);
-            if (summary !== null) summaries.push(rawJson(summary));
+            if (summary === null) continue;
+            item = rawJson(summary);
+          } else {
+            const heartbeat = await read(entry, 'heartbeat', true);
+            if (heartbeat === null) continue;
+            const source = await read(entry, 'status.json', true);
+            const status = source === null ? null : JSON.parse(rawJson(source));
+            if (source !== null && (!status || Array.isArray(status) || typeof status.mode !== 'string' || typeof status.label !== 'string')) return fail(503, 'source_incomplete', 'The instance status is missing its mode or label.');
+            item = `{"id":${json(entry)},"mode":${json(status?.mode ?? null)},"label":${json(status?.label ?? null)},"heartbeat":${json(heartbeatFrom(heartbeat, now()))},"status":${source ?? 'null'}}`;
           }
-          return respond(res, 200, `[${summaries.join(',')}]`, undefined, {}, head);
+          if (matches++ < after) continue;
+          if (selected.length === limit) { more = true; break; }
+          size += Buffer.byteLength(item) + 1;
+          if (size > maxFileBytes) return fail(413, 'artifact_too_large', 'Use a smaller listing page.');
+          selected.push(item);
         }
-        const instances = [];
-        for (const entry of await ids()) {
-          const heartbeat = await read(entry, 'heartbeat', true);
-          if (heartbeat === null) continue;
-          const source = rawJson(await read(entry, 'status.json'));
-          const status = JSON.parse(source);
-          if (!status || Array.isArray(status) || typeof status.mode !== 'string' || typeof status.label !== 'string') return fail(503, 'source_incomplete', 'The instance status is missing its mode or label.');
-          instances.push(`{"id":${json(entry)},"mode":${json(status.mode)},"label":${json(status.label)},"heartbeat":${json(heartbeatFrom(heartbeat, now()))},"status":${source}}`);
-        }
-        return respond(res, 200, `[${instances.join(',')}]`, undefined, {}, head);
+        return respond(res, 200, `[${selected.join(',')}]`, undefined, { 'X-Next-After': String(after + selected.length), 'X-Has-More': String(more), ...(directories.length > 500 ? {'X-Result-Warning':'Large artifact root; use pagination.'}: {}) }, head);
+      }
+
+      if (kind === 'runs' && id === 'index' && !artifact) {
+        const rows = parseCsv(await read('', 'index.csv'));
+        const after = boundedInteger(url.searchParams, 'after', 0, 1000000000), limit = boundedInteger(url.searchParams, 'limit', MAX_ROWS, MAX_ROWS);
+        if (!limit) return fail(400, 'invalid_query', 'The limit must be positive.');
+        const selected = rows.slice(after, after + limit), next = after + selected.length;
+        return respond(res, 200, json(selected), undefined, {'X-Next-After':String(next),'X-Has-More':String(next < rows.length)}, head);
       }
 
       if (kind === 'instances') {
         await read(id, 'heartbeat');
         if (artifact === 'journal') {
-          const source = await read(id, 'journal.jsonl');
-          const lines = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
-          // Ignore only an incomplete final line while the bot is appending.
-          if (lines.length && !lines.at(-1).endsWith('\n')) lines.pop();
-          const after = boundedInteger(url.searchParams, 'after', 0, 1000000000);
-          const limit = boundedInteger(url.searchParams, 'limit', MAX_ROWS, MAX_ROWS);
-          if (!limit) return fail(400, 'invalid_query', 'The limit must be positive.');
-          const selected = lines.slice(after, after + limit);
-          for (const line of selected) rawJson(line);
-          const next = after + selected.length;
-          return respond(res, 200, selected.join(''), 'application/x-ndjson; charset=utf-8', { 'X-Next-After': String(next), 'X-Has-More': String(next < lines.length) }, head);
+          const page = await journalPage(id, url.searchParams);
+          return respond(res, 200, page.body, 'application/x-ndjson; charset=utf-8', { ...(!url.searchParams.has('offset') ? {'X-Next-After':String(page.next)} : {}), 'X-Next-Offset':String(page.nextOffset), 'X-Has-More': String(page.hasMore) }, head);
         }
         if (!['status', 'state', 'metrics.prom'].includes(artifact)) return fail(404, 'not_found', 'Unknown instance artifact.');
       } else {

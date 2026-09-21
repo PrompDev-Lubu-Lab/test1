@@ -6,49 +6,49 @@
     {
       "source": "desktop/landscape.css",
       "destination": "public/assets/caseforge/landscape.css",
-      "sha256": "ec08ddbf8822f8c3b3e5d5e1de9e5ba0debe9a4b7b21a212df2c664763f85ad5",
+      "sha256": "35cc81cb7ede927768344bb26f619978e716e2af16ced4f0f26a460dbeda2bd2",
       "modified": false
     },
     {
       "source": "desktop/landscape.js",
       "destination": "public/assets/caseforge/landscape.js",
-      "sha256": "9eb582576a404615ad08b3b5173083209fe67289b4f6e9a0c4b5788a37f34de7",
+      "sha256": "412e44b8568883aeaaead599eeaf0e8200eb4612c04c8b3f0f96bd781ef34c75",
       "modified": false
     },
     {
       "source": "desktop/scene-time.js",
       "destination": "public/assets/caseforge/scene-time.js",
-      "sha256": "559a4714656df82bbac2600e61baf27c7790793e99bff56a276e57cc940cc652",
+      "sha256": "10b6080ffab404fbba6382fa44ea6f1af5042e0601220a5f29f497c69ee42dc2",
       "modified": false
     },
     {
       "source": "desktop/onboarding.css",
       "destination": "public/assets/caseforge/onboarding.css",
-      "sha256": "fafd55c0711cd98903d10652daee6e7f52de3d81bb63d046fabb3c77b701ca81",
+      "sha256": "403f9f781fe8b282122ca56608e6aaeddd6e08a43fe201098283dbca389bba28",
       "modified": false
     },
     {
       "source": "desktop/terms.css",
       "destination": "public/assets/caseforge/terms.css",
-      "sha256": "3892f4fdafec716f223445055cf183fb1bb7f7d24d4c9359ea9542c2e0936c50",
+      "sha256": "cb969235fc051b20361a8fbd5a8b5ac3d0751ed3cb902fe698ccfd25253ec59c",
       "modified": false
     },
     {
       "source": "desktop/entry-flow.js",
       "destination": "public/assets/caseforge/entry-flow.js",
-      "sha256": "28238ebf8969cb4a4a4282f4eb8afdf5c53a092971abd93fbd9f2bc89a8f34f7",
+      "sha256": "dd91c438293447b5cf5ecd287a4c5957ed6245f8728fed056617f45b20663a98",
       "modified": false
     },
     {
       "source": "desktop/scene-controls.css",
       "destination": "public/assets/caseforge/scene-controls.css",
-      "sha256": "24d88ee69bcd7a73bd4fb494dfbde73706ec5b346e3b5ebebb13dfc1ce731590",
+      "sha256": "3268d8cab6b90baa2f0d76e88954843b9dc845510c03355e12aad727481c0ca5",
       "modified": false
     },
     {
       "source": "app/public/topbar.css",
       "destination": "public/assets/caseforge/topbar.css",
-      "sha256": "2e2a259b2f27269fa1e7827ab67c280e5b850506debe89f7cc55cec63de9fcc6",
+      "sha256": "cc232e63529c526370d653174168deb3293f1a8b012f1f85e1d396f2652d281b",
       "modified": false
     },
     {
@@ -66,20 +66,21 @@
     {
       "source": "desktop/fonts/LICENSE-Ubuntu-UFL.txt",
       "destination": "licenses/LICENSE-Ubuntu-UFL.txt",
-      "sha256": "0cebe8aa1ba75c4fdf57946d6109ed0a8ce12ae6bb420bad4e4f302c5c147d78",
+      "sha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002",
       "modified": false
     },
     {
       "source": "desktop/fonts/LICENSE-Quicksand-OFL.txt",
       "destination": "licenses/LICENSE-Quicksand-OFL.txt",
-      "sha256": "192841c2ec18e24b21cf156c443358e30152881d413d5cc9cb37d974d2415e3c",
+      "sha256": "4dbe0136ddbf96482920413247fb5af7a85aa0bec61ec597d3b867b16c7b9338",
       "modified": false
     },
     {
       "source": "LICENSE",
       "destination": "licenses/CASE-FORGE-MIT.txt",
-      "sha256": "7144d95de0bcf1f75b2622046f5f165acbaa1e4e7085f687ebf826ac473fcc30",
+      "sha256": "8189df863d817d3f884a244e1d81646e17b2846b7c815b67ba2afaf3a73edf54",
       "modified": false
     }
-  ]
+  ],
+  "hash_basis": "Original Git blob bytes; imported files disable line-ending conversion."
 }

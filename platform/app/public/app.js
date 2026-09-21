@@ -51,6 +51,19 @@ async function api(path, options = {}) {
   if (options.withMeta) return {body,dataSource:response.headers.get('X-Data-Source'),nextAfter:response.headers.get('X-Next-After'),hasMore:response.headers.get('X-Has-More') === 'true'};
   return body;
 }
+async function listing(path) {
+  const records = []; let after = 0;
+  for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
+    const page = await api(`${path}?after=${after}&limit=500`,{withMeta:true});
+    if (!Array.isArray(page.body)) throw new Error('The listing response is invalid.');
+    records.push(...page.body);
+    if (!page.hasMore) return records;
+    const next = Number(page.nextAfter);
+    if (!Number.isSafeInteger(next) || next <= after || records.length > 5000) throw new Error('The listing cursor is invalid. Refresh the workspace.');
+    after = next;
+  }
+  throw new Error('This artifact root exceeds the supported listing size.');
+}
 const tag = text => `<span class="tag">${escape(text)}</span>`;
 const button = (text, tab, style = 'text-button') => `<button class="${style}" data-tab="${tab}">${escape(text)}${icon('arrow')}</button>`;
 function empty(title, detail, glyph = 'folder', label = 'NOT AVAILABLE') {
@@ -165,7 +178,7 @@ async function refresh() {
   if (!entered || loading) return;
   loading = true; $('refresh-data').disabled = true;
   data.errors = [];
-  const [runsResult,instancesResult] = await Promise.allSettled([api('/runs'),api('/instances')]);
+  const [runsResult,instancesResult] = await Promise.allSettled([listing('/runs'),listing('/instances')]);
   data.runsAvailable = runsResult.status === 'fulfilled' && Array.isArray(runsResult.value);
   data.instancesAvailable = instancesResult.status === 'fulfilled' && Array.isArray(instancesResult.value);
   data.runs = data.runsAvailable ? runsResult.value : [];
@@ -209,7 +222,7 @@ $('account-continue').addEventListener('click',async () => {
   if (!runtime.syntheticPreview) return;
   window.CaseForgeEntry.show('preferences',true);
   $('connection-status').textContent = 'Checking the read-only Run API…';
-  try { const records = await api('/runs'); $('connection-status').textContent = Array.isArray(records) ? `${records.length} saved runs available. All preview data is synthetic.` : 'The API returned an unexpected response.'; }
+  try { const records = await listing('/runs'); $('connection-status').textContent = `${records.length} saved runs available. All preview data is synthetic.`; }
   catch { $('connection-status').textContent = 'Run API not yet connected. You can enter the shell and retry when it is ready.'; }
 });
 $('connection-continue').addEventListener('click',() => window.CaseForgeEntry.show('ready',true));

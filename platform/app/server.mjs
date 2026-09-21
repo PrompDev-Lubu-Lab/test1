@@ -34,9 +34,9 @@ export function createAppServer({syntheticPreview = false,apiOrigin = 'http://12
         if (!readonlyPaths.test(path) || path.split('/').some(part => part === '..' || part === '.')) return sendJSON(res,404,{error:'not_found',detail:'This read-only endpoint is not available.'});
         const target = new URL(path,upstream);
         for (const [key,value] of url.searchParams) {
-          if (!['every','after','limit','name'].includes(key) || value.length > 100 || url.searchParams.getAll(key).length !== 1) return sendJSON(res,400,{error:'invalid_query',detail:'The query is not supported.'});
-          const maximum = {every:1000000,after:1000000000,limit:10000}[key];
-          if (maximum !== undefined && (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) > maximum || (key !== 'after' && Number(value) === 0))) return sendJSON(res,400,{error:'invalid_query',detail:'The pagination value is outside the supported range.'});
+          if (!['every','after','offset','limit','name'].includes(key) || value.length > 100 || url.searchParams.getAll(key).length !== 1) return sendJSON(res,400,{error:'invalid_query',detail:'The query is not supported.'});
+          const maximum = {every:1000000,after:1000000000,offset:Number.MAX_SAFE_INTEGER,limit:10000}[key];
+          if (maximum !== undefined && (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) > maximum || (!['after','offset'].includes(key) && Number(value) === 0))) return sendJSON(res,400,{error:'invalid_query',detail:'The pagination value is outside the supported range.'});
           target.searchParams.append(key,value);
         }
         let response;
@@ -49,7 +49,7 @@ export function createAppServer({syntheticPreview = false,apiOrigin = 'http://12
           parts.push(part);
         }
         const headers = {'Content-Type':response.headers.get('Content-Type') || MIME['.json']};
-        for (const name of ['X-Data-Source','X-Next-After','X-Has-More']) {
+        for (const name of ['X-Data-Source','X-Next-After','X-Next-Offset','X-Has-More','X-Result-Warning']) {
           const value = response.headers.get(name);
           if (value !== null) headers[name] = value;
         }

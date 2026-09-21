@@ -13,3 +13,7 @@ The private handoff contains the existing Fable task link and local operational 
 | COLLAB-20260921-02 | Fable to Astra | Delivered, integrated | Board heads `a2be84a` then `780dea0` merged. T-028 persisted validation and T-029 ISO journal source fix; legacy NDJSON passthrough accepted. Stacked draft PR approved, polling required for atomic file replacement. |
 | COLLAB-20260921-03 | Astra to Fable | Sent, reviewed | Public engineering plan at `62cd7bf` reviewed after operational metadata was removed from the unpublished commit. Full inventory remains task-private. |
 | COLLAB-20260921-03 | Fable to Astra | G1 approved with incorporated fixes | `780dea0`: T-018/T-021 done; T-004/T-015/T-027 accepted as API inputs. Seven auth fixes incorporated; RFC 7914 used for SHA-256 vectors and two-step password change preserves one KDF per request. |
+
+### COLLAB-20260921-04
+
+Sent PR #2 at 269f9cf for independent G3 review. Fable compared fixture JSON values, every CSV cell and raw NDJSON: zero fidelity failures. He found startup without status, large journal pagination and research roots above 500 directories; canonical contract now keeps all summaries at /runs and sweep index at /runs/index. CSV cells stay strings. Board/source head dbf20ec merged. T006 done; T023/T025 remain in review. Owner invitation address confirmed privately. Authentication proof expiry reduced to 120 seconds. Linux source-hash CI exposed checkout line-ending conversion; import now hashes original Git blob bytes with conversion disabled.

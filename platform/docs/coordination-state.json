@@ -1,14 +1,14 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T04:59:15.643223+00:00",
-  "phase": "board-fixes-and-desktop-preparation",
+  "updated_at": "2026-09-21T05:47:06.339981+00:00",
+  "phase": "desktop-peer-review",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "5afb23d",
+  "last_merged_board_head": "54ec475",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-08",
-  "last_processed_reply": "COLLAB-20260921-08 / M3 accepted, board B1-B2 required, M5 HTTPS BrowserWindow design accepted",
+  "last_sent_round": "COLLAB-20260921-09",
+  "last_processed_reply": "COLLAB-20260921-09 / B1-B3 approved, M5 same-origin/signing design accepted",
   "pending_reply": null,
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
@@ -25,6 +25,7 @@
     "real_market_backtest": false,
     "platform_deployed": false,
     "mailbox_real_signin_verified": false,
-    "mailbox_real_delivery_verified": false
+    "mailbox_real_delivery_verified": false,
+    "unsigned_windows_package_built": true
   }
 }

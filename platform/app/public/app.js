@@ -5,6 +5,7 @@ import { createAccountUI } from './account-ui.js';
 import { heartbeatFreshness } from './freshness.js';
 import { createBoardUI } from './board-ui.js';
 import { createEventClient } from './event-client.js';
+import { validateDownload } from './downloads.js';
 
 // Emailed credentials leave the address before any UI or external widget loads.
 const incomingAccountLink = consumeTokenFragment(window.location,window.history);
@@ -201,8 +202,11 @@ function syncEventConnection() {
     }});
   eventController.start();
 }
-function downloads() {
-  return `<section class="panel empty-state"><span class="empty-icon">${icon('downloads')}</span>${tag('PREPARATION ONLY')}<h2>A desktop home for the same workspace.</h2><p>The Electron source shares this interface. A distributable installer, publisher signature and update feed have not been produced or verified.</p><button class="secondary" disabled>${icon('downloads')}Installer not published</button></section><section class="panel"><div class="panel-head"><h2>Release readiness</h2></div><div class="panel-body">${kv([['Shared interface','Prepared in source'],['Native host','Prepared; native execution not yet verified'],['Installer','Not built'],['Publisher signature','Not configured'],['Update feed','Not connected'],['Installed upgrade','Not tested']])}</div></section>`;
+async function downloads() {
+  const desktop=window.platformDesktop?.isDesktop===true;
+  if(entryMode!=='account' || accountController?.getConfig()?.features.downloads!==true) return `<section class="panel empty-state"><span class="empty-icon">${icon('downloads')}</span>${tag('COMING SOON')}<h2>A desktop home for the same workspace.</h2><p>A signed Windows installer will appear here once the release is ready.</p><button class="secondary" disabled>Installer not published</button></section>`;
+  const release=validateDownload(await accountController.client.request('/downloads'));
+  return `<section class="panel"><div class="panel-head"><div><h2>Windows desktop</h2><p>Version ${escape(release.version)} · ${(release.size/1048576).toFixed(1)} MB</p></div>${tag('WINDOWS 64-BIT')}</div><div class="panel-body"><p>${escape(release.notes || 'The latest desktop release for your private workspace.')}</p><p>Published ${escape(release.released_at)}</p>${desktop ? '<p>Choose Check for updates in the application menu to download, verify and install this release.</p>' : `<a class="secondary" href="${escape(release.url)}" download>${icon('downloads')}Download for Windows</a>`}<p>macOS and Linux packages are being prepared.</p></div></section>`;
 }
 function settings() {
   if (entryMode === 'account' && accountController?.getUser()) return '<div id="account-profile"></div>';

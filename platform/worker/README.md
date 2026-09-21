@@ -58,3 +58,7 @@ Use `--local` only for an explicitly configured local database. The command refu
 If the first invitation link is lost, inspect the exact unaccepted `deandre` owner-invite row in the private staging database. An authorized operator may expire that exact digest while no users exist, verify one row changed, then rerun the script. Do not delete account rows, expire every invitation, or rerun after an uncertain SQL result without inspecting state. Ordinary completed account setup uses the normal password-reset flow.
 
 Limiter upgrades must preserve active counters through an explicit reviewed migration. Unknown/corrupt persisted state fails closed; it is not silently reset. The current v2 storage key has never been deployed, so no production migration is needed for this revision.
+
+## Protected desktop downloads
+
+`DOWNLOADS_READY=verified` and a private `RELEASES` R2 binding enable `/api/downloads` and fixed GET/HEAD paths under `/api/updates/windows/x64/`. Current Access, app session and terms apply. `/api/me` reports `authentication_expires_at` as the earlier Access/session expiry for the native update lease. Read `../docs/DESKTOP-RELEASES.md` for object layout, scope and publication gates. The actual local workerd/R2 probe is recorded in `../docs/downloads-runtime-results.json`; installer GET is streamed without Content-Length, HEAD preserves size, and exact bytes were verified. Full downloads only; range requests return416. No release bucket or platform route has been activated by these source changes.

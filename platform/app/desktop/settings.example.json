@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "channel": "review",
+  "appOrigin": "https://app.example.test",
+  "accessOrigin": "https://example.cloudflareaccess.com",
+  "externalOrigins": [],
+  "updatesEnabled": false,
+  "publisherNames": [],
+  "certificateThumbprints": []
+}

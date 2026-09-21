@@ -3,6 +3,7 @@ import { AccountStore } from './store.mjs';
 import { avatarReady, uploadAvatar } from './avatar.mjs';
 import { eventReady, openEventStream } from './events.mjs';
 import { boardReady, readBoard, mutateBoard } from './board.mjs';
+import { downloadsReady, readDownloadCatalog, serveRelease } from './downloads.mjs';
 import { hexToBytes } from '@noble/hashes/utils.js';
 import { createKdfBudget, verifyAccess, verifyTurnstile, randomToken, digestToken, normalizeEmail, readJsonLimited, equalDigest } from './security.mjs';
 export { AuthLimiter } from './limiter.mjs';
@@ -99,7 +100,8 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
       if (url.origin !== env.APP_ORIGIN) deny(403, 'host_denied', 'This hostname is not enabled.');
       route = url.pathname.startsWith('/api/') ? url.pathname.slice(4) : url.pathname;
       const mutation = !['GET', 'HEAD'].includes(request.method);
-      if (!['GET', 'POST', 'PATCH', 'PUT'].includes(request.method)) deny(405, 'method_not_allowed', 'Unsupported request method.');
+      const releaseRoute = route.startsWith('/updates/windows/x64/');
+      if (releaseRoute ? !['GET','HEAD'].includes(request.method) : !['GET','POST','PATCH','PUT'].includes(request.method)) deny(405, 'method_not_allowed', 'Unsupported request method.');
       if (request.headers.get('Origin') && request.headers.get('Origin') !== env.APP_ORIGIN) deny(403, 'origin_denied', 'This origin is not allowed.');
       let body = null;
       if (mutation) {
@@ -125,7 +127,7 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
 
       if (request.method === 'GET' && route === '/config') {
         if (typeof env.TURNSTILE_SITE_KEY !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(env.TURNSTILE_SITE_KEY)) deny(503, 'configuration_required', 'Account access has not been configured.');
-        return finish({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), events: eventReady(env), board: boardReady(env), downloads: false } });
+        return finish({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), events: eventReady(env), board: boardReady(env), downloads: downloadsReady(env) } });
       }
 
       if (request.method === 'POST' && route === '/auth/signup') {
@@ -199,7 +201,7 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
       // Bound authenticated writes too. Polling reads do not consume this allowance.
       // A valid one-use revocation must remain possible even after login quotas fill.
       if (mutation && !reservation && !['/auth/logout','/auth/logout-all'].includes(route)) reservation = await reserve(request, env, `user:${user.id}`, 'write');
-      if (request.method === 'GET' && route === '/me') return finish({ user: await userView(store,user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION) });
+      if (request.method === 'GET' && route === '/me') return finish({ user: await userView(store,user), csrf, terms_required: !await store.terms(user.id, TERMS_VERSION), authentication_expires_at: Math.min(access.exp,user.session_expires_at) });
       if (request.method === 'GET' && route === '/terms') return finish({ version: TERMS_VERSION, text: TERMS_TEXT, content_hash: await digestToken(TERMS_TEXT) });
       if (request.method === 'POST' && route === '/terms/accept') {
         if (body.version !== TERMS_VERSION) deny(409, 'terms_changed', 'Read the current terms before accepting.');
@@ -214,6 +216,12 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
         return finish({ signed_out: true }, 200, { 'Set-Cookie': clearCookie() });
       }
       if (!await store.terms(user.id, TERMS_VERSION)) deny(403, 'terms_required', 'Accept the current terms to enter the workspace.');
+      if (releaseRoute || (route === '/downloads' && request.method === 'GET')) {
+        const options = { authorize: async () => access.exp > epoch()
+          && Boolean(await store.session(sessionHash,access.sub,epoch()))
+          && Boolean(await store.terms(user.id,TERMS_VERSION)) };
+        return releaseRoute ? await serveRelease(request,env,options) : finish(await readDownloadCatalog(env,options));
+      }
       if (request.method === 'PATCH' && route === '/me') {
         if (Object.keys(body).some(key => key !== 'display_name')) deny(400, 'invalid_profile', 'Only the display name can be changed here.');
         if (!await store.profile(user.id, nameValue(body.display_name), epoch(), guard)) deny(401, 'login_required', 'Account state changed. Sign in again.');

@@ -26,6 +26,9 @@ jobs:
       - name: Check read-only contract and boundaries
         working-directory: platform/api
         run: npm test
+      - name: Install pinned desktop dependencies without lifecycle scripts
+        working-directory: platform/app
+        run: npm ci --ignore-scripts --no-fund
       - name: Check UI source provenance and syntax
         working-directory: platform/app
         run: npm run check

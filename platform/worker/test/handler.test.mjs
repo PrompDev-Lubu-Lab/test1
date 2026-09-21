@@ -229,3 +229,38 @@ test('board-only sixty-four-KiB transport accepts long text plus its base while 
   assert.equal((await h.call('/board/tasks',{...session,method:'POST',body:{...body,padding:'x'.repeat(65536)}})).status,413);assert.equal(adapter.puts,1);
   assert.equal((await h.call('/auth/login',{method:'POST',body:{email:'owner@example.test',password,turnstile:'login',padding:'x'.repeat(8192)}})).status,413);
 });
+
+
+test('protected releases require signed Access, current session and accepted terms before touching R2',async t=>{
+  const h=harness(t);let heads=0,gets=0;
+  const bytes=new TextEncoder().encode('version: 0.1.1\n');
+  const object={key:'releases/windows/x64/latest.yml',size:bytes.length,etag:'synthetic-etag',httpEtag:'"synthetic-etag"',version:'synthetic-object-v1'};
+  h.env.DOWNLOADS_READY='verified';
+  h.env.RELEASES={head:async()=>{heads++;return object;},get:async()=>{gets++;return {...object,body:new Response(bytes).body};}};
+  await h.seed();const session=await h.login();
+  assert.equal((await h.call('/updates/windows/x64/latest.yml',session)).status,403);assert.equal(heads,0);
+  await h.accept(session);
+  assert.equal((await h.call('/updates/windows/x64/latest.yml',{...session,token:'invalid'})).status,403);assert.equal(heads,0);
+  const response=await h.call('/updates/windows/x64/latest.yml',session);assert.equal(response.status,200);assert.equal(await response.text(),'version: 0.1.1\n');assert.equal(gets,1);
+  const head=await h.call('/updates/windows/x64/latest.yml',{...session,method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal(gets,1);
+  assert.equal((await h.call('/updates/windows/x64/latest.yml',{...session,method:'POST',body:{}})).status,405);
+  await h.call('/auth/logout-all',{...session,method:'POST',body:{}});
+  assert.equal((await h.call('/updates/windows/x64/latest.yml',session)).status,401);assert.equal(gets,1);
+});
+
+test('release authorization is rechecked after R2 metadata so a revoked session gets no bytes',async t=>{
+  const h=harness(t);await h.seed();const session=await h.login();await h.accept(session);let gets=0;
+  h.env.DOWNLOADS_READY='verified';
+  h.env.RELEASES={head:async()=>{await h.db.prepare('DELETE FROM sessions').run();return {key:'releases/windows/x64/latest.yml',size:10,etag:'e',httpEtag:'"e"',version:'v'};},get:async()=>{gets++;throw new Error('must not fetch');}};
+  assert.equal((await h.call('/updates/windows/x64/latest.yml',session)).status,401);assert.equal(gets,0);
+});
+
+
+test('session preflight reports the earlier Access and app-session expiry',async t=>{
+  const h=harness(t);await h.seed();const session=await h.login();
+  const token=await h.jwt('owner-sub');const accessExpiry=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')).exp;
+  const response=await h.call('/me',{...session,token});assert.equal(response.status,200);
+  assert.equal((await response.json()).authentication_expires_at,accessExpiry);
+  const sessionExpiry=now()+20;await h.db.prepare('UPDATE sessions SET expires_at=?').bind(sessionExpiry).run();
+  assert.equal((await (await h.call('/me',{...session,token})).json()).authentication_expires_at,sessionExpiry);
+});

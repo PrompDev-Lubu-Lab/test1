@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-09-21T05:44:00.413Z",
+  "channel": "review",
+  "version": "0.1.0",
+  "artifact": "clawdie-platform-0.1.0-win-x64-UNSIGNED-DEVELOPMENT.exe",
+  "size": 111566442,
+  "sha512": "tWBlEBn1ig+Tg6jrx2QuRMs4WKLUtx8BLdWJSA4HlqzbaFGhugtsupv63fmHWbBJXJf2fhZvuqUdQbKm1GAmsw==",
+  "checks": {
+    "required_fuses": true,
+    "embedded_policy": true,
+    "packaged_version": true,
+    "private_source_excluded": true,
+    "publisher_signature": "not-required-development",
+    "installed_upgrade": "pending",
+    "native_authenticode_status": "NotSigned"
+  },
+  "scope": "Local unsigned development package; no install, signed release or publication."
+}

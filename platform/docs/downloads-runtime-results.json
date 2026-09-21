@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-09-21T05:42:15.196Z",
+  "scope": "Local workerd with a real Miniflare R2 binding and synthetic release bytes. Explicit harness authorization only; no real Access, D1 sessions, accounts, production R2, public deployment, signing or updater installation was tested.",
+  "node": "v24.19.0",
+  "miniflare": "5.20260918.0-alpha",
+  "workerd": "1.20260918.1",
+  "esbuild": "0.28.1",
+  "runtime": {
+    "compatibility_date": "2026-09-21",
+    "compatibility_flags": [
+      "nodejs_compat"
+    ],
+    "host": "127.0.0.1",
+    "cf": false,
+    "persistent_storage_configured": false
+  },
+  "checks": {
+    "actual_r2_binding": true,
+    "installer_byte_exact": true,
+    "manifest_byte_exact": true,
+    "installer_head_no_body": true,
+    "manifest_head_no_body": true,
+    "private_no_store": true,
+    "safe_response_headers": true,
+    "catalog_metadata_and_relative_path": true,
+    "catalog_not_downloadable": true,
+    "disabled_gate_rejected": true,
+    "harness_authorization_denial_rejected": true,
+    "missing_authorize_callback_rejected": true,
+    "single_and_multi_ranges_rejected_416": true,
+    "if_range_rejected_416": true,
+    "write_method_rejected": true,
+    "missing_file_rejected": true,
+    "encoded_separator_rejected": true,
+    "installer_query_rejected": true
+  },
+  "content_length": {
+    "installer_get": {
+      "expected": 131109,
+      "observed": null,
+      "preserved": false
+    },
+    "installer_head": {
+      "expected": 131109,
+      "observed": 131109,
+      "preserved": true
+    },
+    "manifest_get": {
+      "expected": 329,
+      "observed": 329,
+      "preserved": true
+    },
+    "manifest_head": {
+      "expected": 329,
+      "observed": 329,
+      "preserved": true
+    }
+  },
+  "limitations": [
+    "Local harness checks are not evidence of real Access or account authorization.",
+    "The first delivery implementation deliberately supports complete downloads only.",
+    "No signed executable, electron-updater client, live Cloudflare edge or cache was exercised."
+  ]
+}

@@ -166,4 +166,9 @@ responses, exact source values and run switching. Test real Turnstile, emailed
 links, Access renewal, account sessions, terms, profile changes and picture uploads
 against the configured Worker before production enablement. Browser QA was not
 completed in this source task: Chrome blocked the local preview URL. Native account
-sign-in/token refresh, packaging and signed updates are separate release tasks.
+sign-in and the installed signed upgrade remain acceptance gates. Packaging and
+protected update source are documented in `../docs/DESKTOP-RELEASES.md`.
+
+## Desktop package preparation
+
+Use Node24 and `npm ci --ignore-scripts --no-fund`, then `npm run package:review` and `node scripts/verify-package.mjs --review` for the unsigned Windows development installer. It uses the example origin and cannot update itself. The production host uses the protected HTTPS app and current browser sessions; unpackaged development keeps cookies in memory. Read `../docs/DESKTOP-RELEASES.md` before configuring or signing a real release. No Case Forge installation or release is changed.

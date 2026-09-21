@@ -4,6 +4,7 @@ const LINK_KINDS = new Set(['invite','verify','reset','email-change']);
 const ROUTES = new Map([
   ['/config',{method:'GET'}],['/me',{method:'GET',session:true}],['/terms',{method:'GET',session:true}],
   ['/board/tasks',{method:'GET',session:true}],['/board/notes',{method:'GET',session:true}],
+  ['/downloads',{method:'GET',session:true}],
   ['/auth/signup',{method:'POST',challenge:true}],['/auth/login',{method:'POST',challenge:true}],
   ['/auth/forgot',{method:'POST',challenge:true}],['/auth/resend',{method:'POST',challenge:true}],
   ['/auth/verify',{method:'POST',challenge:true}],['/auth/reset',{method:'POST',challenge:true}],

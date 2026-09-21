@@ -1,0 +1,90 @@
+name: Platform desktop package
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Unsigned development package or signed release preparation
+        type: choice
+        options: [review, signed]
+        default: review
+      release_notes:
+        description: Release notes for the protected Downloads page
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: platform-desktop-packaging
+  cancel-in-progress: false
+jobs:
+  review:
+    if: inputs.mode == 'review'
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: platform/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: npm run package:review
+      - run: node scripts/verify-package.mjs --review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-windows-UNSIGNED-DEVELOPMENT
+          path: |
+            platform/app/release/review/*UNSIGNED-DEVELOPMENT.exe
+            platform/app/release/review/verification.json
+          retention-days: 7
+          if-no-files-found: error
+  signed:
+    # Signing credentials cannot run from a review branch. Configure environment
+    # protection and main-only deployment rules before adding its secrets.
+    if: inputs.mode == 'signed' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    environment: platform-production-signing
+    defaults:
+      run:
+        working-directory: platform/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-fund
+      - run: npm run check
+      - run: npm test
+      - name: Prepare approved deployment policy
+        env:
+          DESKTOP_SETTINGS_JSON: ${{ secrets.DESKTOP_SETTINGS_JSON }}
+        shell: pwsh
+        run: |
+          if (-not $env:DESKTOP_SETTINGS_JSON) { throw 'Desktop policy is required.' }
+          $configurationPath = Join-Path $env:RUNNER_TEMP 'desktop-settings.local.json'
+          Set-Content -LiteralPath $configurationPath -Value $env:DESKTOP_SETTINGS_JSON -Encoding utf8NoBOM
+          "PLATFORM_DESKTOP_CONFIG=$configurationPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build signed Windows installer
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+        run: npm run package:production
+      - name: Verify packaged policy, both signatures, metadata and checksums
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: node scripts/verify-package.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-windows-signed-for-publication-review
+          path: |
+            platform/app/release/production/clawdie-platform-*-win-x64.exe
+            platform/app/release/production/latest.yml
+            platform/app/release/production/catalog.json
+            platform/app/release/production/verification.json
+          retention-days: 14
+          if-no-files-found: error
+      # Publication is a separate controlled operation after the protected
+      # Access/session/R2 round trip in platform/docs/DESKTOP-RELEASES.md.

@@ -143,7 +143,7 @@
     {
       "id": "T-006",
       "title": "Reuse the Case Forge Electron app: choose fork vs shared renderer package, wire the tab shell",
-      "status": "in_progress",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -172,6 +172,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-03: import in progress on codex/platform-app (loopback-only synthetic shell runnable locally)"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-04: pinned MIT import delivered on codex/platform-app 269f9cf (PR #2): 13 source hashes in platform/app/source-manifest.json, MIT and Quicksand/Ubuntu font licences kept"
         }
       ]
     },
@@ -551,6 +556,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-01: added the Electron signing decision"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-04: owner invitation email confirmed by deandre privately (not published). Still open: api./updates. hostnames, agent server access, Electron signing."
         }
       ]
     },
@@ -609,7 +619,7 @@
     {
       "id": "T-023",
       "title": "M1: Electron shell from a pinned clean Case Forge snapshot, wizard, eight empty tabs, {{APP_NAME}} constant",
-      "status": "todo",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -625,6 +635,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-04: shell delivered in PR #2 (platform/app: tab strip, entry flow, scene, terms, APP_NAME constant, loopback-only presentation server with CSP). Browser visual QA pending (Chrome blocked locally). Fable review: proxy allowlist and read-only enforcement read; no findings on the shell."
         }
       ]
     },
@@ -647,13 +662,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-04: desktop path decided in AUTH-DESIGN G1 item 5: human Access token via the official cloudflared login flow plus the app session; no app-session-only route."
         }
       ]
     },
     {
       "id": "T-025",
       "title": "Run API implementation against docs/API.md sections 1-4 using platform/fixtures/synthetic and the live fixture",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -681,6 +701,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-03: dependencies T-004/T-015/T-027 done; API implementation in progress on codex/platform-app"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-04: G3 by deandre-fable on PR #2 head 269f9cf. Independent comparison platform/fixtures/synthetic/compare_api.py: 0 failures over both runs and the live instance (JSON byte-identical, CSV cells strings, journal NDJSON byte-identical, heartbeat raw). Four boundary probes, three confirmed findings, one contract flaw of the contract's own: (F1, must fix) /instances returns 404 for the whole list when any heartbeat directory lacks status.json, which is the bot's normal state for the first heartbeat interval after start ('starting armed' before the first metrics flush): make status.json optional in the listing and return status: null for that instance. (F2, must fix) /instances/<built-in function id>/journal reads the whole file and returns 413 once journal.jsonl exceeds 16 MiB even with limit=10; a paper instance reaches that in weeks (verified with a 22 MB file): read by byte offset or scan lines from the end without loading the whole file; keep the incomplete-tail rule. (F3, should fix) ids() returns 413 for the whole listing above 500 directories; sweeps write one directory per point, so research exceeds this within a month: paginate or raise to at least 5000 with a warning header. (F4, contract corrected in docs/API.md) an index-present /runs listed only indexed runs and hid every plain backtest and validate run (verified: 3 of 4 directories shown); /runs is now always the summary objects of every run directory, and runs/index.csv moves to GET /runs/index. Decisions recorded in docs/API.md: CSV rows are all strings, JSON files keep the bot's types; pagination headers and error codes documented as implemented."
         }
       ]
     },

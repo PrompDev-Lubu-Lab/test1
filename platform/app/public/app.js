@@ -2,6 +2,9 @@ import { APP_NAME, APP_VERSION, TABS } from './config.js';
 import { formatFraction as fraction, runDrawdownFraction, runLabel } from './format.js';
 import { consumeTokenFragment } from './account-client.js';
 import { createAccountUI } from './account-ui.js';
+import { heartbeatFreshness } from './freshness.js';
+import { createBoardUI } from './board-ui.js';
+import { createEventClient } from './event-client.js';
 
 // Emailed credentials leave the address before any UI or external widget loads.
 const incomingAccountLink = consumeTokenFragment(window.location,window.history);
@@ -30,12 +33,13 @@ $('footer-version').textContent = `${APP_VERSION} Beta`;
 $('navigation').innerHTML = TABS.map(name => `<button class="nav" type="button" data-tab="${name.toLowerCase()}">${icon(name.toLowerCase())}<span>${name}</span></button>`).join('');
 
 let runtime = { syntheticPreview: false, access: 'closed' }, entered = false, loading = false;
-let entryMode = 'closed', accountController = null, accessGeneration = 0;
+let entryMode = 'closed', accountController = null, boardController = null, eventController = null, accessGeneration = 0;
 let currentView = 'overview', selectedRun = '', selectedInstance = '', viewRevision = 0, runRevision = 0;
 const data = { runs: [], instances: [], details: null, equity: [], errors: [], runsAvailable: false, instancesAvailable: false, sources:new Set() };
 const syntheticData = () => data.sources.size === 1 && data.sources.has('synthetic-fixtures');
 const sourceLabel = () => syntheticData() ? 'Synthetic fixtures' : data.sources.size === 1 && data.sources.has('bot-artifacts') ? 'Bot artifacts' : data.sources.size > 1 ? 'Mixed data sources' : 'Data source unconfirmed';
 function clearWorkspaceData() {
+  boardController?.dispose();boardController=null;eventController?.stop();eventController=null;
   accessGeneration++;runRevision++;viewRevision++;entered=false;loading=false;$('refresh-data').disabled=false;
   Object.assign(data,{runs:[],instances:[],details:null,equity:[],errors:[],runsAvailable:false,instancesAvailable:false});
   data.sources.clear();$('view').replaceChildren();
@@ -81,7 +85,7 @@ async function api(path, options = {}) {
   const body = await (options.text ? response.text() : response.json());
   if (generation !== accessGeneration) throw new Error('The account view changed.');
   if (/^\/(?:runs|instances)(?:\/|\?|$)/.test(path)) data.sources.add(response.headers.get('X-Data-Source') || 'unconfirmed');
-  if (options.withMeta) return {body,dataSource:response.headers.get('X-Data-Source'),nextAfter:response.headers.get('X-Next-After'),hasMore:response.headers.get('X-Has-More') === 'true'};
+  if (options.withMeta) return {body,dataSource:response.headers.get('X-Data-Source'),nextAfter:response.headers.get('X-Next-After'),nextOffset:response.headers.get('X-Next-Offset'),receivedAtMs:performance.now(),hasMore:response.headers.get('X-Has-More') === 'true'};
   return body;
 }
 async function listing(path) {
@@ -89,13 +93,24 @@ async function listing(path) {
   for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
     const page = await api(`${path}?after=${after}&limit=500`,{withMeta:true});
     if (!Array.isArray(page.body)) throw new Error('The listing response is invalid.');
-    records.push(...page.body);
+    records.push(...(path === '/instances' ? page.body.map(item => ({...item,_receivedAtMs:page.receivedAtMs})) : page.body));
     if (!page.hasMore) return records;
     const next = Number(page.nextAfter);
     if (!Number.isSafeInteger(next) || next <= after || records.length > 5000) throw new Error('The listing cursor is invalid. Refresh the workspace.');
     after = next;
   }
   throw new Error('This artifact root exceeds the supported listing size.');
+}
+function heartbeatBadge(instance) {
+  const state=heartbeatFreshness(instance,performance.now(),syntheticData());
+  return `<span class="tag heartbeat-${state.kind}" data-heartbeat="${escape(instance.id)}">${escape(state.label)}</span>`;
+}
+function updateHeartbeatBadges() {
+  if(!entered)return;
+  document.querySelectorAll('[data-heartbeat]').forEach(node=>{
+    const state=heartbeatFreshness(data.instances.find(item=>item.id===node.dataset.heartbeat),performance.now(),syntheticData());
+    node.className=`tag heartbeat-${state.kind}`;node.textContent=state.label;
+  });
 }
 const tag = text => `<span class="tag">${escape(text)}</span>`;
 const button = (text, tab, style = 'text-button') => `<button class="${style}" data-tab="${tab}">${escape(text)}${icon('arrow')}</button>`;
@@ -133,7 +148,7 @@ function curvePanel() {
   return `<section class="panel"><div class="panel-head"><div><h2>Equity through the run</h2><p>${escape(s.symbol)} · ${escape(time(s.from))} to ${escape(time(s.to))}</p></div>${tag(sourceLabel())}</div><div class="chart-grid">${chart(data.equity)}${kv([['Initial cash',exact(s.initial_cash)],['Final equity',exact(s.final_equity)],['Realized P&L, net',exact(s.realized_pnl_net)],['Fees',exact(s.fees)],['Maximum drawdown',exact(s.max_drawdown)]])}</div></section>`;
 }
 function instancesPanel() {
-  return `<section class="panel"><div class="panel-head"><div><h2>Instance snapshots</h2><p>${syntheticData() ? 'Frozen fixture state' : 'Saved instance state'}</p></div>${button('View all','live')}</div>${data.instances.length ? `<div class="instance-list">${data.instances.slice(0,3).map(instance => `<div class="instance-item"><span class="instance-icon">${icon('live')}</span><div class="instance-copy"><strong>${escape(instance.label || instance.id)}</strong><p>${escape(instance.mode || 'Unknown mode')} · ${syntheticData() ? 'synthetic snapshot' : 'recorded state'}</p></div><div class="instance-value"><strong class="number">${escape(exact(instance.status?.equity))}</strong><p>Reported equity</p></div></div>`).join('')}</div>` : `<div class="panel-body"><p class="muted">${data.instancesAvailable ? 'No instance snapshots were returned.' : 'The instance API is unavailable.'}</p></div>`}<p class="subtle-note">${syntheticData() ? 'These synthetic records do not represent a running bot. Mode and feed state are fixture fields.' : 'Mode and feed state are fields from saved records. Check the recorded time and heartbeat age before treating them as current.'}</p></section>`;
+  return `<section class="panel"><div class="panel-head"><div><h2>Instance snapshots</h2><p>${syntheticData() ? 'Frozen fixture state' : 'Saved instance state'}</p></div>${button('View all','live')}</div>${data.instances.length ? `<div class="instance-list">${data.instances.slice(0,3).map(instance => `<div class="instance-item"><span class="instance-icon">${icon('live')}</span><div class="instance-copy"><strong>${escape(instance.label || instance.id)}</strong><p>${escape(instance.mode || 'Unknown mode')} · ${syntheticData() ? 'synthetic snapshot' : 'recorded state'}</p>${heartbeatBadge(instance)}</div><div class="instance-value"><strong class="number">${escape(exact(instance.status?.equity))}</strong><p>Reported equity</p></div></div>`).join('')}</div>` : `<div class="panel-body"><p class="muted">${data.instancesAvailable ? 'No instance snapshots were returned.' : 'The instance API is unavailable.'}</p></div>`}<p class="subtle-note">${syntheticData() ? 'These synthetic records do not represent a running bot. Mode and feed state are fixture fields.' : 'Mode and feed state are fields from saved records. Check the recorded time and heartbeat age before treating them as current.'}</p></section>`;
 }
 function overview() {
   const s = data.details?.summary;
@@ -157,7 +172,7 @@ async function live() {
   const s = instance.status || {};
   const [state,journal] = await Promise.allSettled([api(`/instances/${encodeURIComponent(instance.id)}/state`),api(`/instances/${encodeURIComponent(instance.id)}/journal?after=0&limit=100`,{text:true,withMeta:true})]);
   const ledger = state.status === 'fulfilled' ? state.value : null;
-  return `<section class="panel"><div class="panel-head"><div><h2>${escape(instance.label || instance.id)}</h2><p>${syntheticData() ? 'Frozen synthetic snapshot' : 'Recorded instance state'} · ${escape(time(s.time || instance.heartbeat?.time))}</p></div><label class="select-field">INSTANCE<select id="instance-select">${data.instances.map(item => `<option value="${escape(item.id)}"${item.id === instance.id ? ' selected' : ''}>${escape(item.label || item.id)}</option>`).join('')}</select></label></div><div class="panel-body">${kv([['Mode field',s.mode || instance.mode],['Feed state field',s.feed?.state || 'Not recorded'],['Heartbeat text',instance.heartbeat?.status || 'Not recorded'],['Heartbeat age (API)',instance.heartbeat?.age_seconds === undefined ? 'Not available' : `${instance.heartbeat.age_seconds} seconds`]])}</div><p class="subtle-note">A healthy field in an old snapshot is not a current health check. There are no start, stop, live-mode or risk-limit controls.</p></section><div class="stat-grid">${stat('Equity',exact(s.equity),syntheticData() ? 'Frozen fixture value' : 'Recorded bot value','chart')}${stat('Cash',exact(s.cash),'Exact decimal string','folder')}${stat('Position',exact(s.position),'Reported quantity','live')}${stat('Open orders',exact(s.open_orders),'Snapshot count','tasks')}</div><div class="two-column"><section class="panel"><div class="panel-head"><h2>Runtime observations</h2>${tag(syntheticData() ? 'FROZEN' : 'SOURCE RECORD')}</div><div class="panel-body">${kv([['Uptime',s.uptime],['Fees',exact(s.fees)],['Realized P&L, net',exact(s.realized_pnl_net)],['Orders',s.orders],['Rejected',s.rejected],['Kill-switch trips',s.kill_switch_trips],['Feed silence',s.feed?.silence]])}</div></section><section class="panel"><div class="panel-head"><h2>Account state</h2>${tag(ledger ? 'SOURCE RECORD' : 'UNAVAILABLE')}</div><div class="panel-body">${ledger ? `<pre class="raw-record">${escape(JSON.stringify(ledger,null,2))}</pre>` : '<p class="muted">The state output is not available.</p>'}</div></section></div><section class="panel"><div class="panel-head"><h2>Journal</h2><span class="muted">Original event fields</span></div><div class="panel-body">${journal.status === 'fulfilled' ? `<pre class="raw-record">${escape(journal.value.body)}</pre>` : '<p class="muted">The journal is not available.</p>'}</div>${journal.status === 'fulfilled' && journal.value.hasMore ? '<p class="subtle-note">Showing the first 100 journal lines. More records are available in the paginated API.</p>' : ''}<p class="subtle-note">Raw NDJSON is displayed unchanged. Legacy nanosecond integers are never parsed or reformatted.</p></section>`;
+  return `<section class="panel"><div class="panel-head"><div><h2>${escape(instance.label || instance.id)}</h2><p>${syntheticData() ? 'Frozen synthetic snapshot' : 'Recorded instance state'} · ${escape(time(s.time || instance.heartbeat?.time))}</p></div>${heartbeatBadge(instance)}<label class="select-field">INSTANCE<select id="instance-select">${data.instances.map(item => `<option value="${escape(item.id)}"${item.id === instance.id ? ' selected' : ''}>${escape(item.label || item.id)}</option>`).join('')}</select></label></div><div class="panel-body">${kv([['Mode field',s.mode || instance.mode],['Feed state field',s.feed?.state || 'Not recorded'],['Heartbeat text',instance.heartbeat?.status || 'Not recorded'],['Heartbeat age (API)',instance.heartbeat?.age_seconds === undefined ? 'Not available' : `${instance.heartbeat.age_seconds} seconds`]])}</div><p class="subtle-note">A healthy field in an old snapshot is not a current health check. There are no start, stop, live-mode or risk-limit controls.</p></section><div class="stat-grid">${stat('Equity',exact(s.equity),syntheticData() ? 'Frozen fixture value' : 'Recorded bot value','chart')}${stat('Cash',exact(s.cash),'Exact decimal string','folder')}${stat('Position',exact(s.position),'Reported quantity','live')}${stat('Open orders',exact(s.open_orders),'Snapshot count','tasks')}</div><div class="two-column"><section class="panel"><div class="panel-head"><h2>Runtime observations</h2>${tag(syntheticData() ? 'FROZEN' : 'SOURCE RECORD')}</div><div class="panel-body">${kv([['Uptime',s.uptime],['Fees',exact(s.fees)],['Realized P&L, net',exact(s.realized_pnl_net)],['Orders',s.orders],['Rejected',s.rejected],['Kill-switch trips',s.kill_switch_trips],['Feed silence',s.feed?.silence]])}</div></section><section class="panel"><div class="panel-head"><h2>Account state</h2>${tag(ledger ? 'SOURCE RECORD' : 'UNAVAILABLE')}</div><div class="panel-body">${ledger ? `<pre class="raw-record">${escape(JSON.stringify(ledger,null,2))}</pre>` : '<p class="muted">The state output is not available.</p>'}</div></section></div><section class="panel"><div class="panel-head"><h2>Journal</h2><span class="muted">Original event fields</span></div><div class="panel-body">${journal.status === 'fulfilled' ? `<pre class="raw-record">${escape(journal.value.body)}</pre>` : '<p class="muted">The journal is not available.</p>'}</div>${journal.status === 'fulfilled' && journal.value.hasMore ? '<p class="subtle-note">Showing the first 100 journal lines. More records are available in the paginated API.</p>' : ''}<p class="subtle-note">Raw NDJSON is displayed unchanged. Legacy nanosecond integers are never parsed or reformatted.</p></section>`;
 }
 async function research() {
   const results = selectedRun ? await Promise.allSettled([api(`/runs/${encodeURIComponent(selectedRun)}/drift`),api(`/runs/${encodeURIComponent(selectedRun)}/revalidation`,{text:true}),api(`/runs/${encodeURIComponent(selectedRun)}/validation`)]) : [];
@@ -165,13 +180,26 @@ async function research() {
   const metrics = data.details?.metrics || validation?.report;
   return `<section class="panel"><div class="panel-head"><div><h2>Analysis for the selected run</h2><p>Availability follows the files the bot has written.</p></div>${data.runs.length ? runPicker() : ''}</div><div class="research-list">${[['Performance analysis',metrics ? 'Available in metrics.json' : 'No metrics.json was returned'],['Drift check',results[0]?.status === 'fulfilled' ? 'Available in drift.json' : 'No drift output for this run'],['Revalidation',results[1]?.status === 'fulfilled' ? 'Available in revalidation.txt' : 'No revalidation output for this run'],['Validation',validation ? 'Available in validation.json' : 'No validation output for this run'],['Sweep / walk-forward / Monte Carlo',validation ? 'Only completed sections are included in the validation record below' : 'Run validation to persist the selected analysis sections']].map(([name,status]) => `<div class="research-item"><div><strong>${escape(name)}</strong><p>${escape(status)}</p></div>${tag(status.startsWith('Available') ? 'AVAILABLE' : 'NOT AVAILABLE')}</div>`).join('')}</div></section>${metrics ? `<div class="stat-grid">${stat('Sharpe',exact(metrics.returns?.sharpe),'Value from metrics.json','chart')}${stat('Round trips',exact(metrics.trades?.round_trips),'Completed trade analysis','tasks')}${stat('Win rate',fraction(metrics.trades?.win_rate),'Fraction from metrics.json','chart')}${stat('Net P&L',exact(metrics.trades?.net_pnl),'Exact decimal string','folder')}</div>` : empty('Analysis has not been supplied','This interface does not invent research metrics when an output is missing.','research')}${validation ? `<section class="panel"><div class="panel-head"><div><h2>Validation record</h2><p>Only sections written by the bot are shown. A recorded validation result does not authorize live trading.</p></div>${tag(validation.verdict?.pass === true ? 'RECORDED PASS' : validation.verdict?.pass === false ? 'RECORDED FAIL' : 'SOURCE RECORD')}</div><div class="panel-body"><pre class="raw-record">${escape(JSON.stringify(validation,null,2))}</pre></div></section>` : ''}<div class="two-column">${results[0]?.status === 'fulfilled' ? `<section class="panel"><div class="panel-head"><h2>Drift record</h2></div><div class="panel-body"><pre class="raw-record">${escape(JSON.stringify(results[0].value,null,2))}</pre></div></section>` : ''}${results[1]?.status === 'fulfilled' ? `<section class="panel"><div class="panel-head"><h2>Revalidation report</h2></div><div class="panel-body"><pre class="raw-record">${escape(results[1].value)}</pre></div></section>` : ''}</div>`;
 }
-async function board(kind) {
-  if (entryMode === 'account' && accountController?.getConfig()?.features.board !== true) return empty('The shared board is not enabled','Your account is signed in. The account service reports that shared tasks and notes are not available yet.',kind,'NOT ENABLED');
-  let rows;
-  try { rows = await api(`/board/${kind}`); } catch { return empty(kind === 'tasks' ? 'The board connection is pending' : 'Shared notes will appear here','Tasks and notes are served by the authenticated Cloudflare Worker. Local synthetic preview does not pretend to be an agent or write to GitHub.',kind,'AUTHENTICATED WORKER REQUIRED'); }
-  if (!Array.isArray(rows) || !rows.length) return empty(kind === 'tasks' ? 'No tasks were returned' : 'No notes were returned','The connected board contains no entries for this view.',kind,'READ ONLY');
-  if (kind === 'tasks') return `<section class="panel"><div class="panel-head"><h2>Project tasks</h2>${tag('READ ONLY')}</div>${table(['Task','Status','Owner'],rows.map(task => [escape(`${task.id || ''} ${task.title || ''}`),escape(task.status),escape(task.owner)]))}</section>`;
-  return rows.map(note => `<section class="panel"><div class="panel-head"><div><h2>${escape(note.from)}</h2><p>${escape(time(note.time))} · To ${escape(Array.isArray(note.to) ? note.to.join(', ') : note.to)}</p></div>${tag('READ ONLY')}</div><div class="panel-body"><p class="raw-record">${escape(note.text)}</p></div></section>`).join('');
+function board(kind) {
+  return entryMode==='account' ? '<div id="shared-board"></div>' : empty('Sign in to use the shared board','Shared tasks and notes require a verified account. The local preview cannot make board changes.',kind,'ACCOUNT REQUIRED');
+}
+function handleAccountError(error) {
+  if(error?.code==='access_denied'&&error.status===403)accountController?.secureAccessRequired();
+  else if(error?.code==='login_required'||error?.status===401)accountController?.sessionExpired();
+  else if(error?.code==='terms_required')accountController?.show('terms');
+}
+function syncEventConnection() {
+  if(!entered||entryMode!=='account'||document.hidden||accountController?.getConfig()?.features.events!==true) {eventController?.stop();return;}
+  eventController??=createEventClient({origin:location.origin,authorize:()=>accountController.client.request('/me'),onAuthError:handleAccountError,
+    onHint:async()=>{
+      if(!entered||document.hidden||loading)return;
+      if(currentView==='live')await pollInstances();
+      else if(['overview','runs','research'].includes(currentView)) {
+        const focused=document.activeElement;
+        if(!(focused&&$('view').contains(focused)&&focused.matches('input,select,textarea,button')))await refresh({background:true});
+      }
+    }});
+  eventController.start();
 }
 function downloads() {
   return `<section class="panel empty-state"><span class="empty-icon">${icon('downloads')}</span>${tag('PREPARATION ONLY')}<h2>A desktop home for the same workspace.</h2><p>The Electron source shares this interface. A distributable installer, publisher signature and update feed have not been produced or verified.</p><button class="secondary" disabled>${icon('downloads')}Installer not published</button></section><section class="panel"><div class="panel-head"><h2>Release readiness</h2></div><div class="panel-body">${kv([['Shared interface','Prepared in source'],['Native host','Prepared; native execution not yet verified'],['Installer','Not built'],['Publisher signature','Not configured'],['Update feed','Not connected'],['Installed upgrade','Not tested']])}</div></section>`;
@@ -180,7 +208,7 @@ function settings() {
   if (entryMode === 'account' && accountController?.getUser()) return '<div id="account-profile"></div>';
   return `<div class="two-column"><section class="panel"><div class="panel-head"><div><h2>Account & access</h2><p>Production account controls are unavailable.</p></div>${icon('shield')}</div><div class="setting-list">${[['Current access','Local synthetic preview; no authenticated user'],['Invitations','Owner and member accounts must be seeded by the Worker'],['Verification & password reset','Requires the account service and a verified email sender'],['Avatar & sessions','Private R2 storage and server-side session revocation are pending']].map(([label,detail]) => `<div class="setting-row"><div><strong>${label}</strong><p>${detail}</p></div>${icon('lock')}</div>`).join('')}</div></section><section class="panel"><div class="panel-head"><h2>Workspace</h2></div><div class="setting-list"><div class="setting-row"><div><strong>Weather & scene</strong><p>The footer changes the scene timezone for this tab. Live weather and saved preferences are not connected.</p></div><button class="secondary" id="open-scene-settings">Open</button></div><div class="setting-row"><div><strong>Terms</strong><p>Preview conditions are not a production acceptance receipt.</p></div><button class="secondary" id="review-terms">Review</button></div><div class="setting-row"><div><strong>Application version</strong><p>${escape(APP_VERSION)} · shared presentation foundation</p></div>${tag('BETA')}</div><div class="setting-row"><div><strong>Leave preview</strong><p>Return to the access screen. No account session is revoked because none was created.</p></div><button class="secondary" id="leave-preview">Leave</button></div></div></section></div>`;
 }
-async function renderView(focus = false) {
+async function renderView(focus = false,{background=false}={}) {
   if (!entered) return;
   const revision = ++viewRevision;
   const requested = location.hash.slice(1).toLowerCase();
@@ -189,15 +217,21 @@ async function renderView(focus = false) {
   $('view-description').textContent = descriptions[currentView];
   $('view-eyebrow').textContent = currentView === 'live' ? (syntheticData() ? 'SYNTHETIC INSTANCE SNAPSHOTS' : 'RECORDED INSTANCE STATE') : 'YOUR WORKSPACE';
   document.querySelectorAll('[data-tab]').forEach(button => { button.classList.toggle('on',button.dataset.tab === currentView); if (button.closest('nav')) button.setAttribute('aria-current',button.dataset.tab === currentView ? 'page' : 'false'); });
-  $('view').innerHTML = '<div class="loading"><span class="pulse"></span>Reading available outputs…</div>';
+  const oldScroll=$('view').scrollTop;
+  if(!background)$('view').innerHTML = '<div class="loading"><span class="pulse"></span>Reading available outputs…</div>';
   try {
     const body = await ({overview,live,runs,research,tasks:() => board('tasks'),notes:() => board('notes'),downloads,settings})[currentView]();
     if (revision !== viewRevision || !entered) return;
     const errors = data.errors.length && ['overview','runs','live','research'].includes(currentView) ? `<div class="error-strip">${icon('folder')}<p>${escape(data.errors.join(' '))}</p><button class="text-button" id="retry-data">Retry</button></div>` : '';
     $('view').innerHTML = errors + body;
     updateDataBanner();
+    if (['tasks','notes'].includes(currentView) && entryMode==='account' && $('shared-board')) {
+      boardController??=createBoardUI({client:accountController.client,getUser:accountController.getUser,getFeatures:()=>accountController.getConfig()?.features,onAuthError:handleAccountError});
+      await boardController.mount($('shared-board'),currentView);
+      if(revision!==viewRevision||!entered)return;
+    }
     if (currentView === 'settings' && entryMode === 'account' && $('account-profile')) accountController.mountProfile($('account-profile'));
-    $('view').scrollTop = 0;
+    $('view').scrollTop = background ? oldScroll : 0;
     if (focus) $('view-title').focus({preventScroll:true});
   } catch (error) { if (revision === viewRevision) $('view').innerHTML = empty('This view could not load',error.message,'folder'); }
 }
@@ -211,7 +245,7 @@ async function loadRun() {
   else data.errors.push('Selected run detail is unavailable.');
   if (equity.status === 'fulfilled' && Array.isArray(equity.value)) data.equity = equity.value;
 }
-async function refresh() {
+async function refresh({background=false}={}) {
   if (!entered || loading) return;
   const generation = accessGeneration;
   loading = true; $('refresh-data').disabled = true;
@@ -229,8 +263,34 @@ async function refresh() {
   if (generation !== accessGeneration) return;
   $('checked-at').textContent = `Checked ${new Intl.DateTimeFormat('en-AU',{hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
   loading = false; $('refresh-data').disabled = false;
-  await renderView();
+  await renderView(false,{background});
 }
+let instancePolling=false,pollStopped=false;
+async function pollInstances() {
+  if(instancePolling || !entered || loading || document.hidden || !['overview','live'].includes(currentView))return;
+  const generation=accessGeneration,view=currentView;
+  instancePolling=true;
+  try {
+    const instances=await listing('/instances');
+    if(generation!==accessGeneration)return;
+    data.instances=instances;data.instancesAvailable=true;
+    data.errors=data.errors.filter(message=>message!=='Instance snapshots are unavailable.');
+    // Do not replace controls while a person is using them.
+    const focused=document.activeElement;
+    if(view===currentView && !(focused && $('view').contains(focused) && focused.matches('input,select,textarea,button'))) await renderView(false,{background:true});
+  } catch {
+    if(generation!==accessGeneration)return;
+    if(!data.errors.includes('Instance snapshots are unavailable.'))data.errors.push('Instance snapshots are unavailable.');
+    // Keep the last snapshot and let its local freshness clock continue ageing.
+  } finally {instancePolling=false;}
+  updateHeartbeatBadges();
+}
+let instancePoll=null;
+async function scheduleInstancePoll() {await pollInstances();if(!pollStopped)instancePoll=setTimeout(scheduleInstancePoll,5000);}
+instancePoll=setTimeout(scheduleInstancePoll,5000);
+const heartbeatClock=setInterval(updateHeartbeatBadges,1000);
+document.addEventListener('visibilitychange',()=>{syncEventConnection();if(!document.hidden){updateHeartbeatBadges();void pollInstances();}});
+window.addEventListener('pagehide',()=>{pollStopped=true;clearTimeout(instancePoll);clearInterval(heartbeatClock);});
 function showGate(stage = 'configure') {
   clearWorkspaceData();entryMode='closed';$('account-gate').hidden=true;$('workspace').hidden = true; $('gate').hidden = false;
   window.CaseForgeEntry.show(stage,true);
@@ -303,7 +363,7 @@ if (runtime.syntheticPreview !== true) $('account-continue').textContent = 'Acco
 
 accountController=createAccountUI({root:$('account-gate'),incomingLink:incomingAccountLink,
   onShowGate(){clearWorkspaceData();$('gate').hidden=true;$('workspace').hidden=true;},
-  async onAuthenticated(session){clearWorkspaceData();entryMode='account';entered=true;$('gate').hidden=true;$('account-gate').hidden=true;$('workspace').hidden=false;updateIdentity(session.user);await refresh();},
+  async onAuthenticated(session){clearWorkspaceData();entryMode='account';entered=true;$('gate').hidden=true;$('account-gate').hidden=true;$('workspace').hidden=false;updateIdentity(session.user);syncEventConnection();await refresh();},
   onSignedOut(){clearWorkspaceData();entryMode='closed';$('workspace').hidden=true;updateIdentity();},
   onProfile(user){updateIdentity(user);},
   onPreview(){showGate();},

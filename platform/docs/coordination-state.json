@@ -1,14 +1,14 @@
 {
   "cycle": "COLLAB-20260921",
-  "updated_at": "2026-09-21T03:59:05.036938+00:00",
-  "phase": "g2-revisions-and-account-ui",
+  "updated_at": "2026-09-21T04:43:12.694248+00:00",
+  "phase": "m3-m4-review-ready",
   "platform_branch": "codex/platform-app",
   "board_branch": "claude/cool-sagan-7klcfy",
-  "last_merged_board_head": "982d72e",
+  "last_merged_board_head": "aacd0ab",
   "board_writer": "deandre-fable",
   "platform_writer": "deandre-gpt6",
-  "last_sent_round": "COLLAB-20260921-06",
-  "last_processed_reply": "COLLAB-20260921-06 / G2 conditional approval, T030 and T031 approved",
+  "last_sent_round": "COLLAB-20260921-07",
+  "last_processed_reply": "COLLAB-20260921-07 / G2 has no staging code blockers, T022 and T031 in review",
   "pending_reply": null,
   "heartbeat_minutes": 5,
   "unchanged_human_blocked_cycles": 0,
@@ -17,7 +17,8 @@
     "API/update hostname decisions",
     "Server location and deployment authority",
     "PR #1 merge and main branch",
-    "Signing credentials and memberships"
+    "Signing credentials and memberships",
+    "Repository-scoped board token and real staging round trip"
   ],
   "claims": {
     "live_trading": false,

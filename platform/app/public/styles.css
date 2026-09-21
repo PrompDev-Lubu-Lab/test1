@@ -11,3 +11,5 @@
 
 /* Shared source layout is adapted to this smaller access workflow. */
 .chart-wrap{margin:0}.gate .entry-main{display:block;margin-block:0}.gate .entry-stage{height:auto}
+
+.heartbeat-stale{color:var(--negative);border-color:currentColor}.heartbeat-recent{color:var(--positive)}.heartbeat-unknown{color:var(--soft)}

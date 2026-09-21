@@ -41,7 +41,7 @@ Every mutation requires an exact Origin; session mutations also require `X-CSRF-
 
 Avatar code uses the Cloudflare Images binding to decode, resize and re-encode PNG/JPEG/WebP to a 128 square WebP, with 2 MiB uploads, animation rejection, decoded pixel bounds and 128 KiB output bounds. Only transformed bytes go to private R2; D1 uses a session/version guard and expected old object key to prevent conflicting saves. Uploads require `AVATAR_READY=verified`, `IMAGES` and private `AVATARS` bindings. A real remote development probe passed PNG/WebP decoding and invalid/oversized rejection; no production flag or bucket was activated. Uncertain saves can leave an unreferenced object for later cleanup rather than deleting an object that might already be in use.
 
-The Git-backed board, owner connection settings, human-identity rebinding and authenticated WebSocket sessions are not enabled yet. They return explicit unavailable responses. The browser account flow and real end-to-end acceptance remain gates before M1 completion.
+The Git-backed board and authenticated WebSocket bridge are implemented behind explicit feature gates. See `../docs/BOARD-ADAPTER.md` and `../docs/LIVE-EVENTS.md` for scope, rollout and evidence. Owner connection settings and human-identity rebinding still return explicit unavailable responses. The browser account flow and real end-to-end acceptance remain gates before M1 completion.
 
 References: [D1 batches](https://developers.cloudflare.com/d1/worker-api/d1-database/), [Email Service](https://developers.cloudflare.com/email-service/), [Access token validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
 
@@ -54,3 +54,7 @@ node scripts/seed-invite.mjs --settings /private/bootstrap.local.json --apply --
 ```
 
 Use `--local` only for an explicitly configured local database. The command refuses redirected/CI output, never seeds a password or Access subject, and refuses a second active invitation or any existing account. Open the one-use link privately and complete normal signup and verification. A timeout or uncertain result requires inspecting the database before retrying; a stored but unconfirmed invitation remains closed until expiry or a deliberate operator recovery. The script's real SQLite tests exercise its SQL and exact-row confirmation; no remote bootstrap has been run.
+
+If the first invitation link is lost, inspect the exact unaccepted `deandre` owner-invite row in the private staging database. An authorized operator may expire that exact digest while no users exist, verify one row changed, then rerun the script. Do not delete account rows, expire every invitation, or rerun after an uncertain SQL result without inspecting state. Ordinary completed account setup uses the normal password-reset flow.
+
+Limiter upgrades must preserve active counters through an explicit reviewed migration. Unknown/corrupt persisted state fails closed; it is not silently reset. The current v2 storage key has never been deployed, so no production migration is needed for this revision.

@@ -1,6 +1,8 @@
 import { APP_NAME } from '../app/public/config.js';
 import { AccountStore } from './store.mjs';
 import { avatarReady, uploadAvatar } from './avatar.mjs';
+import { eventReady, openEventStream } from './events.mjs';
+import { boardReady, readBoard, mutateBoard } from './board.mjs';
 import { hexToBytes } from '@noble/hashes/utils.js';
 import { createKdfBudget, verifyAccess, verifyTurnstile, randomToken, digestToken, normalizeEmail, readJsonLimited, equalDigest } from './security.mjs';
 export { AuthLimiter } from './limiter.mjs';
@@ -82,7 +84,7 @@ async function sendToken(env, kind, email, token) {
   await env.EMAIL.send({ from: { email: env.EMAIL_FROM, name: APP_NAME }, to: email, subject, text, html: `<p>${subject} for your private workspace.</p><p><a href="${link.href}">Continue securely</a></p><p>This link expires and can be used once.</p>` });
 }
 
-export function createHandler({ accessKeys } = {}) {
+export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
   return async function fetchHandler(request, env) {
     const store = env.DB ? new AccountStore(env.DB) : null;
     const now = epoch();
@@ -123,7 +125,7 @@ export function createHandler({ accessKeys } = {}) {
 
       if (request.method === 'GET' && route === '/config') {
         if (typeof env.TURNSTILE_SITE_KEY !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(env.TURNSTILE_SITE_KEY)) deny(503, 'configuration_required', 'Account access has not been configured.');
-        return finish({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), board: false, downloads: false } });
+        return finish({ account_service: true, turnstile_site_key: env.TURNSTILE_SITE_KEY, features: { avatars: avatarReady(env), events: eventReady(env), board: boardReady(env), downloads: false } });
       }
 
       if (request.method === 'POST' && route === '/auth/signup') {
@@ -273,7 +275,19 @@ export function createHandler({ accessKeys } = {}) {
         if(!object) deny(404,'not_found','Avatar unavailable.');
         return new Response(object.body,{headers:{'Content-Type':'image/webp','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'"}});
       }
-      if (route.startsWith('/board/')) deny(503, 'board_binding_required', 'The authenticated board connection is not configured.');
+      if (route.startsWith('/board/')) {
+        const kind=route.slice('/board/'.length);
+        if(!['tasks','notes'].includes(kind))deny(404,'not_found','Unknown board route.');
+        if(!boardReady(env))deny(503,'board_binding_required','The authenticated board connection is not configured.');
+        if(request.method==='GET')return finish(await readBoard(env,kind,{fetchImpl:boardFetch}));
+        if(request.method!=='POST')deny(405,'method_not_allowed','Unsupported board method.');
+        const result=await mutateBoard(env,kind,user.handle,body,{fetchImpl:boardFetch,authorize:async()=>{
+          const current=await store.session(sessionHash,access.sub,epoch());
+          return Boolean(current&&current.id===user.id&&current.handle===user.handle&&await store.terms(user.id,TERMS_VERSION));
+        }});
+        await store.audit(actor,`board-${kind}`,result.replayed?'replayed':'committed',epoch(),result.commit_sha??result.sha);
+        return finish(result);
+      }
       if (request.method === 'GET' && /^\/(runs|instances)(\/|$)/.test(route)) {
         let origin;
         try { origin = new URL(env.RUN_ORIGIN); } catch { deny(503, 'origin_unavailable', 'The run service is not configured.'); }
@@ -285,7 +299,15 @@ export function createHandler({ accessKeys } = {}) {
         for (const name of ['X-Data-Source', 'X-Next-After', 'X-Next-Offset', 'X-Has-More', 'X-Result-Warning']) if (upstream.headers.has(name)) headers.set(name, upstream.headers.get(name));
         return new Response(upstream.body, { status: upstream.status, headers });
       }
-      if (route === '/events') deny(503, 'event_session_pending', 'The authenticated event stream is not enabled.');
+      if (route === '/events' && request.method === 'GET') {
+        if(!eventReady(env))deny(503,'event_stream_unavailable','The authenticated event stream is not configured.');
+        reservation = await reserve(request,env,`user:${user.id}`,'write');
+        const response = await openEventStream(request,env,{
+          accessExpiresAt:access.exp*1000,sessionExpiresAt:user.session_expires_at*1000,
+          authorize:async()=>Boolean(await store.session(sessionHash,access.sub,epoch())) && Boolean(await store.terms(user.id,TERMS_VERSION))
+        },eventOptions);
+        succeeded=true;return response;
+      }
       deny(404, 'not_found', 'Unknown platform route.');
     } catch (error) {
       const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 503;

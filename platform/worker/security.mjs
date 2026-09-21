@@ -180,14 +180,14 @@ export async function verifyAccess(request, env, testKeyResolver) {
       requiredClaims: ['exp', 'sub', 'email', 'type'],
       clockTolerance: 0,
     });
-    if (payload.type !== 'app' || typeof payload.sub !== 'string' || !payload.sub.trim()
+    if (payload.type !== 'app' || !Number.isSafeInteger(payload.exp) || !Number.isSafeInteger(payload.exp * 1000) || typeof payload.sub !== 'string' || !payload.sub.trim()
       || payload.sub.length > 256 || payload.sub.trim() !== payload.sub
       || typeof payload.email !== 'string' || !payload.email.trim()
       || Object.hasOwn(payload, 'common_name') || Object.hasOwn(payload, 'service_token_id')
       || payload.service_token_status === true) {
       throw new SecurityError('access_denied', 403);
     }
-    return Object.freeze({ sub: payload.sub, email: normalizeEmail(payload.email) });
+    return Object.freeze({ sub: payload.sub, email: normalizeEmail(payload.email), exp: payload.exp });
   } catch {
     throw new SecurityError('access_denied', 403);
   }

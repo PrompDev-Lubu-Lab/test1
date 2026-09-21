@@ -13,7 +13,7 @@ const record = { scheme:'pbkdf2-sha256', iterations:600000, salt:'01020304050607
 const keys = await generateKeyPair('RS256');
 const now = () => Math.floor(Date.now()/1000);
 
-function harness(t) {
+function harness(t,handlerOptions={}) {
   const db = new D1Harness(); t.after(() => db.close());
   const events = [], mail = []; let state = createLimiterState(), ip = 1;
   const env = { APP_ORIGIN:origin, ACCESS_TEAM_DOMAIN:issuer, ACCESS_AUDIENCE:'synthetic-audience',
@@ -31,7 +31,7 @@ function harness(t) {
     events.push('turnstile'); const body=JSON.parse(options.body);
     return Response.json({success:true,hostname:'app.example.test',action:body.response});
   });
-  const handler=createHandler({accessKeys:async()=>{events.push('access'); return keys.publicKey;}});
+  const handler=createHandler({accessKeys:async()=>{events.push('access'); return keys.publicKey;},...handlerOptions});
   async function jwt(subject='owner-sub', claims={}) {
     return new SignJWT({email:`${subject}@identity.example.test`,type:'app',...claims}).setProtectedHeader({alg:'RS256'}).setIssuer(issuer).setAudience('synthetic-audience').setSubject(subject).setIssuedAt().setExpirationTime('10m').sign(keys.privateKey);
   }
@@ -160,4 +160,61 @@ test('a resumed session receives only its authenticated avatar URL, never the pr
   const result=await (await h.call('/me',session)).json();
   assert.deepEqual(result.user.avatar,{url:`/api/avatars/${user.id}`,width:128,height:128});
   assert.equal(JSON.stringify(result).includes('private-synthetic-key'),false);
+});
+
+function configuredBoard(h,fetchHook=async()=>{}) {
+  Object.assign(h.env,{BOARD_READY:'staging',BOARD_BRANCH:'board/staging',BOARD_REPO:'example-owner/example-project',BOARD_GITHUB_TOKEN:'github_pat_synthetic_test_token_never_a_real_secret'});
+  let puts=0,lastText=null;
+  const fetchImpl=async(input,options)=>{
+    const url=new URL(input),path=url.pathname.split('/contents/')[1];
+    assert.equal(url.origin,'https://api.github.com');assert.ok(['board/notes.md','board/tasks.json'].includes(path));
+    await fetchHook(options.method);
+    if(options.method==='GET') {
+      const text=path.endsWith('.json')?' {"tasks":[]}':'# Notes\n\nExisting history.\n';
+      return Response.json({type:'file',path,sha:'a'.repeat(40),size:Buffer.byteLength(text),encoding:'base64',content:Buffer.from(text).toString('base64')});
+    }
+    assert.equal(options.method,'PUT');puts++;const body=JSON.parse(options.body);assert.equal(body.branch,'board/staging');lastText=Buffer.from(body.content,'base64').toString('utf8');
+    return Response.json({content:{type:'file',path,sha:'b'.repeat(40)},commit:{sha:'c'.repeat(40)}});
+  };
+  return {fetchImpl,get puts(){return puts;},get text(){return lastText;}};
+}
+
+test('board routes enforce feature, terms, CSRF and session actor before a signed member write',async t=>{
+  let adapter;const h=harness(t,{boardFetch:(...args)=>adapter.fetchImpl(...args)});
+  await h.seed('ali');const session=await h.login('member@example.test','member-sub');
+  assert.equal((await h.call('/board/notes',session)).status,403);
+  await h.accept(session);assert.equal((await h.call('/board/notes',session)).status,503);
+  adapter=configuredBoard(h);
+  assert.equal((await h.call('/board/tasks',session)).status,200);
+  const body={expected_sha:'a'.repeat(40),operation_id:'10000000-0000-4000-8000-000000000001',to:['deandre-fable'],text:'Synthetic board integration check.'};
+  assert.equal((await h.call('/board/notes',{...session,method:'POST',csrf:null,body})).status,403);
+  assert.equal((await h.call('/board/notes',{...session,method:'POST',body:{...body,from:'deandre-fable'}})).status,400);
+  assert.equal(adapter.puts,0);
+  const response=await h.call('/board/notes',{...session,method:'POST',body});assert.equal(response.status,200,await response.clone().text());
+  const result=await response.json();assert.equal(result.commit_sha,'c'.repeat(40));assert.equal(result.operation_id,body.operation_id);assert.equal(adapter.puts,1);
+  assert.match(adapter.text,/platform-board-operation: [0-9a-f-]+ ali /);assert.match(adapter.text,/Existing history/);
+  const audit=await h.db.prepare("SELECT actor_id,outcome FROM audit_events WHERE action='board-notes'").first();
+  assert.equal(audit.actor_id,session.user.id);assert.equal(audit.outcome,'committed');
+});
+
+test('a session revoked while a board file is being read cannot commit to GitHub',async t=>{
+  let adapter;const h=harness(t,{boardFetch:(...args)=>adapter.fetchImpl(...args)});await h.seed();const session=await h.login();await h.accept(session);
+  adapter=configuredBoard(h,async method=>{if(method==='GET')await h.db.prepare('UPDATE users SET session_version=session_version+1 WHERE id=?').bind(session.user.id).run();});
+  const response=await h.call('/board/notes',{...session,method:'POST',body:{expected_sha:'a'.repeat(40),operation_id:'10000000-0000-4000-8000-000000000002',to:['all'],text:'Must remain unsent.'}});
+  assert.equal(response.status,401,await response.clone().text());assert.equal(adapter.puts,0);
+});
+
+test('event upgrades require feature, current terms, exact Origin and a signed session before origin fetch',async t=>{
+  let contacted=0;
+  const h=harness(t,{eventOptions:{fetchImpl:async()=>{contacted++;return new Response('unavailable',{status:503});}}});
+  await h.seed();const session=await h.login();
+  Object.assign(h.env,{EVENTS_READY:'verified',RUN_ORIGIN:'https://origin.example.test',ORIGIN_CLIENT_ID:'synthetic-id',ORIGIN_CLIENT_SECRET:'synthetic-secret'});
+  const upgrade={...session,headers:{Upgrade:'websocket',Origin:origin}};
+  assert.equal((await h.call('/events',upgrade)).status,403);
+  await h.accept(session);
+  assert.equal((await h.call('/events',{...upgrade,token:'bad.jwt.assertion'})).status,403);
+  assert.equal((await h.call('/events',{...upgrade,headers:{Upgrade:'websocket',Origin:'https://other.example.test'}})).status,403);
+  assert.equal((await h.call('/events',{...session,headers:{Upgrade:'websocket'}})).status,400);
+  assert.equal(contacted,0);
+  assert.equal((await h.call('/events',upgrade)).status,503);assert.equal(contacted,1);
 });

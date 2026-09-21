@@ -29,7 +29,7 @@ test('credential fragments are consumed and scrubbed before use, including malfo
   assert.equal(consumeTokenFragment({hash:'#overview'},{replaceState(){throw Error('Ordinary navigation must not be scrubbed');}}),null);
 });
 test('only configured account service enables optional features; missing or false flags stay false',() => {
-  assert.deepEqual(parseAccountConfig({account_service:true,turnstile_site_key:'public-test-key',features:{avatars:true,board:'true',downloads:false}}).features,{avatars:true,board:false,downloads:false});
+  assert.deepEqual(parseAccountConfig({account_service:true,turnstile_site_key:'public-test-key',features:{avatars:true,board:'true',downloads:false}}).features,{avatars:true,events:false,board:false,downloads:false});
   for(const value of [{},{account_service:false,turnstile_site_key:'key'},{account_service:true,turnstile_site_key:''}])assert.throws(()=>parseAccountConfig(value),/not available/);
 });
 test('same-origin requests use cookies, no redirects and transient CSRF without returning it to view callbacks',async () => {
@@ -126,4 +126,12 @@ test('a saved profile picture is restored only from validated current-user sessi
   const {client}=mockClient([{body:{...session,user:{...user,avatar}}},{body:{...session,user:{...user,avatar:{...avatar,url:'/api/avatars/another-user'}}}}]);
   const restored=await client.request('/me');assert.deepEqual(restored.user.avatar,avatar);
   await assert.rejects(client.request('/me'),/safe profile picture/);assert.equal(client.getSession(),null);
+});
+
+
+test('a delayed session response cannot restore account state after local sign-out',async()=>{
+  let complete;const client=createAccountClient({fetchImpl:()=>new Promise(resolve=>complete=resolve)});
+  const pending=client.request('/me');client.clear();
+  complete(Response.json({csrf:'a'.repeat(64),terms_required:false,user:{id:'old-user',email:'owner@example.test',display_name:'Owner',handle:'deandre',role:'owner',verified:true}}));
+  await assert.rejects(pending,error=>error.code==='account_changed');assert.equal(client.getSession(),null);
 });

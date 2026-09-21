@@ -117,7 +117,9 @@ async function token(overrides = {}, options = {}) {
 
 test('real signed human Access assertions require issuer, audience, expiry and identity', async () => {
   const assertion = await token();
-  assert.deepEqual(await verifyAccess(assertionRequest(assertion), env, localKeys), { sub: 'synthetic-human-id', email: 'member@example.test' });
+  const verified = await verifyAccess(assertionRequest(assertion), env, localKeys);
+  assert.deepEqual({sub:verified.sub,email:verified.email}, { sub: 'synthetic-human-id', email: 'member@example.test' });
+  assert.ok(Number.isSafeInteger(verified.exp) && verified.exp > Date.now()/1000);
   const claims = [
     { iss: 'https://other-team.example.test' }, { iss: `${env.ACCESS_TEAM_DOMAIN}/` },
     { aud: ['different-application'] }, { exp: 1 }, { nbf: Math.floor(Date.now() / 1000) + 600 },

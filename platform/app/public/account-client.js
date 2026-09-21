@@ -3,6 +3,7 @@ const CSRF = /^[a-f0-9]{64}$/;
 const LINK_KINDS = new Set(['invite','verify','reset','email-change']);
 const ROUTES = new Map([
   ['/config',{method:'GET'}],['/me',{method:'GET',session:true}],['/terms',{method:'GET',session:true}],
+  ['/board/tasks',{method:'GET',session:true}],['/board/notes',{method:'GET',session:true}],
   ['/auth/signup',{method:'POST',challenge:true}],['/auth/login',{method:'POST',challenge:true}],
   ['/auth/forgot',{method:'POST',challenge:true}],['/auth/resend',{method:'POST',challenge:true}],
   ['/auth/verify',{method:'POST',challenge:true}],['/auth/reset',{method:'POST',challenge:true}],
@@ -39,7 +40,7 @@ export function turnstileAction(route) {
 }
 export function parseAccountConfig(value) {
   if (!value || value.account_service !== true || typeof value.turnstile_site_key !== 'string' || !value.turnstile_site_key.trim() || value.turnstile_site_key.length > 256) throw new AccountError('configuration_required','Account access is not available yet.',503);
-  return Object.freeze({account_service:true,turnstile_site_key:value.turnstile_site_key,features:Object.freeze({avatars:value.features?.avatars === true,board:value.features?.board === true,downloads:value.features?.downloads === true})});
+  return Object.freeze({account_service:true,turnstile_site_key:value.turnstile_site_key,features:Object.freeze({avatars:value.features?.avatars === true,events:value.features?.events === true,board:value.features?.board === true,downloads:value.features?.downloads === true})});
 }
 export function validateAvatarResponse(value,userId) {
   if (!value || value.width!==128 || value.height!==128 || typeof value.url!=='string' || !/^\/api\/avatars\/[A-Za-z0-9_-]{1,128}$/.test(value.url) || value.url!==`/api/avatars/${encodeURIComponent(userId)}`) throw new AccountError('invalid_avatar','The account service did not confirm a safe profile picture.');
@@ -51,10 +52,11 @@ function safeUser(value) {
   return Object.freeze({id:value.id,email:value.email,display_name:value.display_name,handle:typeof value.handle === 'string' ? value.handle : '',role:value.role,verified:true,...(avatar ? {avatar} : {})});
 }
 export function createAccountClient({fetchImpl = globalThis.fetch.bind(globalThis)} = {}) {
-  let csrf = null, user = null, termsRequired = true;
-  const clear = () => {csrf=null;user=null;termsRequired=true;};
+  let csrf = null, user = null, termsRequired = true, revision = 0;
+  const clear = () => {revision++;csrf=null;user=null;termsRequired=true;};
   async function request(route,{method,body,challengeToken} = {}) {
-    const spec = route === '/me' && method === 'PATCH' ? {method:'PATCH',session:true} : ROUTES.get(route);
+    const startedRevision=revision;
+    const spec = ['/board/tasks','/board/notes'].includes(route) && method === 'POST' ? {method:'POST',session:true} : route === '/me' && method === 'PATCH' ? {method:'PATCH',session:true} : ROUTES.get(route);
     if (!spec || (method && method !== spec.method)) throw new AccountError('invalid_route','This account action is unavailable.');
     const verb = spec.method;
     const mutation = verb !== 'GET';
@@ -77,6 +79,7 @@ export function createAccountClient({fetchImpl = globalThis.fetch.bind(globalThi
     if(response.type==='opaqueredirect'||(response.status>=300&&response.status<400)) throw new AccountError('access_denied','Renew secure access to continue. Your app session may still be valid.',403);
     let result;
     try {result=await response.json();} catch {throw new AccountError('invalid_response','The account service returned an unreadable response.',response.status);}
+    if(startedRevision!==revision)throw new AccountError('account_changed','The account changed while this request was running.',409);
     if (!response.ok) {
       const code=typeof result?.error === 'string' ? result.error : 'request_failed';
       if (code==='login_required' || (route==='/me' && response.status===401)) clear();

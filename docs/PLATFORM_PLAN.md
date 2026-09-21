@@ -276,9 +276,21 @@ repository's `board/` directory read-write.
 | `GET /runs/{id}/fills`            | fills rows                                           |
 | `GET /runs/{id}/orders`           | order log rows                                       |
 | `GET /research/...`               | research reports                                     |
-| `GET /board/tasks`, `PUT /board/tasks/{id}` | the task list; a `PUT` commits to `board/` in git |
-| `GET /board/notes`, `POST /board/notes`     | the message feed; a `POST` appends and commits    |
-| `WS /events`                      | heartbeat, state and board change notifications      |
+| `WS /events`                      | heartbeat and state change notifications             |
+
+The board endpoints live in the Cloudflare Worker, not on the server:
+
+| Endpoint (Worker)                 | Returns                                              |
+|-----------------------------------|------------------------------------------------------|
+| `GET /board/tasks`, `PUT /board/tasks/{id}` | the task list; a `PUT` commits to `board/` through the GitHub API |
+| `GET /board/notes`, `POST /board/notes`     | the message feed; a `POST` appends and commits the same way |
+
+So the API has two halves. The **server run API** is read-only: it
+mounts `runs/` and serves files as JSON. The **Cloudflare Worker** at
+the API hostname owns accounts, sessions, roles, avatars, the board
+(reads and writes through the GitHub API, committing with the person's
+handle), and proxies the run API through the tunnel. Git stays the
+board's store and keeps working when the server is down.
 
 Field names in the API are the field names in the artifact files. The
 API invents nothing; if a screen needs a number the bot does not write,
@@ -305,7 +317,7 @@ static hosting and file distribution.
 ```
                   ┌────────────────────── Cloudflare ──────────────────────┐
   team ──HTTPS──► │ DNS  ·  Access (who may see it)  ·  Pages (web app)    │
-  desktop app ──► │ R2 + updates.<domain> (installers, latest.json)        │
+  desktop app ──► │ R2 + updates.clawdie.ai (installers, latest.yml)       │
                   └───────────────────────┬────────────────────────────────┘
                                           │ Cloudflare Tunnel (outbound only)
                   ┌───────────────────────▼───────── the server ───────────┐
@@ -320,10 +332,16 @@ static hosting and file distribution.
 ```
 
 Nothing on the server listens on a public port. `cloudflared` opens the
-tunnel outbound; Cloudflare Access sits in front of `api.<domain>` and
-`app.<domain>` and allows the five roster identities (email one-time-code
+tunnel outbound; Cloudflare Access sits in front of `api.clawdie.ai` and
+`app.clawdie.ai` and allows the five roster identities (email one-time-code
 for the humans, service tokens for the agents). The bot's own processes
 are unreachable from the internet.
+
+Hostnames: `app.clawdie.ai` is decided. `api.clawdie.ai` and
+`updates.clawdie.ai` are proposed until DeAndre confirms. Access adds a
+second sign-in on top of the app's own accounts; keep it, because it is
+what keeps the API unreachable even if app auth has a bug, and set its
+session length deliberately (long, so the two humans rarely see it).
 
 ### 4.2 Steps to hosted
 
@@ -340,8 +358,8 @@ are unreachable from the internet.
 5. **Tunnel and Access.** `cloudflared` service, one tunnel, two
    hostnames, one Access policy. (T-009)
 6. **Web app on Pages.** Build from `platform/app`, custom domain
-   `app.<domain>`, API base `https://api.<domain>`. (T-010)
-7. **Desktop app and releases.** Tauri shell, updater, release workflow
+   `app.clawdie.ai`, API base `https://api.clawdie.ai`. (T-010)
+7. **Desktop app and releases.** Electron shell, updater, release workflow
    (section 4.4). (T-011, T-012)
 
 Steps 4 to 7 do not touch the bot and can run in parallel with step 3's
@@ -367,32 +385,43 @@ task instructions say so wherever they come up.
 
 ### 4.4 The downloadable app and its update link
 
-The desktop app is the web app wrapped in **Tauri 2**: a Rust shell
-around the same HTML, so the design is reused once and the two ship from
-one build. Tauri's updater plugin gives the flow DeAndre's other project
-has:
+The desktop app is the web app packaged with **Electron**, exactly as
+Case Forge is: the same electron-builder packaging and electron-updater
+mechanism, so the design and the update flow are reused rather than
+rebuilt. electron-updater's generic provider reads a per-platform
+`latest.yml` manifest from `updates.clawdie.ai` on R2. The flow DeAndre's
+other project has:
 
 1. A `v*` tag is pushed.
 2. GitHub Actions builds installers (macOS arm64 and x64 `.dmg`, Windows
    `.msi`, Linux `.AppImage` and `.deb`), signs them with the updater key
    (private key lives only in GitHub secrets), and uploads them to a
-   Cloudflare R2 bucket served at `updates.<domain>`.
-3. The workflow writes `latest.json` (version, notes, per-platform URL and
-   signature) to the same bucket, creates a GitHub Release, and appends a
+   Cloudflare R2 bucket served at `updates.clawdie.ai`.
+3. The workflow writes the `latest.yml` manifests (version, notes,
+   per-platform file and checksum) to the same bucket, creates a GitHub Release, and appends a
    note to `board/notes.md` with the download links.
-4. Running apps check `latest.json` on launch and every few hours, show
+4. Running apps check the manifest on launch and every few hours, show
    "Update available", download, verify the signature, and relaunch.
-5. The Downloads tab reads the same `latest.json` and the release list,
+5. The Downloads tab reads the same manifests and the release list,
    so a fresh install is one click from inside any browser.
 
 Installers are stored in R2, never in git.
 
+Session tokens in the desktop app are kept with Electron's `safeStorage`,
+which uses the operating system's credential store.
+
 ### 4.5 What to decide up front
 
-- **The domain.** Which hostname of the Clawdies domain is the app
-  (`app.` and `api.` are the assumption above).
-- **Where the existing design lives.** The repository or folder of the
-  other project, so T-006 can import it.
+- **The domain.** Decided: `app.clawdie.ai`. Proposed and awaiting
+  confirmation: `api.clawdie.ai`, `updates.clawdie.ai`.
+- **Where the existing design lives.** Resolved: Case Forge's source is
+  available, and it is Electron with electron-builder and
+  electron-updater. Open: fork the Case Forge repository, or extract its
+  renderer into a shared package (Astra proposes).
+- **Owner email** for the first account, and the email sender for
+  verification mails (Cloudflare Email Service if the account has it,
+  otherwise Resend from the Worker). Ali's mailbox at ali@clawdie.ai is
+  a separate mail-provider matter and does not gate the app.
 - **Server access for agents.** Whether agents may deploy (a deploy key
   and a compose-pull workflow), or humans run every `docker compose`.
   Default in the plan: humans deploy the bot, agents deploy the app.
@@ -429,7 +458,8 @@ this plan.
 
 The Tasks tab shows the list as a table or a kanban, filtered by
 assignee, status and area, with a roster-limited assignee picker and a
-due-date picker. Saving a change commits to `board/` through the API,
+due-date picker. Saving a change commits to `board/` through the
+Worker and the GitHub API,
 so a human's edit in the app and an agent's edit in git are the same
 kind of edit.
 
@@ -459,6 +489,14 @@ so nothing lives only in conversation. The Notes tab is a feed with
 recipient chips and task links, and a compose box that appends and
 commits.
 
+### 5.5 Fixtures
+
+`runs/` is never committed. A small **synthetic** run directory, produced
+by the same code the backtest tests use, may live under
+`platform/fixtures/` for the app's unit tests, because it is generated
+data, not a run artifact. Real runs (T-003) are shared as a tarball in
+R2 and referenced by run id on the board.
+
 ## 6. Plan and order of work
 
 | Step | Task(s)      | Depends on | Owner suggestion |
@@ -472,7 +510,7 @@ commits.
 | Tasks and Notes tabs                             | T-008 | T-005, T-006 | any agent |
 | Tunnel, Access, DNS                              | T-009 | T-005    | `deandre`       |
 | Pages deploy                                     | T-010 | T-007, T-009 | any agent   |
-| Tauri app and updater                            | T-011 | T-007    | any agent       |
+| Electron app and updater                         | T-011 | T-007    | any agent       |
 | Release pipeline with download link              | T-012 | T-011    | any agent       |
 | Two weeks of paper, consistency check            | T-013 | T-002, T-003 | `deandre-fable` |
 | Shadow go/no-go                                  | T-014 | T-013    | `deandre`       |

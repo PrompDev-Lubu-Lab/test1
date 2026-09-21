@@ -104,7 +104,7 @@ Case Forge's own components.
 Setup wizard, three steps like Case Forge:
 
 1. **Account**: sign in, or create your account from an invite.
-2. **Connect**: the API base URL (`https://api.<domain>`, prefilled) and
+2. **Connect**: the API base URL (`https://api.clawdie.ai`, prefilled; proposed hostname) and
    which roster handle this person is (`deandre` or `ali`; agents never
    sign in here).
 3. **Terms**: plain-language terms for `{{APP_NAME}}`. Must state: nothing in
@@ -120,7 +120,7 @@ Replace Case Forge's PIN with real accounts. Cloudflare is the platform.
 - **Storage**: Cloudflare D1 (users, invites, sessions, email
   verification tokens, password reset tokens, terms acceptances, avatars
   metadata, audit log). Avatars in R2.
-- **API**: a Cloudflare Worker at `api.<domain>` that (a) serves auth and
+- **API**: a Cloudflare Worker at `api.clawdie.ai` (proposed) that (a) serves auth and
   profile endpoints from D1, (b) proxies the run API on the server through
   the Cloudflare Tunnel, and (c) reads and writes the board through the
   GitHub API (commits to `board/` on the branch the app is configured
@@ -140,14 +140,15 @@ Replace Case Forge's PIN with real accounts. Cloudflare is the platform.
   600k iterations via WebCrypto (Workers have no argon2); a per-user
   salt; upgrade the hash on next login if the parameters change.
 - **Sessions**: HttpOnly, Secure, SameSite=Strict cookie for the web app;
-  a bearer token stored in the OS keychain for the desktop app. Seven-day
+  a bearer token kept with Electron's `safeStorage` for the desktop app. Seven-day
   expiry, rotated on login, revocable from Settings ("Sign out
   everywhere").
 - **Protection**: Cloudflare Turnstile on signup, login and reset. A
   Cloudflare rate-limiting rule on `/auth/*` (10 attempts per 10 minutes
   per IP, then a temporary lock). Every auth event in the audit log.
-- **Perimeter**: Cloudflare Access in front of `api.<domain>` and
-  `app.<domain>` as a second gate: email one-time-code for the two humans,
+- **Perimeter**: Cloudflare Access in front of `api.clawdie.ai` and
+  `app.clawdie.ai` as a second gate (choose its session length
+  deliberately; it stays even though it is a second sign-in): email one-time-code for the two humans,
   a service token for each agent that needs the API. Access gets people
   to the door; the app's own accounts decide what they can do inside.
 - **Roles**: `owner` (DeAndre) and `member` (Ali). Owner can invite,
@@ -160,7 +161,7 @@ Replace Case Forge's PIN with real accounts. Cloudflare is the platform.
   small profile picture. The picture is uploaded through the Worker,
   limited to 2 MB, resized server-side to 128 px square (use Cloudflare
   Images if available, otherwise a WASM resizer in the Worker), stored
-  in R2, served from `api.<domain>/avatars/<id>` with caching. Shown in
+  in R2, served from `api.clawdie.ai/avatars/<id>` with caching. Shown in
   the top bar and next to the person's name on tasks and notes.
 
 ### 4.3 The run API on the server
@@ -171,7 +172,7 @@ Per `docs/PLATFORM_PLAN.md` section 3. A small service under
 `heartbeat` and `status.json` and pushes changes over WebSocket. Field
 names are the field names in the files; invent nothing. Add it to
 `docker-compose.yml` as service `api` with `cloudflared` beside it. The
-Worker at `api.<domain>` proxies to it through the tunnel; the service
+Worker at `api.clawdie.ai` proxies to it through the tunnel; the service
 itself is never exposed.
 
 ### 4.4 The board in the app
@@ -188,14 +189,15 @@ the store; the app is a view. Follow the merge rule in
 
 ### 4.5 Desktop app, downloads and updates
 
-Case Forge's packaging and updater are the model; reuse the same
-mechanism if Case Forge is Tauri or Electron, otherwise Tauri 2. Signed
-auto-updater checking `https://updates.<domain>/latest.json`, private
-signing key only in GitHub secrets. Builds for macOS (arm64 and x64),
+Case Forge is Electron with electron-builder and electron-updater;
+reuse exactly that. electron-updater's generic provider reads the
+per-platform `latest.yml` manifests from `https://updates.clawdie.ai`
+(proposed hostname) on R2. Code-signing and updater keys only in GitHub
+secrets. Builds for macOS (arm64 and x64),
 Windows and Linux.
 
 Release workflow on a `v*` tag: build installers, upload them to an R2
-bucket served at `updates.<domain>`, write `latest.json`, create a GitHub
+bucket served at `updates.clawdie.ai`, write the `latest.yml` manifests, create a GitHub
 Release, append a note to `board/notes.md` with the download links, and
 message the Claude session over MCP with the version and links. The
 Downloads tab reads the same manifest and release list so a fresh
@@ -204,8 +206,14 @@ install is one click from inside the web app.
 ### 4.6 Web app
 
 Same code, built for the browser, deployed to Cloudflare Pages at
-`app.<domain>` from GitHub Actions on every push to `main`, with preview
+`app.clawdie.ai` from GitHub Actions on every push to `main`, with preview
 deployments per pull request.
+
+### 4.7 Fixtures
+
+`runs/` is never committed. A small synthetic run directory generated by
+the bot's own test code may live under `platform/fixtures/` for the app's
+unit tests. Real runs are shared as tarballs in R2.
 
 ## 5. Milestones and order
 
@@ -257,10 +265,11 @@ what you need from a human, and any board task you created for
 
 ## 8. Ask these before you start
 
-1. Which hostnames on the Clawdies domain: the plan assumes
-   `app.<domain>`, `api.<domain>`, `updates.<domain>`.
-2. Where the Case Forge source lives (repository or folder) and whether
-   it is Tauri or Electron.
+1. Confirm the proposed hostnames `api.clawdie.ai` and
+   `updates.clawdie.ai` (`app.clawdie.ai` is decided).
+2. Resolved: Case Forge is Electron with electron-builder and
+   electron-updater. Propose instead whether to fork the Case Forge
+   repository or extract its renderer into a shared package.
 3. Which email sender to use: Cloudflare Email Service if the account
    has it, otherwise Resend, and the two emails to seed as owner and
    member.

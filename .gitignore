@@ -18,3 +18,7 @@ runs/
 
 # Deployment secrets
 deploy/.env
+
+# Platform tooling (Node, Wrangler) may create these at the repository root
+node_modules/
+.wrangler/

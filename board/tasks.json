@@ -74,7 +74,7 @@
     {
       "id": "T-004",
       "title": "Define the run API contract (JSON over HTTP + WebSocket) for the dashboard",
-      "status": "review",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-fable",
@@ -95,6 +95,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "draft docs/API.md written from the artifact field names; deandre-gpt6 to review against M1/M2 needs"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: accepted by deandre-gpt6 as inputs for API work (read the actual summary/status/journal outputs); G3 endpoint comparison tests to follow in T-025"
         }
       ]
     },
@@ -138,7 +143,7 @@
     {
       "id": "T-006",
       "title": "Reuse the Case Forge Electron app: choose fork vs shared renderer package, wire the tab shell",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -162,6 +167,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-02: decided by deandre-gpt6: pinned clean MIT source import from CaseForgeHq/family-court-strategist at c8bea2a9fe3ad3a1702f7915f2712a604cc57cc9, allowlisted presentation assets with original licence/font notices and hashes"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: import in progress on codex/platform-app (loopback-only synthetic shell runnable locally)"
         }
       ]
     },
@@ -393,7 +403,7 @@
     {
       "id": "T-015",
       "title": "Produce a synthetic fixture run directory for the app's Runs tab",
-      "status": "review",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-fable",
@@ -412,6 +422,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "delivered: platform/fixtures/synthetic/ (ma_synthetic_\u2026_78e97a61, bah_synthetic_\u2026_f2e66a79, README, configs, generator) on claude/cool-sagan-7klcfy"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: accepted by deandre-gpt6 as inputs for API work (read the actual summary/status/journal outputs); G3 endpoint comparison tests to follow in T-025"
         }
       ]
     },
@@ -462,7 +477,7 @@
     {
       "id": "T-018",
       "title": "M1 design note for review before building auth",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -476,6 +491,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: G1 reviewed by deandre-fable against platform/docs/AUTH-DESIGN.md @ 62cd7bf. Approved with the fixes recorded on T-022; no blocker."
         }
       ]
     },
@@ -537,7 +557,7 @@
     {
       "id": "T-021",
       "title": "Measure password-hash cost on the actual Workers plan",
-      "status": "todo",
+      "status": "done",
       "priority": "normal",
       "assigned_by": "deandre-fable",
       "assigned_to": "deandre-gpt6",
@@ -551,6 +571,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "created from the coordination pass with Astra"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: measured on the account's remote preview (platform/docs/hash-probe-results.json @ codex/platform-app 62cd7bf): native WebCrypto and node:crypto cap PBKDF2 at 100000 iterations; @noble/hashes 2.4.0 PBKDF2-HMAC-SHA256 at 600000 succeeded 3/3 and matched Node's output; round trips 2405/1582/1549 ms (client-observed, not CPU billing)"
         }
       ]
     },
@@ -567,12 +592,17 @@
       "depends_on": [
         "T-018"
       ],
-      "instructions": "Implement the M1 design note (T-018) after Fable's review. Endpoints under the names in docs/API.md section 5-6. Acceptance tests from docs/prompts/astra-platform-brief.md section 6 (auth, roles, avatar, terms). Secrets only in Cloudflare secrets. PR into main (or baseline) from codex/platform-app; Fable reviews the auth and session code before merge.",
+      "instructions": "Implement the M1 design note (T-018) after Fable's review. Endpoints under the names in docs/API.md section 5-6. Acceptance tests from docs/prompts/astra-platform-brief.md section 6 (auth, roles, avatar, terms). Secrets only in Cloudflare secrets. PR into main (or baseline) from codex/platform-app; Fable reviews the auth and session code before merge. G1 fixes (COLLAB-20260921-03), all required before merge: (1) Hashing: @noble/hashes 2.4.0 PBKDF2-HMAC-SHA256 at 600000 iterations is approved; add known-answer tests (RFC 6070 vectors plus at least three salt/length cases) run in CI, verify the package integrity hash against the npm registry tarball at install, and cap the Worker at one KDF call per request. (2) Request order on login/signup/forgot/reset: exact Origin and JSON content type and body-size check, then limiter reservation in the auth Durable Object (per-IP and per-account, before anything external), then Turnstile siteverify, then account lookup, then the single KDF call. Failed attempts count; a success resets the per-account window; add a global ceiling of 60 KDF calls per minute across the Worker so an attacker cannot buy CPU time with valid Turnstile tokens; a locked account still allows the reset flow under its own limiter, so the owner cannot be locked out of recovery. (3) Identity binding: invitation email and Access email may differ. Bind on first successful invite-token redemption: the token proves the invited address, the validated Access JWT proves the identity; store Access sub as the primary binding and the Access email as informational; refuse redemption if that sub is already bound to another user; later logins require the same sub; an email change on the same sub is allowed and audited; a sub change requires the owner to re-bind. (4) Access JWT: jose with alg allowlist RS256 only, exact iss and aud, JWKS cached with bounded TTL, fail closed. (5) Desktop: after the browser login and PKCE code exchange, Electron must also hold the Access token for the API hostname (sent as the Cf-Access-Jwt-Assertion header) or the Access app for the API hostname must carry a longer session than the web app; decide and record which, since the app session alone does not pass the Access perimeter. (6) SameSite=Strict on the session cookie is fine because verify and reset are token-only routes that need no session; state that in the design so nobody relaxes it later. (7) Avatar decode: name the decoder (Cloudflare Images binding or a pinned WASM decoder) before implementation; uploads stay disabled until it is chosen.",
       "log": [
         {
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "reserved in COLLAB-20260921-01 planning round 1"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: G1 fixes appended; T-022 may start once they are reflected in AUTH-DESIGN.md"
         }
       ]
     },
@@ -623,7 +653,7 @@
     {
       "id": "T-025",
       "title": "Run API implementation against docs/API.md sections 1-4 using platform/fixtures/synthetic and the live fixture",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-gpt6",
@@ -646,6 +676,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-02: G3 extended to journal timestamp fidelity"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: dependencies T-004/T-015/T-027 done; API implementation in progress on codex/platform-app"
         }
       ]
     },
@@ -671,13 +706,18 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-02: docs ownership split and stacked draft PR rule recorded"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: platform/docs published at codex/platform-app 62cd7bf (COLLABORATIVE-EXECUTION-PLAN.md, AUTH-DESIGN.md, ACCEPTANCE.md, hash-probe-results.json); read by Fable without merging app code"
         }
       ]
     },
     {
       "id": "T-027",
       "title": "Synthetic live-surface fixture: status.json, metrics.prom, heartbeat, state.json, journal.jsonl for the Live and Overview tabs",
-      "status": "review",
+      "status": "done",
       "priority": "high",
       "assigned_by": "deandre",
       "assigned_to": "deandre-fable",
@@ -696,6 +736,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "delivered: platform/fixtures/synthetic/paper-ma_synthetic/ (heartbeat, status.json, metrics.prom, state.json, journal.jsonl, sample-stale-tripped/) plus generate_live.cpp; README updated"
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-03: accepted by deandre-gpt6 as inputs for API work (read the actual summary/status/journal outputs); G3 endpoint comparison tests to follow in T-025"
         }
       ]
     },

@@ -2,6 +2,15 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 12:32 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-14 close. The owner email bootstrap source at 5d3d084
+passes review on all seven conditions; it stays unrun. Blocker: the
+owner mailbox reports no inbound mail since Friday, so neither the
+Access PIN nor the invitation can arrive. Astra is diagnosing the
+mailbox read-only; any mail-setting change is DeAndre's. Deployment
+stays deployed-not-usable, invitation delivery pending (T-010, T-019,
+T-031).
+
 ## 2026-09-21 12:16 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-14. Deployment checkpoint recorded: the reviewed
 f462cc8 is live on the single origin with every feature off; it is

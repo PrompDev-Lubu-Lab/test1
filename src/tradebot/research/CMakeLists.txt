@@ -1,6 +1,7 @@
 add_library(tradebot_research
   drift.cpp
   research.cpp
+  research_json.cpp
   validation.cpp)
 
 target_link_libraries(tradebot_research

@@ -12,6 +12,15 @@ before the real sample run (board task T-003) is available.
 | `ma_synthetic_2024-03-15_2024-03-17_78e97a61` | `ma_crossover` (15m candles, fast 4, slow 12, quantity 1) | 7 fills, crosses the sine wave several times |
 | `bah_synthetic_2024-03-15_2024-03-17_f2e66a79` | `buy_and_hold` (quantity 1) | 1 fill; the benchmark |
 
+The `ma_synthetic_…` directory also holds `validation.json`, written by
+`tradebot-research validate --config ma_synthetic_validate.conf --out runs
+--samples 200 --train 1d --test 12h --min-trades 3` (the same spec plus a
+`[sweep]` block, so the run id is unchanged). It has every section:
+`monte_carlo`, `costs` (45 points), `stability` (3 points), `regimes`,
+`walk_forward` (2 windows) and `go_no_go`. Its numbers are meaningless as
+research (a sine wave is trivially predictable) and exist only to give the
+Research tab a complete file to render.
+
 Each directory holds the six files every run writes (`config.txt`,
 `equity.csv`, `fills.csv`, `orders.csv`, `metrics.csv`, `summary.json`) plus
 the three `tradebot-analyze` adds (`metrics.json`, `report.txt`,
@@ -49,7 +58,7 @@ a paper instance produces, but no process ran and no market was watched.
 | `heartbeat` | `2026-09-21T01:15:00Z paper healthy armed` |
 | `status.json`, `metrics.prom` | a healthy, armed paper instance 75 minutes in: long 1 ETH at average 3000, marked 3012.50, 2 fills, 1 rejection |
 | `state.json` | the portfolio behind that status, account and per-strategy ledgers |
-| `journal.jsonl` | six reports: accepted, two fills (partial then full), accepted, cancelled, rejected with a reason. `time` is integer nanoseconds. |
+| `journal.jsonl` | six reports: accepted, two fills (partial then full), accepted, cancelled, rejected with a reason. `time` is ISO-8601 with nanoseconds. |
 | `sample-stale-tripped/` | the same instance 20 minutes later after the feed went stale and the kill switch tripped: `heartbeat` says `paper stale tripped`, `status.json` has `feed.state = "stale"`, `tripped = true` |
 
 Reproduce with `generate_live.cpp`, compiled the same way as

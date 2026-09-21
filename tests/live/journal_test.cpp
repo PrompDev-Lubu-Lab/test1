@@ -64,6 +64,25 @@ TEST_CASE("journal: encode/decode round trip") {
             CHECK(back->fill->exec_id == TradeId{99});
         }
     }
+    // The encoded time is the ISO-8601 string, never an integer that a JSON
+    // client would round.
+    {
+        const auto line = encode_report(sample_report(false));
+        CHECK(line.find("\"time\":\"2024-03-15T10:00:00.123456789Z\"") != std::string::npos);
+    }
+    // Integer nanoseconds (the pre-2026-09-21 encoding) still decode.
+    {
+        const auto r = sample_report(false);
+        auto line = encode_report(r);
+        const auto pos = line.find("\"time\":\"");
+        REQUIRE(pos != std::string::npos);
+        const auto end = line.find('"', pos + 8);
+        line.replace(pos, end + 1 - pos, "\"time\":" + std::to_string(r.time.nanos_since_epoch()));
+        auto back = decode_report(line);
+        REQUIRE_MESSAGE(back.has_value(), back.error().message);
+        CHECK(back->time == r.time);
+    }
+    CHECK_FALSE(decode_report(R"({"type":"fill","side":"buy","order_type":"limit","status":"open","price":"1","filled":"0","remaining":"1","client_id":1,"time":"yesterday"})").has_value());
     CHECK_FALSE(decode_report("not json").has_value());
     CHECK_FALSE(decode_report(R"({"type":"fill"})").has_value());
     CHECK_FALSE(decode_report(R"({"type":"teleport","side":"buy","order_type":"limit","status":"open","price":"1","filled":"0","remaining":"1","client_id":1,"time":1})").has_value());

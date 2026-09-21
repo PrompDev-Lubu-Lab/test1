@@ -4,13 +4,19 @@
 //   tradebot-research sweep        --config FILE [--out runs] [--metric sharpe] [--threads N]
 //   tradebot-research walk-forward --config FILE --train 30d --test 7d [--step 7d] [--metric sharpe]
 //   tradebot-research judge        RUN_DIR [--min-trades N] [--min-sharpe X] [--max-dd F] [--min-pf X]
+//   tradebot-research validate     --config FILE [--samples N] [--segment 7d] [--train D --test D] [--paper-dir DIR]
 //   tradebot-research index        [--out runs]
+//
+// Every subcommand except index accepts --json-out FILE to persist its
+// result as JSON (research_json.hpp). validate always writes the base
+// run's artifacts and validation.json under <out>/<run_id>/.
 
 #include "tradebot/analytics/analytics.hpp"
 #include "tradebot/backtest/backtest.hpp"
 #include "tradebot/core/config.hpp"
 #include "tradebot/core/log.hpp"
 #include "tradebot/research/research.hpp"
+#include "tradebot/research/research_json.hpp"
 #include "tradebot/research/validation.hpp"
 #include "tradebot/strategies/advanced.hpp"
 #include "tradebot/strategies/baselines.hpp"
@@ -28,8 +34,10 @@ int usage(const char* argv0) {
                  "  %s sweep --config FILE [--out DIR] [--metric M] [--threads N]\n"
                  "  %s walk-forward --config FILE --train DUR --test DUR [--step DUR] [--metric M] [--threads N]\n"
                  "  %s judge RUN_DIR [--min-trades N] [--min-sharpe X] [--max-dd F] [--min-pf X] [--ignore-benchmark]\n"
-                 "  %s index [--out DIR]\n",
-                 argv0, argv0, argv0, argv0);
+                 "  %s validate --config FILE [--samples N] [--segment DUR] [--train DUR --test DUR] [--paper-dir DIR]\n"
+                 "  %s index [--out DIR]\n"
+                 "  every subcommand but index also takes --json-out FILE\n",
+                 argv0, argv0, argv0, argv0, argv0);
     return 2;
 }
 
@@ -94,6 +102,7 @@ int main(int argc, char** argv) {
         c.min_profit_factor = std::stod(get("--min-pf", "1.1"));
         c.must_beat_benchmark = !opt.contains("--ignore-benchmark");
         int failures = 0;
+        nlohmann::json verdicts = nlohmann::json::array();
         for (const auto& dir : positional) {
             auto report = analytics::analyze_run_dir(dir);
             if (!report) {
@@ -103,7 +112,14 @@ int main(int argc, char** argv) {
             }
             const Verdict v = evaluate(*report, c);
             std::printf("%s\n%s", dir.c_str(), format_verdict(v).c_str());
+            verdicts.push_back({{"run_dir", dir}, {"run_id", report->run_id}, {"verdict", to_json(v)}});
             if (!v.pass) ++failures;
+        }
+        if (const std::string f = get("--json-out", ""); !f.empty()) {
+            if (auto w = write_json(f, {{"kill_criteria", to_json(c)}, {"runs", verdicts}}); !w) {
+                log.error("{}", w.error().to_string());
+                return 1;
+            }
         }
         return failures == 0 ? 0 : 1;
     }
@@ -155,7 +171,14 @@ int main(int argc, char** argv) {
             }
             ranked.push_back(Ranked{r->spec.strategies.front().label, std::move(report)});
         }
-        std::fputs(format_comparison(rank(std::move(ranked), *metric), *metric).c_str(), stdout);
+        const auto ordered = rank(std::move(ranked), *metric);
+        std::fputs(format_comparison(ordered, *metric).c_str(), stdout);
+        if (const std::string f = get("--json-out", ""); !f.empty()) {
+            if (auto w = write_json(f, to_json(ordered, *metric)); !w) {
+                log.error("{}", w.error().to_string());
+                return 1;
+            }
+        }
         return 0;
     }
 
@@ -168,6 +191,12 @@ int main(int argc, char** argv) {
         }
         const auto report = analytics::analyze(*run);
         std::fputs(analytics::format_report(report).c_str(), stdout);
+        const auto run_dir = std::filesystem::path(out_dir) / run->spec.run_id;
+        if (auto w = backtest::write_artifacts(*run, run_dir); !w) log.error("{}", w.error().to_string());
+        if (auto w = analytics::write_report(report, run_dir); !w) log.error("{}", w.error().to_string());
+        ValidationReport vr;
+        vr.run_id = run->spec.run_id;
+        vr.report = report;
         GoNoGoInputs in;
         in.report = report;
         in.criteria.min_round_trips = std::stoul(get("--min-trades", "30"));
@@ -179,6 +208,7 @@ int main(int argc, char** argv) {
         in.monte_carlo = monte_carlo_round_trips(report.round_trips, base->initial_cash,
                                                  std::stoul(get("--samples", "2000")), base->seed);
         std::printf("\n%s", format_monte_carlo(*in.monte_carlo).c_str());
+        vr.monte_carlo = in.monte_carlo;
         // 3. Costs.
         auto costs = cost_sensitivity(*base, CostGrid{}, registry, log, threads);
         if (!costs) {
@@ -186,6 +216,7 @@ int main(int argc, char** argv) {
             return 1;
         }
         in.costs = *costs;
+        vr.costs = *costs;
         std::printf("\n%s", format_grid(*costs, "Cost sensitivity").c_str());
         // 4. Parameter stability (needs a [sweep]).
         if (!sweep.keys().empty()) {
@@ -195,12 +226,14 @@ int main(int argc, char** argv) {
                 return 1;
             }
             in.stability = *stab;
+            vr.stability = *stab;
             std::printf("\n%s", format_grid(*stab, "Parameter stability").c_str());
         }
         // 5. Regimes.
         auto segment = parse_duration(get("--segment", "7d"));
         if (segment) {
-            std::printf("\n%s", format_regimes(regime_split(*run, *segment)).c_str());
+            vr.regimes = regime_split(*run, *segment);
+            std::printf("\n%s", format_regimes(*vr.regimes).c_str());
         }
         // 6. Walk-forward when asked.
         auto train = parse_duration(get("--train", ""));
@@ -213,6 +246,7 @@ int main(int argc, char** argv) {
                 return 1;
             }
             in.walk_forward = *wf;
+            vr.walk_forward = *wf;
             std::printf("\n%s", format_walk_forward(*wf).c_str());
         }
         // 7. Paper consistency when a paper run exists.
@@ -223,10 +257,20 @@ int main(int argc, char** argv) {
                 return 1;
             }
             in.consistency = *c;
+            vr.consistency = *c;
             std::printf("\n%s", format_consistency(*c).c_str());
         }
         const GoNoGo verdict = go_no_go(in);
         std::printf("\n%s", format_go_no_go(verdict).c_str());
+        vr.criteria = in.criteria;
+        vr.verdict = evaluate(report, in.criteria);
+        vr.go_no_go = verdict;
+        const std::filesystem::path json_file = get("--json-out", (run_dir / "validation.json").string());
+        if (auto w = write_json(json_file, to_json(vr)); !w) {
+            log.error("{}", w.error().to_string());
+            return 1;
+        }
+        log.info("validation written to {}", json_file.string());
         return verdict.go ? 0 : 1;
     }
 
@@ -255,6 +299,12 @@ int main(int argc, char** argv) {
             return 1;
         }
         std::fputs(format_walk_forward(*result).c_str(), stdout);
+        if (const std::string f = get("--json-out", ""); !f.empty()) {
+            if (auto w = write_json(f, to_json(*result)); !w) {
+                log.error("{}", w.error().to_string());
+                return 1;
+            }
+        }
         return 0;
     }
     return usage(argv[0]);

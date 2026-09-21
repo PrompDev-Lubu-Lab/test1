@@ -5,6 +5,10 @@
 // lost or corrupt, the portfolio is rebuilt by replaying the journal; in
 // live trading it is also the audit trail that reconciliation checks the
 // venue's own history against.
+//
+// One JSON object per line. `time` is ISO-8601 with nanoseconds (the
+// encoding every other artifact uses); decoding also accepts the integer
+// nanoseconds-since-epoch form written before 2026-09-21.
 
 #include "tradebot/core/error.hpp"
 #include "tradebot/execution/types.hpp"

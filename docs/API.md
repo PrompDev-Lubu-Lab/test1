@@ -66,10 +66,14 @@ tab come from here.
 
 ### `GET /instances/{id}/journal?after=<line>`
 
-Lines of `journal.jsonl` from `after` onward, as a JSON array. Each line
-verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
+Lines of `journal.jsonl` from `after` onward, served as `application/x-ndjson`,
+raw bytes, never parsed and re-serialised by the API or the Worker. Each
+line verbatim: `type` (`accepted|rejected|fill|cancelled|cancel_rejected|expired`),
 `client_id`, `order_id`, `instrument`, `strategy`, `side`, `order_type`,
-`price`, `time` (**integer nanoseconds since epoch**), `status`,
+`price`, `time` (ISO-8601 with nanoseconds since T-029; journals written
+before 2026-09-21 carry an integer nanoseconds-since-epoch value, which
+the bot still reads and the API passes through unchanged as raw NDJSON
+bytes), `status`,
 `filled`, `remaining`, optional `fill {price, quantity, fee, liquidity, exec_id}`,
 optional `reason`.
 
@@ -163,9 +167,33 @@ checks[{name, status, expected, observed, score, detail}]`. Check names:
 
 `revalidation.txt` as `text/plain` (ends with `Decision: keep|watch|retire`).
 
-Sweep, walk-forward, Monte Carlo and go/no-go output is printed by
-`tradebot-research`, not persisted, so there is no endpoint yet. When the
-Research tab needs them, the bot gains a `--json-out` flag (board task).
+### `GET /runs/{id}/validation`
+
+`validation.json`, written by `tradebot-research validate` into the run
+directory of the base run it validates (T-028). Keys: `run_id`,
+`report` (the same object as `metrics.json`), `kill_criteria
+{min_round_trips, min_sharpe, max_drawdown, min_profit_factor,
+must_beat_benchmark}`, `verdict {pass, failures[]}`, then only the
+sections that ran: `monte_carlo {samples, trips, return_p05, return_p50,
+return_p95, drawdown_p50, drawdown_p95, probability_negative}`,
+`costs` and `stability` (each `{points[{label, total_return, sharpe,
+max_drawdown, round_trips}], fraction_positive, median_sharpe,
+min_sharpe, max_sharpe}`), `regimes {segments[{from, to, realized_vol,
+high_vol, strategy_return, market_return}], high_vol_return,
+low_vol_return, high_vol_market, low_vol_market}`, `walk_forward
+{windows[{train_from, train_to, test_to, chosen_label, chosen_params{},
+in_sample_metric, out_of_sample{metrics.json object}}], oos_total_return,
+oos_mean_sharpe, oos_positive_fraction, oos_worst_drawdown,
+oos_round_trips}`, `consistency {from, to, backtest_return, paper_return,
+backtest_trips, paper_trips, return_gap, consistent}`, and `go_no_go
+{go, checks[{name, pass, detail}]}`. Non-finite scores are written as
+`0.0`. Sections that did not run are absent, not null.
+
+`tradebot-research sweep|walk-forward|judge --json-out FILE` write the
+same shapes (a ranked comparison `{sorted_by, rows[{rank, label, metric,
+report}]}`, a walk-forward result, or `{kill_criteria, runs[{run_dir,
+run_id, verdict}]}`) wherever asked; the API serves them only when they
+sit inside a run directory.
 
 ## 4. Events
 

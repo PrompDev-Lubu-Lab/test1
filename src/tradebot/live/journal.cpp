@@ -22,7 +22,7 @@ std::string encode_report(const ExecutionReport& r) {
     j["side"] = std::string(to_string(r.side));
     j["order_type"] = std::string(to_string(r.order_type));
     j["price"] = r.price.to_string();
-    j["time"] = r.time.nanos_since_epoch();
+    j["time"] = r.time.to_iso8601();  // ISO-8601 with nanoseconds, like every other artifact
     j["status"] = std::string(to_string(r.status));
     j["filled"] = r.filled_quantity.to_string();
     j["remaining"] = r.remaining_quantity.to_string();
@@ -95,15 +95,24 @@ Result<ExecutionReport> decode_report(std::string_view line) {
     auto remaining = str("remaining"); if (!remaining) return tl::make_unexpected(remaining.error());
     auto rq = Quantity::parse(*remaining); if (!rq) return tl::make_unexpected(rq.error());
     r.remaining_quantity = *rq;
-    if (!j.contains("client_id") || !j["client_id"].is_number_unsigned() || !j.contains("time") ||
-        !j["time"].is_number_integer()) {
+    if (!j.contains("client_id") || !j["client_id"].is_number_unsigned() || !j.contains("time")) {
         return make_error(ErrorCode::parse_error, "journal line missing client_id/time");
     }
     r.client_id = ClientOrderId{j["client_id"].get<std::uint64_t>()};
     r.order_id = OrderId{j.value("order_id", std::uint64_t{0})};
     r.instrument = InstrumentId{j.value("instrument", std::uint32_t{0})};
     r.strategy = StrategyId{j.value("strategy", std::uint32_t{0})};
-    r.time = Timestamp::from_nanos(j["time"].get<std::int64_t>());
+    // `time` is an ISO-8601 string; integer nanoseconds since the epoch are
+    // still accepted so journals written before this change replay.
+    if (j["time"].is_string()) {
+        auto ts = Timestamp::parse_iso8601(j["time"].get<std::string>());
+        if (!ts) return make_error(ErrorCode::parse_error, "journal line has a bad time");
+        r.time = *ts;
+    } else if (j["time"].is_number_integer()) {
+        r.time = Timestamp::from_nanos(j["time"].get<std::int64_t>());
+    } else {
+        return make_error(ErrorCode::parse_error, "journal line has a bad time");
+    }
     r.reason = j.value("reason", std::string{});
     if (j.contains("fill") && j["fill"].is_object()) {
         const auto& f = j["fill"];

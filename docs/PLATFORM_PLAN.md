@@ -179,7 +179,7 @@ heartbeat cadence (default five seconds):
 | `metrics.prom`  | the same as Prometheus gauges and counters, labelled by mode and label |
 | `heartbeat`     | one line, `<time> <mode> <feed state> <armed|tripped>`                |
 | `state.json`    | the portfolio, for resume after restart                               |
-| `journal.jsonl` | every execution report, fsynced before it is applied; the audit trail |
+| `journal.jsonl` | every execution report, fsynced before it is applied; the audit trail. One JSON object per line, `time` as ISO-8601 |
 
 Research adds `runs/index.csv` (one row per run with return, Sharpe,
 drawdown, round trips, benchmark and parameters) and, when

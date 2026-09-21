@@ -1,0 +1,21 @@
+import {readFile,writeFile,lstat} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {join,resolve} from 'node:path';
+import {desktopBuildConfiguration} from './desktop-config.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const args=new Set(process.argv.slice(2));
+if([...args].some(v=>!['--review','--dir'].includes(v)))throw new Error('Supported flags: --review, --dir.');
+if(process.platform!=='win32')throw new Error('The initial desktop release is Windows x64; other native signing pipelines remain pending.');
+const review=args.has('--review');
+const file=process.env.PLATFORM_DESKTOP_CONFIG?resolve(process.env.PLATFORM_DESKTOP_CONFIG):join(root,'desktop',review?'settings.example.json':'settings.local.json');
+const stat=await lstat(file);
+if(!stat.isFile() || stat.isSymbolicLink() || stat.size>16384)throw new Error('Invalid private desktop configuration.');
+const {settings,config}=desktopBuildConfiguration(JSON.parse(await readFile(file,'utf8')),{review});
+if(!review && (!process.env.CSC_LINK || !process.env.CSC_KEY_PASSWORD))throw new Error('Production packaging requires the approved signing credential in the release environment.');
+if(review && (process.env.CSC_LINK || process.env.WIN_CSC_LINK))throw new Error('Review builds must not consume signing credentials.');
+process.env.CSC_IDENTITY_AUTO_DISCOVERY='false';
+// Embed the policy under ASAR integrity, never in a mutable external resource.
+await writeFile(join(root,'desktop/settings.generated.json'),JSON.stringify(settings,null,2)+'\n');
+const {build,Platform,Arch}=await import('electron-builder');
+await build({projectDir:root,targets:Platform.WINDOWS.createTarget(args.has('--dir')?'dir':'nsis',Arch.x64),config,publish:'never'});
+console.log(review?'Unsigned development package prepared; no update feed or publication.':'Signed package prepared for review; publication is a separate step.');

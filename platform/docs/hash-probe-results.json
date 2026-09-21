@@ -1,0 +1,41 @@
+{
+  "at": "2026-09-21T02:21:21.533Z",
+  "environment": "Cloudflare authenticated remote preview; existing Workers Paid account; compatibility 2026-09-21; Wrangler 4.135.0",
+  "note": "Times are client round trips, not measured CPU billing. Only fixed synthetic input was used.",
+  "native_result": {
+    "WebCrypto": "NotSupportedError above 100000 iterations",
+    "node_crypto": "NotSupportedError above 100000 iterations"
+  },
+  "attempts": [
+    {
+      "supported": true,
+      "implementation": "@noble/hashes@2.4.0",
+      "iterations": 600000,
+      "byte_length": 32,
+      "output_hex": "b942d18ea70ce911de6bdeb650fce5d7065fb63f10eff2091288da0792873ee1",
+      "note": "Synthetic known input only; external elapsed time is not CPU billing.",
+      "round_trip_ms": 2405,
+      "matches_node_native": true
+    },
+    {
+      "supported": true,
+      "implementation": "@noble/hashes@2.4.0",
+      "iterations": 600000,
+      "byte_length": 32,
+      "output_hex": "b942d18ea70ce911de6bdeb650fce5d7065fb63f10eff2091288da0792873ee1",
+      "note": "Synthetic known input only; external elapsed time is not CPU billing.",
+      "round_trip_ms": 1582,
+      "matches_node_native": true
+    },
+    {
+      "supported": true,
+      "implementation": "@noble/hashes@2.4.0",
+      "iterations": 600000,
+      "byte_length": 32,
+      "output_hex": "b942d18ea70ce911de6bdeb650fce5d7065fb63f10eff2091288da0792873ee1",
+      "note": "Synthetic known input only; external elapsed time is not CPU billing.",
+      "round_trip_ms": 1549,
+      "matches_node_native": true
+    }
+  ]
+}

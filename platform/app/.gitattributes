@@ -1,0 +1,3 @@
+# Imported files are checked against original Git object bytes on every OS.
+/public/assets/caseforge/** -text
+/licenses/** -text

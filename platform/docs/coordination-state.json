@@ -1,0 +1,135 @@
+{
+  "cycle": "COLLAB-20260921",
+  "updated_at": "2026-09-21T14:58:28.828380+00:00",
+  "phase": "reviewed-bot-fix-integrated-ci-passed-human-gates",
+  "platform_branch": "codex/platform-app",
+  "board_branch": "claude/cool-sagan-7klcfy",
+  "last_merged_board_head": "f27fe3f2253fdcc84338d15dfa45746c5697679e",
+  "board_writer": "deandre-fable",
+  "platform_writer": "deandre-gpt6",
+  "last_sent_round": "COLLAB-20260921-22",
+  "last_processed_reply": "Round22 completed at Message39; canonical board f27fe3f records all 14 checks at integrated source fb78fcf",
+  "pending_reply": null,
+  "peer_review_closed": true,
+  "peer_followup_policy": "Round22 closed with canonical evidence. No acknowledgement-only messages; resume only for a meaningful change.",
+  "heartbeat_minutes": 5,
+  "unchanged_human_blocked_cycles": 0,
+  "human_gates": [
+    "Pending human authentication step",
+    "Server location and deployment authority",
+    "PR #1 merge and main branch",
+    "Signing credentials and memberships",
+    "Repository-scoped board token and real staging round trip",
+    "Real owner signup/password and authenticated browser acceptance"
+  ],
+  "claims": {
+    "live_trading": false,
+    "real_market_backtest": false,
+    "platform_deployed": true,
+    "mailbox_real_signin_verified": false,
+    "mailbox_real_delivery_verified": false,
+    "unsigned_windows_package_built": true,
+    "platform_user_access_enabled": true,
+    "platform_usable_by_invited_humans": false,
+    "owner_invite_sent": true,
+    "desktop_installed": false,
+    "desktop_published": false,
+    "owner_invite_receipt_verified": true
+  },
+  "reviewed_source_head": "b2021bd4104c479900d22387984fdb2363873664",
+  "deployed_source_head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+  "deployed_worker_version": "a5b1c69b-f46d-420f-a689-f5a2a42b5e59",
+  "bootstrap_review": {
+    "round": "COLLAB-20260921-17",
+    "board_head": "bde928f",
+    "tests_passed": 23,
+    "ci_checks_passed_at_reviewed_source": 14,
+    "remote_execution": "One confirmed invitation and one email request; provider queued and inbox receipt independently verified",
+    "delivery_evidence_round": "COLLAB-20260921-18"
+  },
+  "last_reported_account_state": {
+    "users": 0,
+    "verified_users": 0,
+    "active_invites": 1,
+    "checked_at": "2026-09-21T14:22:12.717035+00:00",
+    "evidence": "Read-only D1 after deployment: no new authentication audit beyond the original failure"
+  },
+  "real_workflow_acceptance": "All eleven rows remain Pending",
+  "independent_followups": [],
+  "onboarding_repair": {
+    "board_task": "T-034",
+    "status": "Deployed; original invitation remains active; user retry requested",
+    "observed_failure": "Invitation button completed Access but reached bare sign-in; admitted security check returned turnstile_unavailable",
+    "context_design": "Protected read-only token lookup pre-fills the intended address; fragment scrubbed immediately and retained only in page memory",
+    "recovery": "Reopen the same original email link in the same browser after Access, once the repair is deployed",
+    "display_name": "Clawdie working display value in the single APP_NAME constant; a final name can still be changed there",
+    "configuration_repair": "Exact existing widget secret reapplied as encrypted Worker binding; no underlying widget rotation and successful authentication not yet verified",
+    "app_tests_passed": 94,
+    "worker_tests_before_refinement": 173,
+    "invite_retry_or_resend": false,
+    "worker_tests_passed": 176,
+    "worker_tests_failed": 0,
+    "syntax_files": 40,
+    "imported_hashes": 13,
+    "dry_build": {
+      "kib": 183.0,
+      "gzip_kib": 44.56,
+      "static_files": 35
+    },
+    "core_ci_checks_passed": 14,
+    "frontend_followup_tests_passed": 31,
+    "frontend_followup": "Friendly message for every Turnstile503 category and a scoped footer row override after local narrow-width QA",
+    "frontend_visual_qa": "Synthetic Chrome355x767 and1242x818 passed; no live account acceptance claim",
+    "final_source_ci": {
+      "head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+      "checks": 14,
+      "passed": 13,
+      "pending": 0,
+      "failed": 1,
+      "platform_checks_passed": 4,
+      "failed_check": "gcc / Debug",
+      "failure_url": "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35611369353/job/106371042037",
+      "finding": "Binance gateway cancellation assertion at tests/gateway/binance_gateway_test.cpp:144; status2 vs cancelled5; cause unconfirmed; C++ unchanged by onboarding fix"
+    }
+  },
+  "bot_ci_followup": {
+    "task": "T-035",
+    "source_commit": "1b03b7bbf6502d7c0f88bc177704506ad25158a6",
+    "board_commit": "f995276be72920cb82ab7e8053de93fdca8994b8",
+    "merge_commit": "540045a13d23db54168ca5080e3af8423581d88c",
+    "finding": "A late fill revived a terminal cancelled state; a stale cancellation could overwrite filled. First terminal state now remains, while late fills still update quantities and fees.",
+    "review": "Root read the exact five-file incoming diff and both deterministic regressions; no root C++ edits",
+    "peer_validation": [
+      "gcc Debug ASan/UBSan full suite",
+      "clang Debug ASan/UBSan full suite",
+      "gcc Release full suite",
+      "clang Debug without sanitizers full suite",
+      "30 focused gateway repeats under each sanitizer compiler"
+    ],
+    "independent_ci": {
+      "head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+      "checks": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "status": "Reviewed source integrated into platform feature branch; all 14 combined CI checks passed; T-035 remains in review until mainline integration",
+    "bot_deployed": false,
+    "pr1_merged": false,
+    "integrated_ci": {
+      "head": "fb78fcf0598e2002ff0f3b26c851b557990a7bee",
+      "checks": 14,
+      "passed": 14,
+      "failed": 0,
+      "pending": 0,
+      "verified_at": "2026-09-21T14:55:44.850080+00:00",
+      "evidence": "Exact-commit GitHub check-runs API; all 14 completed successfully",
+      "runs": [
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397065",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397118",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402392",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402407"
+      ]
+    },
+    "evidence_board_commit": "f27fe3f2253fdcc84338d15dfa45746c5697679e"
+  }
+}

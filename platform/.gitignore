@@ -1,0 +1,10 @@
+**/node_modules/
+**/*.generated.json
+**/.wrangler/
+**/.dev.vars
+**/.env
+**/dist/
+**/release/
+**/coverage/
+**/*.local.json
+**/*.local.jsonc

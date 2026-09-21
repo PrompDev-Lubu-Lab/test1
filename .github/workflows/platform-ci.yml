@@ -1,0 +1,46 @@
+name: Platform CI
+on:
+  pull_request:
+    paths: ['platform/**', '.github/workflows/platform-ci.yml']
+  push:
+    branches: ['codex/platform-app']
+    paths: ['platform/**', '.github/workflows/platform-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install API dependencies without lifecycle scripts
+        working-directory: platform/api
+        run: npm ci --ignore-scripts --no-fund
+      - name: Check read-only contract and boundaries
+        working-directory: platform/api
+        run: npm test
+      - name: Install pinned desktop dependencies without lifecycle scripts
+        working-directory: platform/app
+        run: npm ci --ignore-scripts --no-fund
+      - name: Check UI source provenance and syntax
+        working-directory: platform/app
+        run: npm run check
+      - name: Check UI access gate and proxy
+        working-directory: platform/app
+        run: npm test
+      - name: Build static presentation
+        working-directory: platform/app
+        run: npm run build
+      - name: Install pinned authentication dependencies without lifecycle scripts
+        working-directory: platform/worker
+        run: npm ci --ignore-scripts --no-fund
+      - name: Check signed authentication and transactional account boundaries
+        working-directory: platform/worker
+        run: npm test

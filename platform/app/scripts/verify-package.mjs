@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile,lstat} from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+import {join} from 'node:path';
+import {createRequire} from 'node:module';
+import asar from '@electron/asar';
+import fuses from '@electron/fuses';
+import yaml from 'js-yaml';
+import {APP_SLUG,APP_VERSION} from '../public/config.js';
+const require=createRequire(import.meta.url);
+const {validateSettings,validateUpdateInfo}=require('../desktop/policy.cjs');
+const {verifyWindowsInstaller}=require('../desktop/signature.cjs');
+const root=fileURLToPath(new URL('../',import.meta.url));
+const review=process.argv.slice(2).includes('--review');
+if(process.argv.slice(2).some(v=>v!=='--review'))throw new Error('Only --review is supported.');
+const output=join(root,'release',review?'review':'production');
+const executable=join(output,'win-unpacked',`${APP_SLUG}${review?'-development':''}.exe`);
+const archive=join(output,'win-unpacked/resources/app.asar');
+const wire=await fuses.getCurrentFuseWire(executable);
+for(const [key,value] of Object.entries({0:48,1:49,2:48,3:48,4:49,5:49,7:48}))assert.equal(wire[key],value,`Unexpected packaged fuse ${key}.`);
+const files=asar.listPackage(archive);
+assert.equal(files.some(path=>/settings\.local|settings\.example|\/tests\/|\\tests\\|server\.mjs$/.test(path)),false,'Private/development source entered the archive.');
+const settings=validateSettings(JSON.parse(asar.extractFile(archive,'desktop/settings.generated.json').toString('utf8')));
+assert.equal(settings.channel,review?'review':'production');assert.equal(settings.updatesEnabled,!review);
+const packaged=JSON.parse(asar.extractFile(archive,'package.json').toString('utf8'));
+assert.equal(packaged.version,APP_VERSION);assert.equal(packaged.main,'desktop/main.cjs');
+const file=`${APP_SLUG}-${APP_VERSION}-win-x64${review?'-UNSIGNED-DEVELOPMENT':''}.exe`;
+const installer=join(output,file);const stat=await lstat(installer);
+assert.ok(stat.isFile() && !stat.isSymbolicLink() && stat.size>0 && stat.size<=1073741824);
+const hash=createHash('sha512');for await(const part of createReadStream(installer))hash.update(part);const sha512=hash.digest('base64');
+if(!review) {
+  for(const path of [executable,installer])assert.equal(await verifyWindowsInstaller({path,allowedRoot:output,publisherNames:settings.publisherNames,certificateThumbprints:settings.certificateThumbprints}),null,'Approved publisher signature is required.');
+  const nativeConfig=yaml.load(await readFile(join(output,'win-unpacked/resources/app-update.yml'),'utf8'));
+  assert.equal(nativeConfig.provider,'generic');assert.equal(nativeConfig.url,settings.feedUrl);assert.equal(nativeConfig.updaterCacheDirName,settings.cacheName);
+  assert.deepEqual(Array.isArray(nativeConfig.publisherName)?nativeConfig.publisherName:[nativeConfig.publisherName],settings.publisherNames);
+  const manifestFile=join(output,'latest.yml');assert.ok((await lstat(manifestFile)).size<=65536);
+  const info=yaml.load(await readFile(manifestFile,'utf8'));
+  // Validate relative paths and exact checksums independently of a comparison version.
+  const release=validateUpdateInfo(info,settings,'0.0.0');
+  assert.equal(info.version,APP_VERSION);assert.equal(info.files[0].url,file);assert.equal(info.files.length,1);assert.equal(info.files[0].size,stat.size);assert.equal(release.sha512,sha512);
+  if(info.path!==undefined)assert.equal(info.path,file);if(info.sha512!==undefined)assert.equal(info.sha512,sha512);
+  const notes=process.env.RELEASE_NOTES??'';assert.ok(Buffer.byteLength(notes,'utf8')<=6000 && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(notes));
+  await writeFile(join(output,'catalog.json'),JSON.stringify({version:APP_VERSION,file,size:stat.size,sha512,released_at:new Date().toISOString(),notes},null,2)+'\n');
+}
+const evidence={checked_at:new Date().toISOString(),channel:settings.channel,version:APP_VERSION,artifact:file,size:stat.size,sha512,checks:{required_fuses:true,embedded_policy:true,packaged_version:true,private_source_excluded:true,publisher_signature:review?'not-required-development':true,installed_upgrade:'pending'}};
+await writeFile(join(output,'verification.json'),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));

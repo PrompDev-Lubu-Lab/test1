@@ -1,0 +1,46 @@
+{
+  "at": "2026-09-21T03:32:33.321488+00:00",
+  "environment": "Authenticated Cloudflare remote development preview; actual Images service",
+  "fixture": "Generated RGB PNG256x128; no user photo",
+  "worker_deployed": false,
+  "account_activated": false,
+  "production_avatar_flag_enabled": false,
+  "result": {
+    "status": 200,
+    "type": "image/webp",
+    "width": "128",
+    "height": "128",
+    "size": 464,
+    "sha256": "d6140b8c348415c98b1e290460918ac18e975c2c5f347e6e8b4965ea1bb8060c",
+    "roundTripMs": 570
+  },
+  "negative_cases": [
+    {
+      "name": "non-image",
+      "status": 415,
+      "error": "unsupported_image"
+    },
+    {
+      "name": "SVG",
+      "status": 415,
+      "error": "unsupported_image"
+    },
+    {
+      "name": "over-2MiB",
+      "status": 413,
+      "error": "image_too_large"
+    },
+    {
+      "name": "malformed-PNG",
+      "status": 400,
+      "error": "invalid_image"
+    },
+    {
+      "name": "re-encode-WebP",
+      "status": 200,
+      "width": "128",
+      "height": "128"
+    }
+  ],
+  "limits": "Preview decoding evidence, not a production R2 upload or visual avatar acceptance."
+}

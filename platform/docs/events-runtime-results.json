@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-09-21T04:40:41.568Z",
+  "scope": "local synthetic workerd, no accounts, external origin or deployment",
+  "node": "v24.19.0",
+  "miniflare": "5.20260918.0-alpha",
+  "workerd": "1.20260918.1",
+  "checks": {
+    "missing_origin_denied": true,
+    "actual_upgrade_101": true,
+    "values_replaced_with_refresh_hint": true,
+    "revoked_session_closed_4401": true,
+    "client_write_closed_1008": true,
+    "normal_close_completed": true
+  }
+}

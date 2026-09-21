@@ -1,0 +1,86 @@
+{
+  "repository": "https://github.com/CaseForgeHq/family-court-strategist",
+  "commit": "c8bea2a9fe3ad3a1702f7915f2712a604cc57cc9",
+  "purpose": "Allowlisted presentation reuse; no case data or native case services.",
+  "files": [
+    {
+      "source": "desktop/landscape.css",
+      "destination": "public/assets/caseforge/landscape.css",
+      "sha256": "35cc81cb7ede927768344bb26f619978e716e2af16ced4f0f26a460dbeda2bd2",
+      "modified": false
+    },
+    {
+      "source": "desktop/landscape.js",
+      "destination": "public/assets/caseforge/landscape.js",
+      "sha256": "412e44b8568883aeaaead599eeaf0e8200eb4612c04c8b3f0f96bd781ef34c75",
+      "modified": false
+    },
+    {
+      "source": "desktop/scene-time.js",
+      "destination": "public/assets/caseforge/scene-time.js",
+      "sha256": "10b6080ffab404fbba6382fa44ea6f1af5042e0601220a5f29f497c69ee42dc2",
+      "modified": false
+    },
+    {
+      "source": "desktop/onboarding.css",
+      "destination": "public/assets/caseforge/onboarding.css",
+      "sha256": "403f9f781fe8b282122ca56608e6aaeddd6e08a43fe201098283dbca389bba28",
+      "modified": false
+    },
+    {
+      "source": "desktop/terms.css",
+      "destination": "public/assets/caseforge/terms.css",
+      "sha256": "cb969235fc051b20361a8fbd5a8b5ac3d0751ed3cb902fe698ccfd25253ec59c",
+      "modified": false
+    },
+    {
+      "source": "desktop/entry-flow.js",
+      "destination": "public/assets/caseforge/entry-flow.js",
+      "sha256": "dd91c438293447b5cf5ecd287a4c5957ed6245f8728fed056617f45b20663a98",
+      "modified": false
+    },
+    {
+      "source": "desktop/scene-controls.css",
+      "destination": "public/assets/caseforge/scene-controls.css",
+      "sha256": "3268d8cab6b90baa2f0d76e88954843b9dc845510c03355e12aad727481c0ca5",
+      "modified": false
+    },
+    {
+      "source": "app/public/topbar.css",
+      "destination": "public/assets/caseforge/topbar.css",
+      "sha256": "cc232e63529c526370d653174168deb3293f1a8b012f1f85e1d396f2652d281b",
+      "modified": false
+    },
+    {
+      "source": "desktop/fonts/Ubuntu-Regular.ttf",
+      "destination": "public/assets/caseforge/fonts/Ubuntu-Regular.ttf",
+      "sha256": "540f19be11a368130641d00ec1c354b535c0803560f598d7d062486c9278387a",
+      "modified": false
+    },
+    {
+      "source": "desktop/fonts/Quicksand-VariableFont_wght.ttf",
+      "destination": "public/assets/caseforge/fonts/Quicksand-VariableFont_wght.ttf",
+      "sha256": "8b3a3842cc4b666fde454446e28d1bacde30a0ac861e90cbb0bd77b02ecb9dae",
+      "modified": false
+    },
+    {
+      "source": "desktop/fonts/LICENSE-Ubuntu-UFL.txt",
+      "destination": "licenses/LICENSE-Ubuntu-UFL.txt",
+      "sha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002",
+      "modified": false
+    },
+    {
+      "source": "desktop/fonts/LICENSE-Quicksand-OFL.txt",
+      "destination": "licenses/LICENSE-Quicksand-OFL.txt",
+      "sha256": "4dbe0136ddbf96482920413247fb5af7a85aa0bec61ec597d3b867b16c7b9338",
+      "modified": false
+    },
+    {
+      "source": "LICENSE",
+      "destination": "licenses/CASE-FORGE-MIT.txt",
+      "sha256": "8189df863d817d3f884a244e1d81646e17b2846b7c815b67ba2afaf3a73edf54",
+      "modified": false
+    }
+  ],
+  "hash_basis": "Original Git blob bytes; imported files disable line-ending conversion."
+}

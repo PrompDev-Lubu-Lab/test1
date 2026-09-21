@@ -1,0 +1,9 @@
+{
+  "name": "clawdie-platform-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test --test-concurrency=1 test/*.test.mjs" },
+  "dependencies": { "@noble/hashes": "2.4.0", "jose": "6.2.1" }
+}

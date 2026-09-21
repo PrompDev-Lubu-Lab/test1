@@ -1,0 +1,151 @@
+{
+  "checked_at": "2026-09-21T14:26:37.677024+00:00",
+  "coordination_updated_at": "2026-09-21T14:46:06.159802+00:00",
+  "source_commit": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+  "worker_version": "a5b1c69b-f46d-420f-a689-f5a2a42b5e59",
+  "runtime_status": "Onboarding code remains7051615 at its verified deployed version; Fable bot source fix integrated on feature branch only; real signup remains pending",
+  "peer_review": "COLLAB-20260921-20 passed core b2021bd; validated frontend feedback/footer follow-up at7051615",
+  "worker_tests": {
+    "passed": 176,
+    "failed": 0
+  },
+  "ci_checks": {
+    "head": "70516156a6bf9568c3e2ebbec6d51f0e48d28ede",
+    "checks": 14,
+    "passed": 13,
+    "pending": 0,
+    "failed": 1,
+    "platform_checks_passed": 4,
+    "failed_check": "gcc / Debug",
+    "failure_url": "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35611369353/job/106371042037",
+    "finding": "Binance gateway cancellation assertion at tests/gateway/binance_gateway_test.cpp:144; status2 vs cancelled5; cause unconfirmed; C++ unchanged by onboarding fix"
+  },
+  "bundle": {
+    "kib": 183.0,
+    "gzip_kib": 44.56,
+    "static_files": 35
+  },
+  "provisioning": {
+    "d1_schema_applied": true,
+    "private_avatar_bucket": true,
+    "private_release_bucket": true,
+    "r2_dev_access_disabled": true,
+    "turnstile_widget": true,
+    "turnstile_secret": true,
+    "rate_key_secret": true,
+    "hostname_wide_access_app": true,
+    "custom_domain": true,
+    "optional_features_enabled": false,
+    "approved_exact_owner_access_rule": true,
+    "owner_access_rule_live": true,
+    "owner_login_method": "Continuing email OTP; separate app password"
+  },
+  "checks": {
+    "unauthenticated_edge_paths_denied": 7,
+    "local_workerd_paths_denied_at_host_gate": 10,
+    "signed_assertion_verifier": "real RS256 unit/integration tests",
+    "workers_dev_disabled": true,
+    "preview_urls_disabled": true,
+    "authenticated_browser": "Fresh Chrome reached expected Cloudflare Access email-code login; signed-in app acceptance pending",
+    "account_signup": "Repair deployed; same original invitation awaits human retry",
+    "real_email_delivery": "Owner setup invitation receipt verified at 2026-09-21T13:41:47Z; application verification/reset workflows remain pending",
+    "server_connection": "pending",
+    "signed_installed_upgrade": "pending",
+    "managed_dns_record": true,
+    "unauthenticated_http_result": "403 on all seven read-only probes; no bodies or protected assets exposed"
+  },
+  "claims": {
+    "deployed": true,
+    "usable_by_invited_humans": false,
+    "production_desktop_published": false
+  },
+  "operator_bootstrap_tests": {
+    "source_commit": "ea30244ebe044bc4fd096e0c79e477996807bf49",
+    "passed": 23,
+    "failed": 0,
+    "peer_review": "Round 17 passed at board bde928f; outcome recorded in round 18 at49dae95",
+    "ci_checks_passed_at_source": 14,
+    "real_transport_probe": "Default production executor and installed Wrangler: two remote SELECT 1 commands passed",
+    "remote_invitation": "Exactly one active invitation; two earlier unconfirmed attempts remain as expired history",
+    "email": "Exactly one request; provider queued; intended inbox receipt independently verified at2026-09-21T13:41:47Z",
+    "invitation_expires_at": "2026-09-22T13:41:27Z",
+    "automatic_retry": false
+  },
+  "last_reported_account_state": {
+    "users": 0,
+    "verified_users": 0,
+    "active_invites": 1,
+    "checked_at": "2026-09-21T14:22:12.717035+00:00",
+    "evidence": "Read-only D1 after deployment: no new authentication audit beyond the original failure"
+  },
+  "desktop": {
+    "development_package_built": true,
+    "signature": "NotSigned",
+    "installed": false,
+    "published": false
+  },
+  "coordination": {
+    "final_board_head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+    "review_rounds_closed": true,
+    "pending_reply": null,
+    "real_workflow_acceptance": "All eleven rows remain Pending",
+    "onboarding_design_board_head": "eec4e7988958b693d4203d9f9cf7b599d1770d3d"
+  },
+  "configuration_repair": {
+    "checked_at": "2026-09-21T14:05:01Z",
+    "deployed_at": "2026-09-21T13:57:08.172604Z",
+    "same_widget": true,
+    "source_changed": false,
+    "live_authentication_verified": false
+  },
+  "onboarding_source_review": {
+    "source": "b2021bd4104c479900d22387984fdb2363873664",
+    "round": "COLLAB-20260921-20",
+    "verdict": "pass; no blockers",
+    "ci_checks_passed": 14,
+    "worker_tests_passed": 176,
+    "app_tests_passed_at_core": 94,
+    "ui_followup_tests_passed": 31,
+    "runtime_deployed": true
+  },
+  "bot_source_followup": {
+    "task": "T-035",
+    "source_commit": "1b03b7bbf6502d7c0f88bc177704506ad25158a6",
+    "board_commit": "f995276be72920cb82ab7e8053de93fdca8994b8",
+    "merge_commit": "540045a13d23db54168ca5080e3af8423581d88c",
+    "finding": "A late fill revived a terminal cancelled state; a stale cancellation could overwrite filled. First terminal state now remains, while late fills still update quantities and fees.",
+    "review": "Root read the exact five-file incoming diff and both deterministic regressions; no root C++ edits",
+    "peer_validation": [
+      "gcc Debug ASan/UBSan full suite",
+      "clang Debug ASan/UBSan full suite",
+      "gcc Release full suite",
+      "clang Debug without sanitizers full suite",
+      "30 focused gateway repeats under each sanitizer compiler"
+    ],
+    "independent_ci": {
+      "head": "f995276be72920cb82ab7e8053de93fdca8994b8",
+      "checks": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "status": "Integrated feature-branch source passes all 14 CI checks; production bot unchanged",
+    "bot_deployed": false,
+    "pr1_merged": false,
+    "integrated_ci": {
+      "head": "fb78fcf0598e2002ff0f3b26c851b557990a7bee",
+      "checks": 14,
+      "passed": 14,
+      "failed": 0,
+      "pending": 0,
+      "verified_at": "2026-09-21T14:55:44.850080+00:00",
+      "evidence": "Exact-commit GitHub check-runs API; all 14 completed successfully",
+      "runs": [
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397065",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614397118",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402392",
+        "https://github.com/PrompDev-Lubu-Lab/test1/actions/runs/35614402407"
+      ]
+    },
+    "evidence_board_commit": "f27fe3f2253fdcc84338d15dfa45746c5697679e"
+  }
+}

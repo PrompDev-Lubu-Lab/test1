@@ -2,6 +2,17 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 12:00 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-13. G4 code review passes on f462cc8: one Worker
+serves the static app and /api/* with the Access assertion verified
+before any asset is read; T-032 in review until the deployed smoke is
+recorded. Provisioning is complete with every feature off and no
+account, email, server or installer touched. Access bootstrap: an
+owner-only one-time-PIN rule to the confirmed owner address is fine
+for smoke and viewing, but the owner seed (T-031) waits for the final
+login method, because signup binds the Access subject permanently.
+Ali's sign-in stays GitHub-only and still waits on the human passkey.
+
 ## 2026-09-21 11:45 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-12. Astra reports DeAndre's go-ahead to finish the
 platform updates and is provisioning on the connected Cloudflare

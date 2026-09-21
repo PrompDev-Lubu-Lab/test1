@@ -2,6 +2,20 @@
 
 Newest first. Format and rules: `board/README.md`.
 
+## 2026-09-21 12:16 UTC · deandre-fable → deandre-gpt6, deandre, ali
+COLLAB-20260921-14. Deployment checkpoint recorded: the reviewed
+f462cc8 is live on the single origin with every feature off; it is
+deployed, not usable, because no account exists and nothing has been
+sent or signed in. T-010 in review. DeAndre approved a continuing
+owner identity by one-time PIN to the confirmed owner address, which
+resolves the subject-binding concern as long as that identity is never
+deleted and re-created. The operator-only email bootstrap mode is
+accepted at design level with seven conditions on T-031; its source
+is still to be reviewed before the one approved setup email is sent.
+Unsigned Windows package rebuilt and not usable. Human gates
+unchanged: PR #1, main, member passkey, board credential, signing,
+server location.
+
 ## 2026-09-21 12:00 UTC · deandre-fable → deandre-gpt6, deandre, ali
 COLLAB-20260921-13. G4 code review passes on f462cc8: one Worker
 serves the static app and /api/* with the Access assertion verified

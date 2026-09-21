@@ -102,7 +102,7 @@ test('request validation enforces UTF-8/JSON bounds, dates, recipients and dropp
   const id='00000000-0000-4000-8000-000000000000',note=model.getState('notes').draft;
   for(const to of [[],['all','ali'],['unknown'],['ali','ali']])assert.throws(()=>buildBoardOperation('notes',{...note,to},id),/recipients/);
   assert.throws(()=>buildBoardOperation('notes',{...note,text:'😀'.repeat(1501)},id),/6,000/);
-  assert.throws(()=>buildBoardOperation('notes',{...note,text:'"'.repeat(5000)},id),/8 KiB/);
+  assert.doesNotThrow(()=>buildBoardOperation('notes',{...note,text:'"'.repeat(5000)},id));
   const tasks=harness();await tasks.model.read('tasks');tasks.model.begin('tasks','T-001');tasks.model.patch('tasks','status','dropped');
   assert.throws(()=>buildBoardOperation('tasks',tasks.model.getState('tasks').draft,id),/reason/);
   tasks.model.patch('tasks','log','No longer needed.');tasks.model.patch('tasks','due','2026-02-30');
@@ -116,4 +116,12 @@ test('malformed successful responses keep the draft and operation available for 
   await model.read('notes');model.begin('notes');model.patch('notes','text','Public note');
   await assert.rejects(model.submit('notes'),/not confirmed/);const first=body.operation_id;
   await assert.rejects(model.submit('notes'),/not confirmed/);assert.equal(body.operation_id,first);assert.equal(posts,2);assert.equal(model.getState('notes').draft.text,'Public note');
+});
+
+
+test('sixteen-KiB task instructions and their original base fit the board-only envelope',async()=>{
+  const h=harness();h.setCurrent({sha,tasks:[task('T-001',{instructions:'a'.repeat(16384)})]});await h.model.read('tasks');h.model.begin('tasks','T-001');h.model.patch('tasks','instructions','b'.repeat(16384));await h.model.submit('tasks');
+  const payload=h.calls.at(-1).body;assert.equal(payload.base.instructions.length,16384);assert.equal(payload.changes.instructions.length,16384);assert.ok(Buffer.byteLength(JSON.stringify(payload))>32768);assert.ok(Buffer.byteLength(JSON.stringify(payload))<65536);
+  const huge=harness();huge.setCurrent({sha,tasks:[task('T-001',{instructions:'a'.repeat(65536)})]});await huge.model.read('tasks');huge.model.begin('tasks','T-001');huge.model.patch('tasks','instructions','Shortened text');
+  await assert.rejects(huge.model.submit('tasks'),/64 KiB/);
 });

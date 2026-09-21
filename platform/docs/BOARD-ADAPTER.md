@@ -17,9 +17,9 @@ All routes require a verified Access subject, a current app session and accepted
 | GET `/api/board/tasks` | `{sha,tasks}` from the fixed tasks file |
 | GET `/api/board/notes` | `{sha,notes}`; notes are original text |
 | POST `/api/board/tasks` | Create, edit, status, assignment, due date, dependencies and appended log |
-| POST `/api/board/notes` | Prepend a new server-attributed note and preserve all prior bytes |
+| POST `/api/board/notes` | Insert a new server-attributed note after the preamble and before the first history heading |
 
-Each mutation supplies `expected_sha` and a random UUIDv4 `operation_id`. Task create supplies `action:create` and editable task fields; the Worker allocates the next task ID, initial status, dates and attribution. Update supplies `action:update`, `task_id`, `changes`, original `base` values for changed non-status fields and an optional appended `log`. Existing history and inherited fields are retained. Dependencies must exist, cannot form a cycle and must be done before a dependent task advances. Dropping a task requires a reason. Notes supply roster recipients `to` and plain `text`.
+Each mutation supplies `expected_sha` and a random UUIDv4 `operation_id`. Task create supplies `action:create` and editable task fields; the Worker allocates the next task ID, initial status, dates and attribution. Update supplies `action:update`, `task_id`, `changes`, original `base` values for changed non-status fields and an optional appended `log`. Existing history and inherited fields are retained. Dependencies must exist, cannot form a cycle and must be done before a dependent task advances. Dropping a task requires a reason. Notes supply roster recipients `to` and plain `text`. New notes are inserted after the exact file preamble and before its first second-level heading, or appended when no such heading exists. The original bytes remain in order. Task instructions may contain up to 16 KiB; a board POST alone has a 64 KiB JSON envelope so both the old and new instruction text fit. Authentication bodies retain their 8 KiB limit. Operation hashing has its own bounded document digest and does not reuse the 2048-character credential-token helper.
 
 ## Concurrent writes and uncertain responses
 
@@ -29,6 +29,6 @@ The task log or note marker records the operation ID and a digest of its normali
 
 GitHub JSON is streamed with a 1.5 MiB envelope bound, strict metadata/canonical base64/UTF-8 checks and a 1 MiB decoded file bound. Requests cannot grow a board beyond that bound. Remote redirects and error details are rejected or sanitized. Task/history text is escaped; note history uses textContent and does not render HTML. The board is public source: the UI tells authors to exclude passwords and private account information.
 
-Local evidence: 23 adapter tests and signed-JWT/SQLite route tests exercise fixed scope, concurrent writers, idempotency, attribution, CSRF, terms and revocation. No real staging token was configured or GitHub round trip claimed by these tests.
+Local evidence: 25 adapter tests and signed-JWT/SQLite route tests exercise fixed scope, concurrent writers, idempotency, attribution, CSRF, terms and revocation. No real staging token was configured or GitHub round trip claimed by these tests.
 
 References: [GitHub Contents API](https://docs.github.com/en/rest/repos/contents), [fine-grained token permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens).

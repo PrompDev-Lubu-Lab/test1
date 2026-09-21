@@ -1,4 +1,6 @@
-import { digestToken, SecurityError } from './security.mjs';
+import { SecurityError } from './security.mjs';
+import {sha256} from '@noble/hashes/sha2.js';
+import {bytesToHex} from '@noble/hashes/utils.js';
 
 export const BOARD_ROSTER = Object.freeze(['deandre', 'deandre-fable', 'deandre-gpt6', 'ali', 'ali-fable']);
 export const BOARD_STATUSES = Object.freeze(['todo', 'in_progress', 'blocked', 'review', 'done', 'dropped']);
@@ -80,7 +82,7 @@ function fieldValid(key, value, incoming = false) {
     case 'area': return BOARD_AREAS.includes(value);
     case 'depends_on': return Array.isArray(value) && value.length <= (incoming ? 100 : 2000)
       && value.every(id => taskNumber(id) !== null) && new Set(value).size === value.length;
-    case 'instructions': return plainText(value, incoming ? 6000 : DOCUMENT_BYTES);
+    case 'instructions': return plainText(value, incoming ? 16384 : DOCUMENT_BYTES);
     default: return false;
   }
 }
@@ -139,7 +141,7 @@ function normalizeOperation(kind, body) {
     if (Object.keys(task).some(key => !fieldValid(key, task[key], true)) || !Object.hasOwn(task, 'title')
       || !Object.hasOwn(task, 'area') || !Object.hasOwn(task, 'instructions')) fail();
     task.title = task.title.trim();
-    task.instructions = inputText(task.instructions, 6000);
+    task.instructions = inputText(task.instructions, 16384);
     return { action: 'create', task };
   }
   fields(body, ['action', 'expected_sha', 'operation_id', 'task_id', 'changes', 'base', 'log']);
@@ -151,7 +153,7 @@ function normalizeOperation(kind, body) {
   fields(body.base ?? {}, compared);
   if (compared.some(key => !Object.hasOwn(body.base ?? {}, key) || !fieldValid(key, body.base[key]))) fail();
   if (Object.hasOwn(changes, 'title')) changes.title = changes.title.trim();
-  if (Object.hasOwn(changes, 'instructions')) changes.instructions = inputText(changes.instructions, 6000);
+  if (Object.hasOwn(changes, 'instructions')) changes.instructions = inputText(changes.instructions, 16384);
   const log = body.log === undefined ? null : inputText(body.log, 2000);
   if ((!Object.keys(changes).length && !log) || (changes.status === 'dropped' && !log)) fail();
   return { action: 'update', task_id: body.task_id, changes, base: body.base ?? {}, log };
@@ -262,7 +264,11 @@ function changedDocument(current, kind, actor, operation, operationId, operation
   const date = timestamp.slice(0, 10);
   if (kind === 'notes') {
     const header = `## ${timestamp.slice(0, 16).replace('T', ' ')} UTC · ${actor} → ${operation.to.join(', ')}`;
-    const text = `${header}\n${NOTE_MARKER} ${operationId} ${actor} ${operationHash} -->\n${operation.text}\n\n${current.text}`;
+    const firstHeading=current.text.search(/^## /m);
+    const insertion=firstHeading<0?current.text.length:firstHeading;
+    const preamble=current.text.slice(0,insertion),history=current.text.slice(insertion);
+    const separator=!preamble||preamble.endsWith('\n\n')||preamble.endsWith('\r\n\r\n')?'':preamble.endsWith('\n')?'\n':'\n\n';
+    const text = `${preamble}${separator}${header}\n${NOTE_MARKER} ${operationId} ${actor} ${operationHash} -->\n${operation.text}\n\n${history}`;
     return { text, id: operationId, message: `board: note (${actor})` };
   }
   const document = structuredClone(current.document);
@@ -309,7 +315,10 @@ export async function mutateBoard(env, kind, actor, body, { fetchImpl = fetch, n
   const operation = normalizeOperation(kind, body);
   if (!Number.isSafeInteger(now) || now < 0 || now > 253_402_300_799_999) fail();
   const timestamp = new Date(now).toISOString();
-  const operationHash = digestToken(JSON.stringify(stable({ kind, actor, operation })));
+  const operationBytes=encoder.encode(JSON.stringify(stable({kind,actor,operation})));
+  if(operationBytes.byteLength>65536)fail();
+  // Board documents have their own bounded digest; credential tokens stay at 2048 characters.
+  const operationHash = bytesToHex(sha256(operationBytes));
   let current = await readDocument(config, kind, fetchImpl);
   for (let attempt = 0; attempt < 2; attempt++) {
     const completed = replay(current, kind, actor, body.operation_id, operationHash);

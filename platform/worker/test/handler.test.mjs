@@ -162,7 +162,7 @@ test('a resumed session receives only its authenticated avatar URL, never the pr
   assert.equal(JSON.stringify(result).includes('private-synthetic-key'),false);
 });
 
-function configuredBoard(h,fetchHook=async()=>{}) {
+function configuredBoard(h,fetchHook=async()=>{},instructions='Synthetic instructions.') {
   Object.assign(h.env,{BOARD_READY:'staging',BOARD_BRANCH:'board/staging',BOARD_REPO:'example-owner/example-project',BOARD_GITHUB_TOKEN:'github_pat_synthetic_test_token_never_a_real_secret'});
   let puts=0,lastText=null;
   const fetchImpl=async(input,options)=>{
@@ -170,7 +170,7 @@ function configuredBoard(h,fetchHook=async()=>{}) {
     assert.equal(url.origin,'https://api.github.com');assert.ok(['board/notes.md','board/tasks.json'].includes(path));
     await fetchHook(options.method);
     if(options.method==='GET') {
-      const text=path.endsWith('.json')?' {"tasks":[]}':'# Notes\n\nExisting history.\n';
+      const text=path.endsWith('.json')?JSON.stringify({tasks:[{id:'T-001',title:'Synthetic task',status:'todo',priority:'normal',assigned_by:'deandre',assigned_to:null,assigned_on:'2026-09-21',due:null,area:'platform',depends_on:[],instructions,log:[]}]}):'# Notes\n\nExisting history.\n';
       return Response.json({type:'file',path,sha:'a'.repeat(40),size:Buffer.byteLength(text),encoding:'base64',content:Buffer.from(text).toString('base64')});
     }
     assert.equal(options.method,'PUT');puts++;const body=JSON.parse(options.body);assert.equal(body.branch,'board/staging');lastText=Buffer.from(body.content,'base64').toString('utf8');
@@ -217,4 +217,15 @@ test('event upgrades require feature, current terms, exact Origin and a signed s
   assert.equal((await h.call('/events',{...session,headers:{Upgrade:'websocket'}})).status,400);
   assert.equal(contacted,0);
   assert.equal((await h.call('/events',upgrade)).status,503);assert.equal(contacted,1);
+});
+
+
+test('board-only sixty-four-KiB transport accepts long text plus its base while auth stays at eight KiB',async t=>{
+  let adapter;const h=harness(t,{boardFetch:(...args)=>adapter.fetchImpl(...args)});await h.seed();const session=await h.login();await h.accept(session);
+  adapter=configuredBoard(h,undefined,'a'.repeat(16384));
+  const body={expected_sha:'a'.repeat(40),operation_id:'10000000-0000-4000-8000-000000000003',action:'update',task_id:'T-001',changes:{instructions:'b'.repeat(16384)},base:{instructions:'a'.repeat(16384)}};
+  assert.ok(Buffer.byteLength(JSON.stringify(body))>32768);
+  const changed=await h.call('/board/tasks',{...session,method:'POST',body});assert.equal(changed.status,200,await changed.clone().text());assert.equal(adapter.puts,1);
+  assert.equal((await h.call('/board/tasks',{...session,method:'POST',body:{...body,padding:'x'.repeat(65536)}})).status,413);assert.equal(adapter.puts,1);
+  assert.equal((await h.call('/auth/login',{method:'POST',body:{email:'owner@example.test',password,turnstile:'login',padding:'x'.repeat(8192)}})).status,413);
 });

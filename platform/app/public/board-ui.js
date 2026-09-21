@@ -5,7 +5,7 @@ export const BOARD_STATUSES=Object.freeze(['todo','in_progress','blocked','revie
 const PRIORITIES=['high','normal','low'],AREAS=['bot','platform','research','ops','board'];
 const FIELDS=['title','status','priority','assigned_to','due','area','depends_on','instructions'];
 const SHA=/^[a-f0-9]{40}$/,UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
-const encoder=new TextEncoder(),MAX_REQUEST_BYTES=8192;
+const encoder=new TextEncoder(),MAX_REQUEST_BYTES=65536;
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const clone=value=>structuredClone(value);
 export const escapeBoard=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -23,7 +23,7 @@ function validField(key,value,incoming=true) {
   if(key==='due')return value===null||validDate(value);
   if(key==='area')return AREAS.includes(value);
   if(key==='depends_on')return Array.isArray(value)&&value.length<=(incoming?100:2000)&&value.every(validId)&&new Set(value).size===value.length;
-  if(key==='instructions')return text(value,incoming?6000:1048576);
+  if(key==='instructions')return text(value,incoming?16384:1048576);
   return false;
 }
 export function parseBoardSnapshot(kind,value) {
@@ -64,7 +64,7 @@ export function buildBoardOperation(kind,draft,operationId) {
       body={...body,action:'update',task_id:draft.task_id,changes,base:Object.fromEntries(Object.keys(changes).filter(key=>key!=='status').map(key=>[key,clone(draft.baseTask[key])])),...(hasLog?{log:draft.log}:{})};
     }
   } else fail('Choose Tasks or Notes.');
-  if(encoder.encode(JSON.stringify(body)).length>MAX_REQUEST_BYTES)fail('This edit exceeds the 8 KiB request limit, including its original fields. Shorten the draft or make a smaller edit.');
+  if(encoder.encode(JSON.stringify(body)).length>MAX_REQUEST_BYTES)fail('This edit exceeds the 64 KiB request limit, including its original fields. Shorten the draft or make a smaller edit.');
   return body;
 }
 function validateReceipt(kind,value,body) {
@@ -159,7 +159,7 @@ function control(name,title,value,{type='text',choices=null,maxlength=6000,help=
 }
 function taskEditor(draft) {
   const f=draft.fields;
-  return `<div class="board-form-grid">${control('title','Task title',f.title,{maxlength:160})}${draft.mode==='update'?control('status','Status',f.status,{choices:BOARD_STATUSES}):'<p class="board-help">New tasks start as todo. The server assigns the task number and author.</p>'}${control('priority','Priority',f.priority,{choices:PRIORITIES})}${control('assigned_to','Assign to',f.assigned_to,{choices:[['','Unclaimed'],...BOARD_ROSTER]})}${control('due','Due date (UTC)',f.due,{type:'date'})}${control('area','Area',f.area,{choices:AREAS})}</div>${control('depends_on','Dependencies',f.depends_on,{maxlength:1400,help:'Comma-separated task IDs, such as T-001, T-003. Dependencies must be done before work advances.'})}${control('instructions','Instructions',f.instructions,{textarea:true,help:'Describe the outcome and scope. Up to 6,000 UTF-8 bytes; no private account information.'})}${draft.mode==='update'?control('log','Append to task log',draft.log,{textarea:true,maxlength:2000,help:'Optional context, up to 2,000 UTF-8 bytes. A reason is required when dropping a task. Existing log entries stay unchanged.'}):''}`;
+  return `<div class="board-form-grid">${control('title','Task title',f.title,{maxlength:160})}${draft.mode==='update'?control('status','Status',f.status,{choices:BOARD_STATUSES}):'<p class="board-help">New tasks start as todo. The server assigns the task number and author.</p>'}${control('priority','Priority',f.priority,{choices:PRIORITIES})}${control('assigned_to','Assign to',f.assigned_to,{choices:[['','Unclaimed'],...BOARD_ROSTER]})}${control('due','Due date (UTC)',f.due,{type:'date'})}${control('area','Area',f.area,{choices:AREAS})}</div>${control('depends_on','Dependencies',f.depends_on,{maxlength:1400,help:'Comma-separated task IDs, such as T-001, T-003. Dependencies must be done before work advances.'})}${control('instructions','Instructions',f.instructions,{textarea:true,maxlength:16384,help:'Describe the outcome and scope. Up to 16,384 UTF-8 bytes; no private account information.'})}${draft.mode==='update'?control('log','Append to task log',draft.log,{textarea:true,maxlength:2000,help:'Optional context, up to 2,000 UTF-8 bytes. A reason is required when dropping a task. Existing log entries stay unchanged.'}):''}`;
 }
 function noteEditor(draft) {
   return `<fieldset class="board-recipients"><legend>Recipients</legend>${['all',...BOARD_ROSTER].map(handle=>`<label><input type="checkbox" name="to" value="${handle}" data-board-recipient${draft.to.includes(handle)?' checked':''}>${handle==='all'?'Everyone':handle}</label>`).join('')}</fieldset>${control('text','Append a note',draft.text,{textarea:true,help:'Up to 6,000 UTF-8 bytes. The server adds your verified handle and UTC time. Notes are append-only.'})}`;

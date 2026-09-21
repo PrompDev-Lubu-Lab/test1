@@ -277,8 +277,8 @@ test('notes prepend a canonical server UTC header, preserve all existing bytes a
   const body = note(github, 'A note with literal <symbols> and Unicode: café.\nSecond line.');
   body.to = ['deandre-fable', 'ali'];
   const result = await mutateBoard(env, 'notes', 'ali', body, options(github));
-  assert.match(github.get('notes').text, /^## 2026-09-21 14:05 UTC · ali → deandre-fable, ali\n/);
-  assert.ok(github.get('notes').text.endsWith(previous));
+  assert.match(github.get('notes').text, /## 2026-09-21 14:05 UTC · ali → deandre-fable, ali\n/);
+  assert.ok(github.get('notes').text.startsWith(previous));
   assert.ok(github.get('notes').text.includes(body.text));
   assert.equal(result.id, body.operation_id);
   assert.equal((await mutateBoard(env, 'notes', 'ali', body, options(github))).replayed, true);
@@ -384,4 +384,23 @@ test('an account revoked during the remote read cannot commit using earlier auth
   await denies(mutateBoard(env,'tasks','deandre',creation(github),{...options(github),authorize:async()=>++checks===1}),'login_required',401);
   assert.equal(github.getCount,1);assert.equal(github.putCount,0);
   await denies(mutateBoard(env,'tasks','deandre',creation(github),{fetchImpl:github.fetch}),'board_actor_denied',403);
+});
+
+
+test('new notes remain after the exact preamble and before the first history heading',async()=>{
+  for(const original of ['# Notes\r\n\r\nKeep this introduction.\r\n\r\n## 2026-09-20 10:00 UTC · ali → all\r\nOld note.\r\n', '# Notes\nIntroduction without a heading.']) {
+    const github=new GithubHarness(undefined,original),body=note(github,'New entry.');
+    await mutateBoard(env,'notes','deandre',body,options(github));const result=github.get('notes').text;
+    const insertion=original.indexOf('## '),prefix=insertion<0?original:original.slice(0,insertion);
+    assert.ok(result.startsWith(prefix));assert.equal(result.match(/^# Notes/gm).length,1);
+    if(insertion>=0)assert.ok(result.endsWith(original.slice(insertion)));
+    assert.ok(result.indexOf('New entry.')>prefix.length);
+  }
+});
+
+test('a full sixteen-KiB instruction edit preserves its equally long original base',async()=>{
+  const github=new GithubHarness();const before='a'.repeat(16384),after='b'.repeat(16384);
+  github.editTasks(document=>document.tasks[0].instructions=before);
+  await mutateBoard(env,'tasks','deandre',update(github,{instructions:after}),options(github));
+  assert.equal(github.parsed().tasks[0].instructions,after);
 });

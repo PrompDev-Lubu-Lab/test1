@@ -106,7 +106,7 @@ export function createHandler({ accessKeys, eventOptions, boardFetch } = {}) {
         if (request.headers.get('Origin') !== env.APP_ORIGIN || request.headers.get('Sec-Fetch-Site') === 'cross-site') deny(403, 'origin_denied', 'This origin is not allowed.');
         if (route !== '/me/avatar') {
           if (request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') deny(415, 'json_required', 'Send a JSON request.');
-          body = await readJsonLimited(request, 8192);
+          body = await readJsonLimited(request, request.method==='POST' && ['/board/tasks','/board/notes'].includes(route) ? 65536 : 8192);
           if (!body || Array.isArray(body) || typeof body !== 'object') deny(400, 'invalid_body', 'Send a JSON object.');
         }
       }

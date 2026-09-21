@@ -345,6 +345,11 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-19: usability blocked by the onboarding regression T-034."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-21: live Worker updated to source 7051615 (version id recorded privately by Astra); still deployed-not-usable pending the real owner flow (T-034)."
         }
       ]
     },
@@ -1210,6 +1215,31 @@
           "on": "2026-09-21",
           "by": "deandre-fable",
           "text": "COLLAB-20260921-20: source review at b2021bd PASSES, no blockers. Worker: POST /api/auth/link-context runs ingress, then Access, then a recovery-class reservation keyed by hashed IP plus the signed subject, no Turnstile and no KDF; body limited to kind and token with the kind enum and token format enforced; invite lookup requires unaccepted and unexpired, credential kinds go through the existing subject and version guarded token lookup; returns only kind and email; never consumes or extends; one uniform invalid_token error; audit rows carry kind and outcome only and exist only after admission, so origin and JWT floods write nothing; 10 lookups per IP window then 429. Turnstile: documented token rejections (missing, invalid, expired or duplicate) and hostname or action mismatch are 403 turnstile_failed with fresh-check guidance; configuration, provider internal, bad request, HTTP outage, timeout, network and malformed or contradictory bodies are 503 with fixed categories; raw provider codes and bodies never reach errors, responses or audit; failed bodies are cancelled. Client: fragment scrubbed before render, token and confirmed email held in page memory only, readonly prefilled address and the submit overrides any edited value with the confirmed one, stale async responses guarded, retry keeps the link privately, invalid or used links show a neutral message, first-time users are told to reopen the original invitation in the same browser after Access, typed email remembered in memory and cleared on sign-out, disposal and new links. Tests: 94 app, 176 Worker. Non-blocking: (a) the client friendly text still keys on the old turnstile_unavailable code, so new 503 categories show the generic server detail; map any turnstile_ 503 to the friendly text in a later pass; (b) Clawdie is a working display name chosen by Astra from the domain, not a naming decision by DeAndre, and stays a single constant. Deploy and real-flow acceptance next: reopen the same invitation in the same browser within its 24 h, prefilled signup, verification mail, verify, sign in, terms."
+        },
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "COLLAB-20260921-21: Astra deployed the final platform source 7051615 (includes the reviewed b2021bd, the friendly text for every Turnstile 503 category and a footer row fix for narrow screens) to the protected origin at 14:20:58 UTC; seven unauthenticated probes denied, a real browser reaches the Access login page, zero users, one active original invitation. DeAndre asked to reopen the same original invitation in the same browser and complete password, verification, sign-in and terms. Stays in review pending that real flow. Platform checks green; the one red job was the C++ gateway test, now T-035."
+        }
+      ]
+    },
+    {
+      "id": "T-035",
+      "title": "Gateway state machine: late fill after a confirmed cancel revived the order (gcc Debug CI failure on PR #2 head 7051615)",
+      "status": "review",
+      "priority": "high",
+      "assigned_by": "deandre-fable",
+      "assigned_to": "deandre-fable",
+      "assigned_on": "2026-09-21",
+      "due": null,
+      "area": "bot",
+      "depends_on": [],
+      "instructions": "CI gcc/Debug job on 7051615 failed tests/gateway/binance_gateway_test.cpp:144, CHECK(st.status == OrderStatus::cancelled) with 2 == 5 (partially_filled vs cancelled). Root cause, not a flake: BinanceGateway::apply() set the status to filled or partially_filled on every fill and to cancelled on every cancel report, regardless of an existing terminal state. The REST cancel reply (worker thread) and the stream fill race for the dispatch loop; when the cancel confirmation landed first, the late fill revived a cancelled order. The existing test tolerated either arrival order but the state machine did not. Fix on claude/cool-sagan-7klcfy commit 1b03b7b: terminal states are sticky (first terminal state wins), late fills still update quantities and count as late, a stale CANCELED never un-fills a filled order; header comment documents the rule. Two deterministic regression tests force each ordering. Evidence: both new tests fail on the unfixed code with the same 2 == 5; after the fix gcc Debug ASan/UBSan full suite, clang Debug ASan/UBSan full suite and gcc Release full suite all pass warning-free, plus 30 repeats of the gateway cases under each sanitizer build with zero failures. Lands on main through T-017; Astra merges the board head into codex/platform-app as usual, which carries the fix into PR #2 and re-runs its CI. No rerun-away, no PR #1 merge, no bot deployment.",
+      "log": [
+        {
+          "on": "2026-09-21",
+          "by": "deandre-fable",
+          "text": "created in COLLAB-20260921-21 from the gcc Debug failure Astra reported on 7051615; reproduced deterministically, fixed in 1b03b7b, verified under the full local compiler matrix"
         }
       ]
     }
